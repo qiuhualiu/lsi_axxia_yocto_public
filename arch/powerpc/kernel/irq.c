@@ -538,6 +538,7 @@ void irq_ctx_init(void)
 	}
 }
 
+#ifndef CONFIG_PREEMPT_RT_FULL
 static inline void do_softirq_onstack(void)
 {
 	struct thread_info *curtp, *irqtp;
@@ -559,6 +560,7 @@ static inline void do_softirq_onstack(void)
 	if (irqtp->flags)
 		set_bits(irqtp->flags, &curtp->flags);
 }
+#endif
 
 void do_softirq(void)
 {
