@@ -1385,6 +1385,11 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER		ehci_platform_driver
 #endif
 
+#ifdef CONFIG_USB_CI13612_HCD
+#include "ehci-ci13612.c"
+#define PLATFORM_DRIVER	ci13612_ehci_driver
+#endif
+
 #if !defined(PCI_DRIVER) && !defined(PLATFORM_DRIVER) && \
     !defined(PS3_SYSTEM_BUS_DRIVER) && !defined(OF_PLATFORM_DRIVER) && \
     !defined(XILINX_OF_PLATFORM_DRIVER)
@@ -1481,6 +1486,7 @@ module_init(ehci_hcd_init);
 
 static void __exit ehci_hcd_cleanup(void)
 {
+
 #ifdef XILINX_OF_PLATFORM_DRIVER
 	platform_driver_unregister(&XILINX_OF_PLATFORM_DRIVER);
 #endif
