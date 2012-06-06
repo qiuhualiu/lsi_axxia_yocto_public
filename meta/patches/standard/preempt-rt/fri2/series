@@ -1,0 +1,2 @@
+links/kernel-cache/bsp/fri2/pch_uart-Add-eg20t_port-lock-field-avoid-recursive-s.patch
+links/kernel-cache/bsp/fri2/pch_uart-Correct-spin_lock-and-irqsave-usage-in-pch_.patch
