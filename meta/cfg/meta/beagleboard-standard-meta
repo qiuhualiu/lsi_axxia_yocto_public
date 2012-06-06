@@ -1,0 +1,296 @@
+# _reloc_dir /home/bruce/poky-kernel/new-repo/meta/cfg
+
+# _mark beagleboard_standard_c3d4cd8ba5dee86a4e4424cf3ab2d1ce start
+# _define KMACHINE 'beagleboard'
+# _define KTYPE 'standard'
+# _define KARCH 'arm'
+# _mark standard_dc07176c5932504c7273e48bfa03ac75 start
+# _mark standard_nocfg_27efe4ea84abc4cb175a9bdcefefc6e2 start
+# _mark base_00c1b398e84f544baae29be7a60c14b2 start
+# _define KERNEL_VERSION '3.4'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/base/base.cfg
+# _mark base_00c1b398e84f544baae29be7a60c14b2 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/base
+# _branch_begin standard
+# _mark kgdb_c35256fe330965b94a0f686bc7355897 start
+# _define KFEATURE_DESCRIPTION 'Enable KGDB + KGDB access protocols'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/kgdb/kgdb.cfg
+# _mark kgdb_c35256fe330965b94a0f686bc7355897 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/kgdb
+# _git tag kgdb
+# _mark omap_789bd6f325079908e35cab7f7572021f start
+# _mark omap_789bd6f325079908e35cab7f7572021f end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/omap
+# _mark lttng_538e4dc9a63dd1c34526c8d3342d99c1 start
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/lttng/lttng.cfg
+# _mark lttng_538e4dc9a63dd1c34526c8d3342d99c1 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/lttng
+# _mark blktrace_25f199f78f2515a8e981fafafe5e7f47 start
+# _define KFEATURE_DESCRIPTION 'Enable blktrace'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/blktrace/blktrace.cfg
+# _mark blktrace_25f199f78f2515a8e981fafafe5e7f47 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/blktrace
+# _git tag blktrace
+# _mark systemtap_7c690d2bcec9eb7d2b90b4378c68146a start
+# _define KFEATURE_DESCRIPTION 'Enable options required for systemtap support'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/systemtap/systemtap.cfg
+# _mark systemtap_7c690d2bcec9eb7d2b90b4378c68146a end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/systemtap
+# _git tag systemtap
+# _mark utrace_64b5789ddd20b47f7e28dab59029b03f start
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/utrace/utrace.cfg
+# _mark utrace_64b5789ddd20b47f7e28dab59029b03f end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/utrace
+# _git tag utrace
+# _mark arm_b88685ebecb617ff2f1a9e0787c6e3e1 start
+# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/arm.cfg
+# _mark v7_A15_450d5417fab558aa1e41e123697d081c start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-Use-TTBR1-instead-of-reserved-context-ID.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-Remove-__ARCH_WANT_INTERRUPTS_ON_CTXSW-on-ASID-c.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-Remove-current_mm-per-cpu-variable.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-Remove-__ARCH_WANT_INTERRUPTS_ON_CTXSW-on-pre-AR.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-local-timers-reserve-local_timer_register-to-SMP.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-local-timers-Add-A15-architected-timer-support.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-architected-timers-Add-A15-specific-sched_clock-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-architected-timers-add-DT-support.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-architected-timers-add-support-for-UP-timer.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-vexpress-plug-local-timers-into-the-DT-code.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-architected-timers-remove-support-for-non-DT-pla.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-LPAE-Invalidate-the-TLB-for-module-addresses-dur.patch
+# _mark v7_A15_450d5417fab558aa1e41e123697d081c end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/arm-ARM-EABI-socketcall.patch
+# _mark arm_b88685ebecb617ff2f1a9e0787c6e3e1 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm
+# _git tag arm
+# _mark mips_58bd36477fb566c4c8a44c252973b909 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/mips/malta-uhci-quirks-make-allowance-for-slow-4k-e-c.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/mips/4kc-cache-tlb-hazard-tlbp-cache-coherency.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/mips/mips-support-preemptible-kernel.patch
+# _mark mips_58bd36477fb566c4c8a44c252973b909 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/mips
+# _git tag mips
+# _mark powerpc_5b7ab4e7c13b94e0b03b4397d3541c38 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/powerpc/powerpc-Add-unwind-information-for-SPE-registers-of-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/powerpc/powerpc-kexec-fix-for-powerpc64.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/powerpc/powerpc-add-crtsavres.o-to-archprepare-for-kbuild.patch
+# _mark powerpc_5b7ab4e7c13b94e0b03b4397d3541c38 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/powerpc
+# _git tag powerpc
+# _mark hrt_f4213846322db23ccbc8cd363c1e1efb start
+# _define KFEATURE_DESCRIPTION 'Enable High Res timers and Generic Time'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/hrt/hrt.cfg
+# _mark hrt_f4213846322db23ccbc8cd363c1e1efb end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/hrt
+# _mark ftrace_37661c68a0b9f963d2fce7a0d5afdb9c start
+# _define KFEATURE_DESCRIPTION 'Enable Function Tracer'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ftrace/ftrace.cfg
+# _mark ftrace_37661c68a0b9f963d2fce7a0d5afdb9c end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ftrace
+# _mark patches_83c0eeef08d6545c64a7f721d99ebd01 start
+# _mark drivers_08f2ae0e03f5c871e336ad057bcb8831 start
+# _mark drivers_08f2ae0e03f5c871e336ad057bcb8831 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/drivers
+# _mark build_836c56aa0be3b3dd29c5b547cf74915c start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/build/arm-serialize-build-targets.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/build/powerpc-serialize-image-targets.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/build/kbuild-exclude-meta-directory-from-distclean-processi.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/build/modpost-mask-trivial-warnings.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/build/ARM-add-an-extra-pass-for-kallsyms-generation.patch
+# _mark build_836c56aa0be3b3dd29c5b547cf74915c end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/build
+# _mark exports_7d80ede093746c34cac2c637d21dc4b5 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/exports/cleanup-a.out-header-for-export.patch
+# _mark exports_7d80ede093746c34cac2c637d21dc4b5 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/exports
+# _mark boot_da2fb2d14bbbc888f78864d48e3fc496 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/boot/NFS-allow-nfs-root-mount-to-use-alternate-rpc-ports.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/boot/mount_root-clarify-error-messages-for-when-no-rootfs.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/boot/check-console-device-file-on-fs-when-booting.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/boot/nfs-Allow-default-io-size-to-be-configured.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/boot/powerpc-boot-remove-Os-from-BOOTFLAGS.patch
+# _mark boot_da2fb2d14bbbc888f78864d48e3fc496 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/boot
+# _mark net_d7f3644d0375e97f7ca74043a9269355 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/net/Resolve-jiffies-wrapping-about-arp.patch
+# _mark net_d7f3644d0375e97f7ca74043a9269355 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/net
+# _mark debug_b2f56cc0100e7622d5ada8fcced3068c start
+# _mark debug_b2f56cc0100e7622d5ada8fcced3068c end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/debug
+# _mark misc_43059b44a981198a0870395921684c20 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/misc/vmware-include-jiffies.h.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/misc/compiler.h-Undef-before-redefining-__attribute_const.patch
+# _mark misc_43059b44a981198a0870395921684c20 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches/misc
+# _mark patches_83c0eeef08d6545c64a7f721d99ebd01 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/patches
+# _mark initramfs_97bfe3aa5d32d48fcb64e4699aab0cea start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/initramfs/initramfs-add-wrapper.patch
+# _mark initramfs_97bfe3aa5d32d48fcb64e4699aab0cea end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/initramfs
+# _mark yaffs2_2bbfcc71d69ff5cb860648c5bef2d6bd start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/yaffs2/yaffs2-import-core-support.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/yaffs2/yaffs2-replace-d_alloc_root-with-d_make_root.patch
+# _mark yaffs2_2bbfcc71d69ff5cb860648c5bef2d6bd end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/yaffs2
+# _mark unionfs_33fe2d0d0ead3f460bb3fab924edd43e start
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/unionfs.cfg
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/unionfs-introduce-unionfs-2.5.10-core-support.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/unionfs-use-proper-accessors-for-i_nlink.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/unionfs-replace-d_alloc_root-with-d_make_root.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/unionfs-v3.4-build-fixups.patch
+# _mark unionfs_33fe2d0d0ead3f460bb3fab924edd43e end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs
+# _mark cgroups_8c78cbf1f283ed7792d5171822d82b4e start
+# _define KFEATURE_DESCRIPTION 'Enable cgroups and selected controllers                              namespaces and associated functionality'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/cgroups/cgroups.cfg
+# _mark namespaces_559f3dd09526b6d45d2f1884bcd8b26a start
+# _define KFEATURE_DESCRIPTION 'Enable namespace support + experimental namespaces'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _define EXPERIMENTAL '1'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/namespaces/namespaces.cfg
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/namespaces/namespaces-experimental.cfg
+# _mark namespaces_559f3dd09526b6d45d2f1884bcd8b26a end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/namespaces
+# _mark cgroups_8c78cbf1f283ed7792d5171822d82b4e end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/cgroups
+# _mark kexec_05aacabed64eac92e9f5c6e18ca4c618 start
+# _mark kexec_05aacabed64eac92e9f5c6e18ca4c618 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/kexec
+# _mark vfat_eac49b6faf639cf592bbfebef83d466f start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/vfat/FAT-Add-CONFIG_VFAT_FS_NO_DUALNAMES-option.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/vfat/FAT-Add-CONFIG_VFAT_NO_CREATE_WITH_LONGNAMES-option.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/vfat/FAT-Added-FAT_NO_83NAME.patch
+# _mark vfat_eac49b6faf639cf592bbfebef83d466f end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/vfat
+# _mark kvm_1eda73f4f43ac51eed88a987a468e7f0 start
+# _mark kvm_1eda73f4f43ac51eed88a987a468e7f0 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/kvm
+# _mark tipc_d545e8e58542ae3bde26f3ee147187ee start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-introduce-publication-lists-struct.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Factor-out-name-publication-code-to-a-separate-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Separate-cluster-scope-and-zone-scope-names-int.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Update-node-scope-publications-when-network-add.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Don-t-record-failed-publication-attempt-as-a-su.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Add-routines-for-safe-checking-of-node-s-networ.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Ensure-network-address-change-doesn-t-impact-na.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Optimize-re-initialization-of-port-message-head.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Ensure-network-address-change-doesn-t-impact-ne.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-delete-duplicate-peerport-peernode-helper-funct.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Ensure-network-address-change-doesn-t-impact-lo.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-take-lock-while-updating-node-network-address.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-properly-handle-off-node-send-requests-with-inv.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-handle-0.0.0-as-an-alias-for-this-node-on-outgo.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Ensure-network-address-change-doesn-t-impact-re.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Ensure-network-address-change-doesn-t-impact-co.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-remove-inline-instances-from-C-source-files.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Optimize-re-initialization-of-configuration-ser.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Optimize-initialization-of-configuration-servic.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Optimize-termination-of-configuration-service.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Enhance-re-initialization-of-network-topology-s.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Optimize-initialization-of-network-topology-ser.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-remove-redundant-memset-and-stale-comment-from-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Create-helper-routine-to-delete-unused-name-seq.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Enhance-error-checking-of-published-names.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc/tipc-Reject-payload-messages-with-invalid-message-ty.patch
+# _mark tipc_d545e8e58542ae3bde26f3ee147187ee end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/tipc
+# _mark xip_e15226e30ce6397b30232ae5e0d26645 start
+# _mark xip_e15226e30ce6397b30232ae5e0d26645 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/xip
+# _mark oprofile_12d869bebaf7a9924020b53ac5c234ec start
+# _mark oprofile_12d869bebaf7a9924020b53ac5c234ec end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/oprofile
+# _mark ramconsole_af74d7142409bd15474840afc3569597 start
+# _define KFEATURE_DESCRIPTION 'Android RAM buffer console'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _mark ramconsole_af74d7142409bd15474840afc3569597 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ramconsole
+# _mark fuse_0111f6809cfd091678a2717784ac8b77 start
+# _define KFEATURE_DESCRIPTION 'Enable core FUSE functionality'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/fuse/fuse.cfg
+# _mark fuse_0111f6809cfd091678a2717784ac8b77 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/fuse
+# _mark uptime_1986acf079a01853f3a334f49cac8e13 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uptime/uptime-allow-the-optional-limiting-of-kernel-runtime.patch
+# _mark uptime_1986acf079a01853f3a334f49cac8e13 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uptime
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard/perf-force-include-of-stdbool.h.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard/perf-hard-code-NO_LIBPERL-NO_LIBPYTHON.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard/arm-versatile-restore-io.h-for-mach-versatile.patch
+# _mark standard_nocfg_27efe4ea84abc4cb175a9bdcefefc6e2 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard/standard.cfg
+# _mark devtmpfs_ef96646f0947bc68820b20188e9fc978 start
+# _define KFEATURE_DESCRIPTION 'Enable devtmpfs for tmpfs/ramfs support at early bootup'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/devtmpfs.cfg
+# _mark devtmpfs_ef96646f0947bc68820b20188e9fc978 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
+# _mark debugfs_e6e236bbaf0a1d8e50fa9a0decf56972 start
+# _define KFEATURE_DESCRIPTION 'Enable debugfs support'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/debugfs.cfg
+# _mark debugfs_e6e236bbaf0a1d8e50fa9a0decf56972 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
+# _mark btrfs_5fb5e05e51e0b7e4b82a893534fff917 start
+# _define KFEATURE_DESCRIPTION 'Enable brtfs filesystem support'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/btrfs.cfg
+# _mark btrfs_5fb5e05e51e0b7e4b82a893534fff917 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
+# _mark ext2_1c25a423a409b33868167ba1e12b822c start
+# _define KFEATURE_DESCRIPTION 'Enable Extended2 (ext2) filesystem support'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/ext2.cfg
+# _mark ext2_1c25a423a409b33868167ba1e12b822c end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
+# _mark ext3_fb8587627e9d87f2f057630b4a371b3c start
+# _define KFEATURE_DESCRIPTION 'Enable the Extended 3 (ext3) filesystem'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/ext3.cfg
+# _mark ext3_fb8587627e9d87f2f057630b4a371b3c end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
+# _mark ext4_62a70d0b33d1c4dca5090e9dbafd0e63 start
+# _define KFEATURE_DESCRIPTION 'Enable the Extended 4 (ext4) filesystem'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/ext4.cfg
+# _mark ext4_62a70d0b33d1c4dca5090e9dbafd0e63 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
+# _mark standard_dc07176c5932504c7273e48bfa03ac75 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard
+# _branch_begin beagleboard
+# _mark beagleboard_4156b6140ffcb3509c6860ca2ee8ae7b start
+# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard/beagleboard.cfg
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard/beagleboard-non_hardware.cfg
+# _mark usb_net_c28fd30e6fc175cc6c429d5cd8c7b9da start
+# _define KFEATURE_DESCRIPTION 'Enable all options required for USB networking'
+# _define KFEATURE_COMPATIBILITY 'board'
+# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb-net/usb-net.cfg
+# _mark usb_net_c28fd30e6fc175cc6c429d5cd8c7b9da end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb-net
+# _mark wifi_088a2a94923e798599186a9bfe44cd43 start
+# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard/wifi.cfg
+# _mark wifi_088a2a94923e798599186a9bfe44cd43 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard
+# _mark wl1271_168f1f069427f3f44e6cce044db681b9 start
+# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard/wl1271.cfg
+# _mark wl1271_168f1f069427f3f44e6cce044db681b9 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard
+# _mark no_preempt_f8edaa8015d9ebb6947492778d1b80c8 start
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard/no-preempt.cfg
+# _mark no_preempt_f8edaa8015d9ebb6947492778d1b80c8 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard
+# _mark beagleboard_4156b6140ffcb3509c6860ca2ee8ae7b end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard
+# _mark beagleboard_standard_c3d4cd8ba5dee86a4e4424cf3ab2d1ce end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/beagleboard
+# _branches_local: 
