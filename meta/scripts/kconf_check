@@ -1,0 +1,434 @@
+#!/bin/bash
+
+#  Copyright (c) 2009-2010 Wind River Systems, Inc.
+
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License version 2 as
+#  published by the Free Software Foundation.
+
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#  See the GNU General Public License for more details.
+
+# Basic sanity checks on the kernel fragments, i.e. whether a BSP
+# is setting things it shouldn't, whether things are redefined,
+# and whether what you asked for is what you got.
+
+KERNEL_CONFIG=$1
+TOP_BUILD_DIR=$2
+LINUX_SRC=$3
+LINUX_BUILD=$4
+BRANCH=$5
+
+# For consistent behaviour with "grep -w"
+LC_ALL=C
+export LC_ALL
+
+meta_dir=meta
+if [ -d $TOP_BUILD_DIR ]; then
+	META_DIR=$LINUX_SRC/$meta_dir
+else
+	TOP_BUILD_DIR=`pwd`
+	META_DIR=`pwd`/$meta_dir
+fi
+
+# remove trailing "/base" that won't be in the .scc files themselves
+BRANCH=`echo $BRANCH | sed 's%/base$%%'`
+KCONF_DIR=$META_DIR/cfg/$BRANCH
+
+# Note: these 4 files below are created by generate_cfg.
+# All known hardware related Kconfig* files
+KCONF_HDW=$KCONF_DIR/hardware.kcf
+# All known non-hardware related Kconfig* files
+KCONF_NONHDW=$KCONF_DIR/non-hardware.kcf
+
+# Override for hardware CONFIG items that are in a non-hardware Kconfig.
+CONF_HDW=$KCONF_DIR/always_hardware.cfg
+# Overrride for non-hardware CONFIG items that are in a hardware Kconfig.
+CONF_NONHDW=$KCONF_DIR/always_nonhardware.cfg
+
+# Generated configs from feature directories that contain "required.cfg"
+# in their feature directory.
+CONF_REQUIRED=$KCONF_DIR/required_configs.cfg
+CONF_OPTIONAL=$KCONF_DIR/optional_configs.cfg
+
+# Log any redefinitions/overrides that take place
+KCONF_OVERRIDE=$KCONF_DIR/redefinition.txt
+KCONF_REQUIRED_CFG_OVERRIDE=$KCONF_DIR/required_redefinition.txt
+
+# Egads. People are listing the same thing multiple times within a fragment.
+#  An evil sin that deserves its own category (and insults).
+KCONF_FRAG_ERRS=$KCONF_DIR/fragment_errors.txt
+# Log items that were defined as 'generic' (aka software) and were changed
+# to hardware specific. This is a borderline error.
+KCONF_REDFINED_AS_BOARD_SPECIFIC=$KCONF_DIR/redefined_as_board_specific.txt
+
+#echo KERNEL_CONFIG: $KERNEL_CONFIG
+#echo TOP_BUILD_DIR: $TOP_BUILD_DIR
+#echo LINUX_SRC: $LINUX_SRC
+#echo LINUX_BUILD: $LINUX_BUILD
+#echo KCONF_DIR: $KCONF_DIR
+#echo BRANCH: $BRANCH
+
+# Actual list of existing config fragments that are hardware.
+HDW_CFGS=$KCONF_DIR/hdw_frags.txt
+
+# List of fragments that had the "required" keyword.
+REQUIRED_CFGS=$KCONF_DIR/required_frags.txt
+
+# If we don't have hardware fragments or required fragments, there isn't any
+# policy to enforce. So we can exit early in this case .. after warning.
+if [ ! -s $HDW_CFGS ] && [ ! -s $REQUIRED_CFGS ]; then
+	echo WARNING: Can\'t find any BSP hardware or required configuration fragments.
+	echo WARNING: Looked at $HDW_CFGS and $REQUIRED_CFGS in directory: $KCONF_DIR
+	exit 0
+fi
+
+
+##########################################################################
+# Collect the full list of Kconfig* files from the patched up tree.
+# Need to filter out wrlinux_quilt_* since it will have Kconfig files.
+##########################################################################
+
+# escape grep pattern metacharacters (well, at least '.')
+QUILT_PC_PAT="$(echo "${QUILT_PC:-.pc}" | sed 's/\./\\&/')"
+
+# Whoa.  find's -prune can actually be made to work.  Amazing.  Just don't
+# put trailing slashes on exclude dirs.  Ouch.  Dropping down to search in
+# the .git dir would take days...
+find $LINUX_SRC \
+	   -path $LINUX_SRC/$meta_dir -prune				\
+	-o -path $LINUX_SRC/.git -prune				        \
+	-o -path $LINUX_SRC/$QUILT_PC_PAT -prune			\
+	-o -type f -a -name 'Kconfig*' -print |				\
+	sort | sed 's=^'$LINUX_SRC'==' > $KCONF_DIR/all.kcf
+	
+
+##########################################################################
+# Compile a list of Kconfig* files we know about.
+##########################################################################
+
+cat $KCONF_DIR/hardware.kcf $KCONF_DIR/non-hardware.kcf | \
+	sort > $KCONF_DIR/known.kcf
+
+
+##########################################################################
+# Weed out any stale entries from stuff that has been removed (and warn)
+##########################################################################
+rm -f $KCONF_DIR/known_current.kcf
+rm -f $KCONF_DIR/obsolete.kcf
+for i in `cat $KCONF_DIR/known.kcf` ; do
+	if [ -f $LINUX_SRC/$i ]; then
+		echo $i >> $KCONF_DIR/known_current.kcf
+	else
+		echo $i >> $KCONF_DIR/obsolete.kcf
+	fi
+done
+if [ -s $KCONF_DIR/obsolete.kcf ]; then
+	echo The following Kconfig files no longer exist in this tree:
+	cat $KCONF_DIR/obsolete.kcf | sed 's/^/      /'
+	echo
+fi
+
+
+##########################################################################
+# Warn on any new Kconfig files that we don't know about
+##########################################################################
+
+diff -u $KCONF_DIR/known.kcf $KCONF_DIR/all.kcf | \
+	grep ^+[a-zA-Z0-9]|sed 's/^+//'  > $KCONF_DIR/unknown.kcf
+
+if [ -s $KCONF_DIR/unknown.kcf ]; then
+	echo The following new/unknown Kconfig files were found:
+	cat $KCONF_DIR/unknown.kcf | sed 's/^/      /'
+	echo
+fi
+
+
+##########################################################################
+# Collect the list of avail hardware related CONFIG_ options from the
+# known list of hardware Kconfig* files.  We filter out dups since some
+# options, like say "config SMP" appears in about 15 different arch files.
+# Also filter out individual things that are explicitly known to be non
+# hardware, and add things that are explicitly known to be hardware.
+##########################################################################
+
+rm -f $KCONF_DIR/avail_hardware.cfg
+for i in `cat $KCONF_DIR/hardware.kcf` ; do
+	if [ -f $LINUX_SRC/$i ] ; then
+		cat $LINUX_SRC/$i | grep '^\(menu\)*config ' | \
+			awk '{print "CONFIG_"$2}' >> $KCONF_DIR/avail_hardware.cfg
+	fi
+done
+if [ ! -f $KCONF_DIR/avail_hardware.cfg ]; then
+    touch $KCONF_DIR/avail_hardware.cfg
+fi
+mv -f $KCONF_DIR/avail_hardware.cfg $KCONF_DIR/avail_hardware.cfg~
+cat $KCONF_DIR/avail_hardware.cfg~ $KCONF_DIR/always_hardware.cfg \
+	| grep -v -w -f $KCONF_DIR/always_nonhardware.cfg \
+	| sort | uniq > $KCONF_DIR/avail_hardware.cfg
+rm -f $KCONF_DIR/avail_hardware.cfg~
+
+
+##########################################################################
+# Collect the list of all avail related CONFIG_ options from the
+# known list of all Kconfig* files.  Again, must filter dups.
+##########################################################################
+
+rm -f $KCONF_DIR/all.cfg
+for i in `cat $KCONF_DIR/all.kcf` ; do
+	cat $LINUX_SRC/$i | grep '^[ 	]*\(menu\)*config ' | \
+		awk '{print "CONFIG_"$2}' >> $KCONF_DIR/all.cfg
+done
+mv -f $KCONF_DIR/all.cfg $KCONF_DIR/all.cfg~
+cat $KCONF_DIR/all.cfg~ | sort | uniq > $KCONF_DIR/all.cfg
+rm -f $KCONF_DIR/all.cfg~
+
+
+##########################################################################
+# Collect the list of what should be hardware related options as set
+# by the BSP or arch or CPU template(s).
+# We aren't interested in the actual setting at this point, so we can
+# and do strip duplicates (if any).
+##########################################################################
+
+rm -f $KCONF_DIR/specified.cfg~
+for i in `cat $HDW_CFGS` ; do
+	cat $META_DIR/cfg/$i | \
+	grep '^\(# \)\{0,1\}CONFIG_[a-zA-Z0-9_]*[=\( is not set\)]' | \
+	sed 's/^\(# \)\{0,1\}\(CONFIG_[a-zA-Z0-9_]*\)[= ].*/\2/' \
+	>> $KCONF_DIR/specified.cfg~
+done
+sort < $KCONF_DIR/specified.cfg~ | uniq > $KCONF_DIR/specified.cfg
+rm -f $KCONF_DIR/specified.cfg~
+
+check_for_redefined_config()
+{
+	CFG_LIST=`grep '^\(# \)\{0,1\}CONFIG_[a-zA-Z0-9_]*[=\( is not set\)]' \
+	  $ORIG_FRAG | sed 's/^\(# \)\{0,1\}\(CONFIG_[a-zA-Z0-9_]*\)[= ].*/\2/'`
+	for i in $CFG_LIST ; do
+		LASTVAL=`grep -w $i $ORIG_FRAG | tail -n1`
+		echo $LASTVAL|grep -q '^# CONFIG_'
+		HEAD_OK=$?
+		echo $LASTVAL|grep -q ' is not set$'
+		TAIL_OK=$?
+
+		grep -q -w $i $CLEAN_FRAG
+		if [ $? == 0 ] ; then	
+			echo Warning: Value of $i is defined multiple times within fragment $ORIG_FRAG:
+			grep -w $i $ORIG_FRAG
+			echo
+		elif [ $HEAD_OK -eq 0 ] && [ $TAIL_OK -ne 0 ]; then
+			# Enforce proper "# CONFIG_FOO is not set" syntax.
+			# LKC would ignore it anyway, so let them know.
+			echo Warning: Ignoring \"$LASTVAL\" -- invalid CONFIG syntax.
+		else
+			echo $LASTVAL >> $CLEAN_FRAG
+		fi
+	done
+}
+
+if [ -s $REQUIRED_CFGS ]; then
+    rm -f $KCONF_DIR/required.cfg~
+    for i in `cat $REQUIRED_CFGS` ; do
+	cat $META_DIR/cfg/$i | \
+	    grep '^\(# \)\{0,1\}CONFIG_[a-zA-Z0-9_]*[=\( is not set\)]' | \
+	    sed 's/^\(# \)\{0,1\}\(CONFIG_[a-zA-Z0-9_]*\)[= ].*/\2/' \
+	    >> $KCONF_DIR/required.cfg~
+    done
+    sort < $KCONF_DIR/required.cfg~ | uniq > $KCONF_DIR/required.cfg
+    rm -f $KCONF_DIR/required.cfg~
+else
+    touch $KCONF_DIR/required.cfg
+fi
+
+
+##########################################################################
+# Find the options that are just obsolete trash and don't exist in any
+# file whatsoever (leftovers from kernel uprev, etc etc)
+##########################################################################
+
+rm -f $KCONF_DIR/invalid.cfg
+touch $KCONF_DIR/invalid.cfg
+for i in `cat $KCONF_DIR/specified.cfg $KCONF_DIR/required.cfg` ; do
+	grep -q -x -e $i $KCONF_DIR/all.cfg 
+	if [ $? != 0 ]; then
+		echo $i >> $KCONF_DIR/invalid.cfg
+	fi
+done
+
+if [ -s $KCONF_DIR/invalid.cfg ]; then
+	OPT_COUNT=`wc -l $KCONF_DIR/invalid.cfg | awk '{print $1}'`
+	echo This BSP sets $OPT_COUNT invalid/obsolete kernel options.
+	echo These config options are not offered anywhere within this kernel.
+	echo The full list can be found in your workspace at:
+	echo $KCONF_DIR/invalid.cfg | sed 's=^'$TOP_BUILD_DIR'/=   ='
+	echo
+fi
+
+##########################################################################
+# Find the options that aren't present in the available hardware
+# option list.  Don't re-list ones we've already flagged invalid.
+##########################################################################
+
+rm -f $KCONF_DIR/specified_non_hdw.cfg
+rm -f $KCONF_DIR/specified_hdw.cfg
+for i in `cat $KCONF_DIR/specified.cfg` ; do
+	grep -x -e $i $KCONF_DIR/avail_hardware.cfg >> $KCONF_DIR/specified_hdw.cfg
+	if [ $? != 0 ]; then
+		grep -q -x -e $i $KCONF_DIR/invalid.cfg
+		if [ $? != 0 ]; then
+			echo $i >> $KCONF_DIR/specified_non_hdw.cfg
+		fi
+	fi
+done
+
+if [ -s $KCONF_DIR/specified_non_hdw.cfg ]; then
+	OPT_COUNT=`wc -l $KCONF_DIR/specified_non_hdw.cfg | awk '{print $1}'`
+	echo This BSP sets $OPT_COUNT kernel options that are possibly non-hardware related.
+	echo The full list can be found in your workspace at:
+	echo $KCONF_DIR/specified_non_hdw.cfg | sed 's=^'$TOP_BUILD_DIR'/=   ='
+	echo
+fi
+
+##########################################################################
+# Check that the list of specified hardware options really made it into
+# the final .config file.  This can be a lifesaver, since if you specified
+# a crucial hardware option, but it didn't end up in the final .config
+# because it failed a specific LKC prerequisite, you will want to know!
+# Since we've already filtered dups from the toplevel, take the requested
+# value from that, and the set value from the final .config file.
+##########################################################################
+INPUT_CONFIG=$KERNEL_CONFIG
+rm -f $KCONF_DIR/mismatch.cfg
+if [ ! -e $KCONF_DIR/$KERNEL_CONFIG ]; then
+    KERNEL_CONFIG=`find $KCONF_DIR -name "*$INPUT_CONFIG" | head -n1`
+    if [ -n "$KERNEL_CONFIG" ]; then
+	KERNEL_CONFIG=`basename $KERNEL_CONFIG`
+    else
+	KERNEL_CONFIG=`find  $KCONF_DIR -name "*$INPUT_CONFIG*" | head -n1`
+	if [ -n "$KERNEL_CONFIG" ]; then
+	    KERNEL_CONFIG=`basename $KERNEL_CONFIG`
+	fi
+    fi
+fi
+
+rm -f $KCONF_REQUIRED_CFG_OVERRIDE
+for i in `cat $KCONF_DIR/required.cfg` ; do
+        # first test: was a required value redifined and changed ?
+	if [ -f "$KCONF_OVERRIDE" ]; then
+        	override=`grep -A2 -w -E "^Value of $i" $KCONF_OVERRIDE`
+		if [ $? -eq 0 ]; then
+			echo "$override" >> $KCONF_REQUIRED_CFG_OVERRIDE
+		fi
+	fi
+
+        # second test: did the value make the final .config ?
+	REQUESTED_VAL=`grep -w -e $i $KCONF_DIR/$KERNEL_CONFIG`
+	ACTUAL_VAL=`grep -w -e $i $LINUX_BUILD/.config`
+	# Skip cases where they ask for it off, but it wasn't even avail.
+	echo $REQUESTED_VAL | grep -q ' is not set$'
+	if [ $? == 0 -a -z "$ACTUAL_VAL" ]; then
+		continue
+	fi
+	if [ "x$REQUESTED_VAL" != "x$ACTUAL_VAL" ] ; then
+		echo Required value for $i not in final \".config\" >> $KCONF_DIR/missing_required.cfg
+		echo Requested value: \"$REQUESTED_VAL\" >> $KCONF_DIR/missing_required.cfg
+		echo Actual value set: \"$ACTUAL_VAL\" >> $KCONF_DIR/missing_required.cfg
+		echo >> $KCONF_DIR/missing_required.cfg
+	fi
+done
+
+for i in `cat $KCONF_DIR/specified_hdw.cfg` ; do
+	REQUESTED_VAL=`grep -w -e $i $KCONF_DIR/$KERNEL_CONFIG`
+	ACTUAL_VAL=`grep -w -e $i $LINUX_BUILD/.config`
+	# Skip cases where they ask for it off, but it wasn't even avail.
+	echo $REQUESTED_VAL | grep -q ' is not set$'
+	if [ $? == 0 -a -z "$ACTUAL_VAL" ]; then
+		continue
+	fi
+	if [ "x$REQUESTED_VAL" != "x$ACTUAL_VAL" ] ; then
+		echo Value requested for $i not in final \".config\" >> $KCONF_DIR/mismatch.cfg
+		echo Requested value: \"$REQUESTED_VAL\" >> $KCONF_DIR/mismatch.cfg
+		echo Actual value set: \"$ACTUAL_VAL\" >> $KCONF_DIR/mismatch.cfg
+		echo >> $KCONF_DIR/mismatch.cfg
+	fi		
+done
+
+
+if [ -s $KCONF_FRAG_ERRS ]; then
+	OPT_COUNT=`cat $KCONF_FRAG_ERRS |grep Warning: | wc -l | awk '{print $1}'`
+	echo There were $OPT_COUNT instances of config fragment errors.
+	echo The full list can be found in your workspace at:
+	echo $KCONF_FRAG_ERRS | sed 's=^'$TOP_BUILD_DIR'/=   ='
+	echo
+fi
+if [ -n "$report_all_override_flag" ] && [ -s $KCONF_OVERRIDE ]; then
+	OPT_COUNT=`cat $KCONF_OVERRIDE |grep Value | wc -l | awk '{print $1}'`
+	echo There were $OPT_COUNT kernel config options redefined during processing this BSP.
+	echo These config options are defined in more than one config fragment.
+	echo The full list can be found in your workspace at:
+	echo $KCONF_OVERRIDE | sed 's=^'$TOP_BUILD_DIR'/=   ='
+	echo
+fi
+if [ -s $KCONF_REQUIRED_CFG_OVERRIDE ]; then
+	OPT_COUNT=`cat $KCONF_REQUIRED_CFG_OVERRIDE |grep -E "^Value" | wc -l | awk '{print $1}'`
+	echo "There were $OPT_COUNT required kernel config options redefined (and changed)"
+        echo "during processing this BSP. This means that these required values are defined"
+	echo "in multiple fragments and changed from their base value."
+	echo "The full list can be found in your workspace at:"
+	echo "$KCONF_REQUIRED_CFG_OVERRIDE" | sed 's=^'$TOP_BUILD_DIR'/=   ='
+	echo
+fi
+if [ -s $KCONF_REDFINED_AS_BOARD_SPECIFIC ]; then
+	OPT_COUNT=`cat $KCONF_REDFINED_AS_BOARD_SPECIFIC | wc -l | awk '{print $1}'`
+	echo There were $OPT_COUNT kernel config options redefined as board specific.
+	echo This is not an error, but should be noted for future migration purposes.
+	echo The full list can be found in your workspace at:
+	echo $KCONF_REDFINED_AS_BOARD_SPECIFIC | sed 's=^'$TOP_BUILD_DIR'/=   ='
+	echo
+fi
+
+# One could argue that any mismatch is a valid reason to declare failure.
+# If that is what seems appropriate, then replace the sleep with an exit 1
+if [ -s $KCONF_DIR/mismatch.cfg ]; then
+	OPT_COUNT=`grep '^Value' $KCONF_DIR/mismatch.cfg | wc -l | awk '{print $1}'`
+	echo WARNING: There were $OPT_COUNT hardware options requested that do not
+	echo "         "have a corresponding value present in the final \".config\" file.
+	echo "         "This probably means you aren\'t getting the config you wanted.
+	echo The full list can be found in your workspace at:
+	echo $KCONF_DIR/mismatch.cfg | sed 's=^'$TOP_BUILD_DIR'/=   ='
+	echo
+	echo Waiting a second to make sure you get a chance to see this...
+	sleep 1 
+fi
+
+# Missing required options can be errors, warnings .. or something else
+if [ -s $KCONF_DIR/missing_required.cfg ]; then
+	OPT_COUNT=`grep '^Value' $KCONF_DIR/missing_required.cfg | wc -l | awk '{print $1}'`
+	echo "** NOTE: There were $OPT_COUNT required options requested that do not"
+	echo "         have a corresponding value present in the final \".config\" file."
+	echo "         This is a violation of the policy defined by the higher level config"
+	echo "The full list can be found in your workspace at:"
+	echo "$KCONF_DIR/missing_required.cfg" | sed 's=^'$TOP_BUILD_DIR'/=   ='
+	if [ -n "$required_is_error" ]; then
+	    exit 1
+	else
+	    sleep 1 
+	fi
+fi
+
+# Clean up any empty autogenerated files; helps the signal to noise ratio
+for i in all.kcf known.kcf known_current.kcf obsolete.kcf unknown.kcf	\
+	avail_hardware.cfg all.cfg specified.cfg invalid.cfg 		\
+	specified_hdw.cfg specified_non_hdw.cfg mismatch.cfg		\
+	fragment_errors.txt
+do
+	if [ ! -s $i ]; then
+		rm -f $i
+	fi
+done
+
+exit 0
+
