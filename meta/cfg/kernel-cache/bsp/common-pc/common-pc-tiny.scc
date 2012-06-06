@@ -1,0 +1,9 @@
+define KMACHINE common-pc
+define KTYPE tiny
+define KARCH i386
+
+include ktypes/tiny
+branch common-pc
+
+include common-pc.scc
+

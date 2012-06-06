@@ -1,0 +1,9 @@
+define KMACHINE fsl-mpc8315e-rdb
+define KMACHINE mpc8315e-rdb
+define KTYPE standard
+define KARCH powerpc
+
+include ktypes/standard
+branch fsl-mpc8315e-rdb
+
+include fsl-mpc8315e-rdb.scc

@@ -1,0 +1,8 @@
+define KMACHINE beagleboard
+define KTYPE standard
+define KARCH arm
+
+include ktypes/standard
+branch beagleboard
+
+include beagleboard.scc

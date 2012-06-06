@@ -1,0 +1,9 @@
+define KMACHINE atom-pc
+define KTYPE preempt-rt
+define KARCH i386
+
+# re-use the base preempt-rt branch
+include ktypes/standard 
+branch preempt-rt
+
+include atom-pc.scc

@@ -1,0 +1,7 @@
+define KMACHINE routerstationpro
+define KTYPE preempt-rt
+define KARCH mips
+
+include ktypes/preempt-rt
+branch routerstationpro
+include routerstationpro.scc

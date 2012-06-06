@@ -1,0 +1,7 @@
+include ktypes/standard/standard-nocfg.scc
+branch preempt-rt
+
+include features/rt/rt.scc
+
+kconf non-hardware preempt-rt-base.cfg
+kconf non-hardware preempt-rt.cfg
