@@ -80,24 +80,24 @@ int nandmtd1_write_chunk_tags(struct yaffs_dev *dev,
 	 * that only zeroed-bits stick and set tag bytes to all-ones and
 	 * zero just the (not) deleted bit.
 	 */
-	 
-	if(dev->param.tags_9bytes) {
-        	((u8 *) &pt1)[8] = 0xff;
-        	if (etags->is_deleted) {
-		        memset(&pt1, 0xff, 8);
-		        /* zero page_status byte to indicate deleted */
-		        ((u8 *) &pt1)[8] = 0;
-                }
-        } else {
-        	if (etags->is_deleted) {
-	        	memset(&pt1, 0xff, 8);
-	        	/* clear delete status bit to indicate deleted */
-	        	pt1.deleted = 0;
-                }
-        }
+
+	if (dev->param.tags_9bytes) {
+		((u8 *) &pt1)[8] = 0xff;
+		if (etags->is_deleted) {
+			memset(&pt1, 0xff, 8);
+			/* zero page_status byte to indicate deleted */
+			((u8 *) &pt1)[8] = 0;
+		}
+	} else {
+		if (etags->is_deleted) {
+			memset(&pt1, 0xff, 8);
+			/* clear delete status bit to indicate deleted */
+			pt1.deleted = 0;
+		}
+	}
 
 	memset(&ops, 0, sizeof(ops));
-	ops.mode = MTD_OOB_AUTO;
+	ops.mode = MTD_OPS_AUTO_OOB;
 	ops.len = (data) ? chunk_bytes : 0;
 	ops.ooblen = dev->param.tags_9bytes ? 9 : 8;
 	ops.datbuf = (u8 *) data;
@@ -150,7 +150,7 @@ int nandmtd1_read_chunk_tags(struct yaffs_dev *dev,
 	int deleted;
 
 	memset(&ops, 0, sizeof(ops));
-	ops.mode = MTD_OOB_AUTO;
+	ops.mode = MTD_OPS_AUTO_OOB;
 	ops.len = (data) ? chunk_bytes : 0;
 	ops.ooblen =  dev->param.tags_9bytes ? 9 : 8;
 	ops.datbuf = data;
@@ -259,7 +259,8 @@ int nandmtd1_mark_block_bad(struct yaffs_dev *dev, int block_no)
  *
  * Returns YAFFS_OK or YAFFS_FAIL.
  */
-static int nandmtd1_test_prerequists(struct mtd_info *mtd)
+static int nandmtd1_test_prerequists(struct yaffs_dev *dev,
+					struct mtd_info *mtd)
 {
 	/* 2.6.18 has mtd->ecclayout->oobavail */
 	/* 2.6.21 has mtd->ecclayout->oobavail and mtd->oobavail */
@@ -268,7 +269,7 @@ static int nandmtd1_test_prerequists(struct mtd_info *mtd)
 	if (oobavail < (dev->param.tags_9bytes ? 9 : 8)) {
 		yaffs_trace(YAFFS_TRACE_ERROR,
 			"mtd device has only %d bytes for tags, need %d",
-			oobavail, (dev->param.tags_9bytes ? 9 : 8);
+			oobavail, (dev->param.tags_9bytes ? 9 : 8));
 		return YAFFS_FAIL;
 	}
 	return YAFFS_OK;
@@ -297,7 +298,7 @@ int nandmtd1_query_block(struct yaffs_dev *dev, int block_no,
 	/* We don't yet have a good place to test for MTD config prerequists.
 	 * Do it here as we are called during the initial scan.
 	 */
-	if (nandmtd1_test_prerequists(mtd) != YAFFS_OK)
+	if (nandmtd1_test_prerequists(dev, mtd) != YAFFS_OK)
 		return YAFFS_FAIL;
 
 	retval = nandmtd1_read_chunk_tags(dev, chunk_num, NULL, &etags);
