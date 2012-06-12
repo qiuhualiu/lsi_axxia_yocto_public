@@ -1483,8 +1483,8 @@ static int posix_cpu_thread_call(struct notifier_block *nfb,
 #ifdef CONFIG_HOTPLUG_CPU
 	case CPU_UP_CANCELED:
 		/* Unbind it from offline cpu so it can run.  Fall thru. */
-		kthread_bind(per_cpu(posix_timer_task, cpu),
-			     cpumask_any(cpu_online_mask));
+		kthread_bind(per_cpu(posix_timer_task,cpu),
+			     any_online_cpu(cpu_online_map));
 		kthread_stop(per_cpu(posix_timer_task,cpu));
 		per_cpu(posix_timer_task,cpu) = NULL;
 		break;
@@ -1512,7 +1512,7 @@ static int __init posix_cpu_thread_init(void)
 	unsigned long cpu;
 
 	/* init the per-cpu posix_timer_tasklets */
-	for_each_possible_cpu(cpu)
+	for_each_cpu_mask(cpu, cpu_possible_map)
 		per_cpu(posix_timer_tasklist, cpu) = NULL;
 
 	posix_cpu_thread_call(&posix_cpu_thread_notifier, CPU_UP_PREPARE, hcpu);
