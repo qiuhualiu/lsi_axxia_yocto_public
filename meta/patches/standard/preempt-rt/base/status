@@ -1,4 +1,4 @@
-links/kernel-cache/features/rt/rt-import-3.4-rc2-rt1.patch
-links/kernel-cache/features/rt/rt-integrate-3.4-rc2-rt2.patch
+links/kernel-cache/features/rt/preempt-rt-import-3.4.1-rt9.patch
+links/kernel-cache/features/rt/rt-ARM-spinlock_rt.h-uses-BUG_ON-and-needs-bug.h.patch
 links/kernel-cache/bsp/arm-versatile-926ejs/arm_versatile_926ejs-add-default-nor-flash-mtd-parts.patch
 links/kernel-cache/bsp/arm-versatile-926ejs/arm_versatile_926ejs-kick-off-PrimeCell-RTC-PL031.patch
