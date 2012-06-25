@@ -26,6 +26,7 @@ links/kernel-cache/arch/arm/v7-A15/ARM-vexpress-plug-local-timers-into-the-DT-co
 links/kernel-cache/arch/arm/v7-A15/ARM-architected-timers-remove-support-for-non-DT-pla.patch
 links/kernel-cache/arch/arm/v7-A15/ARM-LPAE-Invalidate-the-TLB-for-module-addresses-dur.patch
 links/kernel-cache/arch/arm/arm-ARM-EABI-socketcall.patch
+links/kernel-cache/arch/arm/arm-versatile-fix-and-enable-PCI-I-O-space.patch
 links/kernel-cache/arch/mips/malta-uhci-quirks-make-allowance-for-slow-4k-e-c.patch
 links/kernel-cache/arch/mips/4kc-cache-tlb-hazard-tlbp-cache-coherency.patch
 links/kernel-cache/arch/mips/mips-support-preemptible-kernel.patch
@@ -95,4 +96,3 @@ links/kernel-cache/features/ktest/ktest-Add-README-to-explain-what-is-in-the-exa
 links/kernel-cache/features/ktest/ktest-Change-singular-paranthesis-to-plural-parenthe.patch
 links/kernel-cache/ktypes/standard/perf-force-include-of-stdbool.h.patch
 links/kernel-cache/ktypes/standard/perf-hard-code-NO_LIBPERL-NO_LIBPYTHON.patch
-links/kernel-cache/ktypes/standard/arm-versatile-restore-io.h-for-mach-versatile.patch
