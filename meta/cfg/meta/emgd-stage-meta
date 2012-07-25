@@ -1,0 +1,12 @@
+# _reloc_dir /home/bruce/poky-kernel/new-repo/meta/cfg
+
+# _mark emgd_stage_03aa6d84166285fa69620be4f9f56ebf start
+# _mark emgd_1_14_3bf529cf791b76add353785cfb4cac50 start
+# _branch_begin emgd-1.14 master
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/emgd/yocto-emgd-emgd-1.14-driver.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/emgd/emgd-pvr-get-it-building-with-v3.4-kernel.patch
+# _mark emgd_1_14_3bf529cf791b76add353785cfb4cac50 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/emgd
+# _mark emgd_stage_03aa6d84166285fa69620be4f9f56ebf end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/staging
+# _branches_local: 

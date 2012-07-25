@@ -1,14 +1,9 @@
 # _reloc_dir /home/bruce/poky-kernel/new-repo/meta/cfg
 
-# _mark jasperforest_standard_8956a0fe586fcdce44cb0cd7c7027c52 start
-# _define KMACHINE 'jasperforest'
+# _mark qemuarma9_standard_0bae5d4ab0b324e2c43b4fc4e32c709d start
+# _define KMACHINE 'qemuarma9'
 # _define KTYPE 'standard'
-# _define KARCH 'x86_64'
-# _mark common_pc_64_standard_c915a2e83b229205153a263499c2300b start
-# _define KMACHINE 'common-pc-64'
-# _define KMACHINE 'qemux86-64'
-# _define KTYPE 'standard'
-# _define KARCH 'x86_64'
+# _define KARCH 'arm'
 # _mark standard_dc07176c5932504c7273e48bfa03ac75 start
 # _mark standard_nocfg_27efe4ea84abc4cb175a9bdcefefc6e2 start
 # _mark base_00c1b398e84f544baae29be7a60c14b2 start
@@ -70,6 +65,13 @@
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp
 # _git tag seccomp
 # _mark arm_b88685ebecb617ff2f1a9e0787c6e3e1 start
+# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/arm.cfg
+# _mark hz_100_d8bb780cfc20f82cefeef9efc18e7cb1 start
+# _define KFEATURE_DESCRIPTION 'Enable 100Hz Timer frequency'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer/hz_100.cfg
+# _mark hz_100_d8bb780cfc20f82cefeef9efc18e7cb1 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer
 # _mark v7_A15_450d5417fab558aa1e41e123697d081c start
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-Use-TTBR1-instead-of-reserved-context-ID.patch
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-Remove-__ARCH_WANT_INTERRUPTS_ON_CTXSW-on-ASID-c.patch
@@ -346,205 +348,11 @@
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/net
 # _mark standard_dc07176c5932504c7273e48bfa03ac75 end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard
-# _branch_begin common-pc-64
-# _mark common_pc_64_c47aa6009269081ec6af1dea1c18f351 start
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/common-pc-64/common-pc-64.cfg
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/common-pc-64/common-pc-64-graphics.cfg
-# _mark x86_64_f81274ac813507136df6b67c568b6f23 start
-# _mark efi_c49e9fedb0f7c31cb5e8bf19b46029d8 start
-# _define KFEATURE_DESCRIPTION 'Core EFI support'
-# _define KFEATURE_COMPATIBILITY 'arch'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/efi.cfg
-# _mark efi_c49e9fedb0f7c31cb5e8bf19b46029d8 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark smp_c95b3e99af27128968d78378cac7c74a start
-# _define KFEATURE_DESCRIPTION 'Enable SMP'
-# _define KFEATURE_COMPATIBILITY 'all'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/smp.cfg
-# _mark smp_c95b3e99af27128968d78378cac7c74a end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark hpet_e446fa0a4761218a676a980d862f184e start
-# _define KFEATURE_DESCRIPTION 'HPET Timer Support'
-# _define KFEATURE_COMPATIBILITY 'arch'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer/hpet.cfg
-# _mark hpet_e446fa0a4761218a676a980d862f184e end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer
-# _mark no_hz_35ce083894ac9a6ba68e898140ef26b1 start
-# _define KFEATURE_DESCRIPTION 'Enable CONFIG_NO_HZ'
-# _define KFEATURE_COMPATIBILITY 'all'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer/no_hz.cfg
-# _mark no_hz_35ce083894ac9a6ba68e898140ef26b1 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer
-# _mark hz_1000_343f41088d2d457097ce791266c238cb start
-# _define KFEATURE_DESCRIPTION 'Enable 1000Hz Timer frequency'
-# _define KFEATURE_COMPATIBILITY 'all'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer/hz_1000.cfg
-# _mark hz_1000_343f41088d2d457097ce791266c238cb end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/x86_64.cfg
-# _mark x86_64_f81274ac813507136df6b67c568b6f23 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark ehci_hcd_0b3c45da3596c9be54f5925bce73547a start
-# _define KFEATURE_DESCRIPTION 'Enable options for ehci (USB 2.0)'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _mark base_ce8f64e480d65a8774e8224842680d45 start
-# _define KFEATURE_DESCRIPTION 'Enable core options for USB support'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb/base.cfg
-# _mark base_ce8f64e480d65a8774e8224842680d45 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb/ehci-hcd.cfg
-# _mark ehci_hcd_0b3c45da3596c9be54f5925bce73547a end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb
-# _mark uhci_hcd_cb5aeb99def64f28d18012402b30ce7f start
-# _define KFEATURE_DESCRIPTION 'Enable options for uhci (USB 1.x)'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _mark base_ce8f64e480d65a8774e8224842680d45 start
-# _define KFEATURE_DESCRIPTION 'Enable core options for USB support'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb/base.cfg
-# _mark base_ce8f64e480d65a8774e8224842680d45 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb/uhci-hcd.cfg
-# _mark uhci_hcd_cb5aeb99def64f28d18012402b30ce7f end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb
-# _mark ohci_hcd_5f11c5a65b3e31c4b896610971f156d1 start
-# _define KFEATURE_DESCRIPTION 'Enable options for ohci (USB 1.x)'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _mark base_ce8f64e480d65a8774e8224842680d45 start
-# _define KFEATURE_DESCRIPTION 'Enable core options for USB support'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb/base.cfg
-# _mark base_ce8f64e480d65a8774e8224842680d45 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb/ohci-hcd.cfg
-# _mark ohci_hcd_5f11c5a65b3e31c4b896610971f156d1 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/usb
-# _mark intel_e100_9413e978235200a272a6d8c9a285d5a4 start
-# _define KFEATURE_DESCRIPTION 'Enable Intel E100 and E1000 support'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/intel-e1xxxx/intel-e100.cfg
-# _mark intel_e100_9413e978235200a272a6d8c9a285d5a4 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/intel-e1xxxx
-# _mark intel_e1xxxx_48df9347c788d632e205ef8289661579 start
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/intel-e1xxxx/intel-e1xxxx.cfg
-# _mark intel_e1xxxx_48df9347c788d632e205ef8289661579 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/intel-e1xxxx
-# _mark cdrom_fb6d049819c571946a1853b07b9f515e start
-# _define KFEATURE_DESCRIPTION 'Enable options for SCSI CDROM support'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _mark scsi_11d74ab825273f61c69f4f912db6e8ca start
-# _define KFEATURE_DESCRIPTION 'Enable options for SCSI support'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi/scsi.cfg
-# _mark scsi_11d74ab825273f61c69f4f912db6e8ca end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi/cdrom.cfg
-# _mark cdrom_fb6d049819c571946a1853b07b9f515e end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi
-# _mark common_pc_64_c47aa6009269081ec6af1dea1c18f351 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/common-pc-64
-# _mark boot_live_1b82dcaa85831c3d21ff2a6bc44c0119 start
-# _define KFEATURE_DESCRIPTION 'Live boot support'
-# _define KFEATURE_COMPATIBILITY 'arch'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/boot-live.cfg
-# _mark boot_live_1b82dcaa85831c3d21ff2a6bc44c0119 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark usb_mass_storage_452ed4ea4692656cb7d4751e8ba6338b start
-# _define KFEATURE_DESCRIPTION 'Enable options required for USB mass storage devices'
-# _define KFEATURE_COMPATIBILITY 'all'
-# _mark disk_cb5c5c191a650a9565a0f8f4bd65a069 start
-# _define KFEATURE_DESCRIPTION 'Enable options for SCSI disk support'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _mark scsi_11d74ab825273f61c69f4f912db6e8ca start
-# _define KFEATURE_DESCRIPTION 'Enable options for SCSI support'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi/scsi.cfg
-# _mark scsi_11d74ab825273f61c69f4f912db6e8ca end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi/disk.cfg
-# _mark disk_cb5c5c191a650a9565a0f8f4bd65a069 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/usb-mass-storage.cfg
-# _mark usb_mass_storage_452ed4ea4692656cb7d4751e8ba6338b end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark latencytop_54221d67b5506c12841f20df3686f092 start
-# _define KFEATURE_DESCRIPTION 'Enable latencytop'
-# _define KFEATURE_COMPATIBILITY 'arch'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/latencytop/latencytop.cfg
-# _mark latencytop_54221d67b5506c12841f20df3686f092 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/latencytop
-# _mark profiling_529908064c6db2cb319e823a57021a62 start
-# _define KFEATURE_DESCRIPTION 'Enable profiling and timerstats'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/profiling/profiling.cfg
-# _mark profiling_529908064c6db2cb319e823a57021a62 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/profiling
-# _mark virtio_2b58cb5fe20695bda28d1c694d4d7ff7 start
-# _define KFEATURE_DESCRIPTION 'virtio support (core,pci,balloon,ring,net,blk)'
-# _define KFEATURE_COMPATIBILITY 'arch'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/virtio.cfg
-# _mark virtio_2b58cb5fe20695bda28d1c694d4d7ff7 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark common_pc_64_standard_c915a2e83b229205153a263499c2300b end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/common-pc-64
-# _branch_begin jasperforest
-# _mark jasperforest_7dadb594acb30526490a3a21954c8e03 start
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/jasperforest/jasperforest.cfg
-# _mark xx8250_c4acb8d7146c29164dcc3ef8084ab91b start
-# _define KFEATURE_DESCRIPTION 'Enable 8250 serial support'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/8250.cfg
-# _mark xx8250_c4acb8d7146c29164dcc3ef8084ab91b end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark x86_64_f81274ac813507136df6b67c568b6f23 start
-# _mark efi_c49e9fedb0f7c31cb5e8bf19b46029d8 start
-# _define KFEATURE_DESCRIPTION 'Core EFI support'
-# _define KFEATURE_COMPATIBILITY 'arch'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/efi.cfg
-# _mark efi_c49e9fedb0f7c31cb5e8bf19b46029d8 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark smp_c95b3e99af27128968d78378cac7c74a start
-# _define KFEATURE_DESCRIPTION 'Enable SMP'
-# _define KFEATURE_COMPATIBILITY 'all'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/smp.cfg
-# _mark smp_c95b3e99af27128968d78378cac7c74a end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark hpet_e446fa0a4761218a676a980d862f184e start
-# _define KFEATURE_DESCRIPTION 'HPET Timer Support'
-# _define KFEATURE_COMPATIBILITY 'arch'
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer/hpet.cfg
-# _mark hpet_e446fa0a4761218a676a980d862f184e end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer
-# _mark no_hz_35ce083894ac9a6ba68e898140ef26b1 start
-# _define KFEATURE_DESCRIPTION 'Enable CONFIG_NO_HZ'
-# _define KFEATURE_COMPATIBILITY 'all'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer/no_hz.cfg
-# _mark no_hz_35ce083894ac9a6ba68e898140ef26b1 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer
-# _mark hz_1000_343f41088d2d457097ce791266c238cb start
-# _define KFEATURE_DESCRIPTION 'Enable 1000Hz Timer frequency'
-# _define KFEATURE_COMPATIBILITY 'all'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer/hz_1000.cfg
-# _mark hz_1000_343f41088d2d457097ce791266c238cb end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/timer
-# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/x86_64.cfg
-# _mark x86_64_f81274ac813507136df6b67c568b6f23 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark vesafb_5c0d484bea985c958fcf085c65e1866b start
-# _define KFEATURE_DESCRIPTION 'VESA framebuffer support'
-# _define KFEATURE_COMPATIBILITY 'arch'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/vesafb.cfg
-# _mark vesafb_5c0d484bea985c958fcf085c65e1866b end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
-# _mark intel_0234f8e5bd9849c472daa1a3c21a9a85 start
-# _define KFEATURE_DESCRIPTION 'Enable Intel Power Management options'
-# _define KFEATURE_COMPATIBILITY 'board'
-# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/power/intel.cfg
-# _mark intel_0234f8e5bd9849c472daa1a3c21a9a85 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/power
-# _mark jasperforest_7dadb594acb30526490a3a21954c8e03 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/jasperforest
-# _mark jasperforest_standard_8956a0fe586fcdce44cb0cd7c7027c52 end
-# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/jasperforest
+# _branch_begin arm-versatile-926ejs
+# _mark qemuarma9_8a5730321de09b25997f459fa597e53f start
+# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/qemuarma9/qemuarma9.cfg
+# _mark qemuarma9_8a5730321de09b25997f459fa597e53f end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/qemuarma9
+# _mark qemuarma9_standard_0bae5d4ab0b324e2c43b4fc4e32c709d end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/bsp/qemuarma9
 # _branches_local: 
