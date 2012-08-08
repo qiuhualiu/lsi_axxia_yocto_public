@@ -13,6 +13,7 @@
 #include <linux/cpumask.h>
 #include <linux/page-debug-flags.h>
 #include <linux/rcupdate.h>
+#include <linux/uprobes.h>
 #include <asm/page.h>
 #include <asm/mmu.h>
 
@@ -405,6 +406,9 @@ struct mm_struct {
 #endif
 #ifdef CONFIG_PREEMPT_RT_BASE
 	struct rcu_head delayed_drop;
+#endif
+#ifdef CONFIG_UPROBES
+	struct uprobes_state uprobes_state;
 #endif
 };
 
