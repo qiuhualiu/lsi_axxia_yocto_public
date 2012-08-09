@@ -26,17 +26,18 @@
 
 typedef unsigned int uprobe_opcode_t;
 
-#define MAX_UINSN_BYTES			   4
-#define UPROBE_XOL_SLOT_BYTES	   (MAX_UINSN_BYTES)
+#define MAX_UINSN_BYTES			4
+#define UPROBE_XOL_SLOT_BYTES		(MAX_UINSN_BYTES)
 
-#define UPROBE_SWBP_INSN		 0x7fe00008
-#define UPROBE_SWBP_INSN_SIZE	   4 /* swbp insn size in bytes */
+#define UPROBE_SWBP_INSN		0x7fe00008
+#define UPROBE_SWBP_INSN_SIZE		4 /* swbp insn size in bytes */
 
 struct arch_uprobe {
-	u8      insn[MAX_UINSN_BYTES];
+	u8	insn[MAX_UINSN_BYTES];
 };
 
 struct arch_uprobe_task {
+	unsigned long	saved_trap_nr;
 };
 
 extern int  arch_uprobe_analyze_insn(struct arch_uprobe *aup, struct mm_struct *mm, unsigned long addr);
@@ -45,4 +46,4 @@ extern int  arch_uprobe_post_xol(struct arch_uprobe *aup, struct pt_regs *regs);
 extern bool arch_uprobe_xol_was_trapped(struct task_struct *tsk);
 extern int  arch_uprobe_exception_notify(struct notifier_block *self, unsigned long val, void *data);
 extern void arch_uprobe_abort_xol(struct arch_uprobe *aup, struct pt_regs *regs);
-#endif /* _ASM_UPROBES_H */
+#endif	/* _ASM_UPROBES_H */

@@ -24,9 +24,11 @@
 #include <linux/ptrace.h>
 #include <linux/uprobes.h>
 #include <linux/uaccess.h>
-
 #include <linux/kdebug.h>
+
 #include <asm/sstep.h>
+
+#define UPROBE_TRAP_NR	UINT_MAX
 
 /**
  * arch_uprobe_analyze_insn
@@ -38,7 +40,7 @@
 int arch_uprobe_analyze_insn(struct arch_uprobe *auprobe, struct mm_struct *mm, unsigned long addr)
 {
 	if (addr & 0x03)
-		 return -EINVAL;
+		return -EINVAL;
 	return 0;
 }
 
@@ -49,7 +51,10 @@ int arch_uprobe_analyze_insn(struct arch_uprobe *auprobe, struct mm_struct *mm, 
  */
 int arch_uprobe_pre_xol(struct arch_uprobe *auprobe, struct pt_regs *regs)
 {
-	/* FIXME: We don't support abort_xol on powerpc for now */
+	struct arch_uprobe_task *autask = &current->utask->autask;
+
+	autask->saved_trap_nr = current->thread.trap_nr;
+	current->thread.trap_nr = UPROBE_TRAP_NR;
 	regs->nip = current->utask->xol_vaddr;
 	return 0;
 }
@@ -71,15 +76,15 @@ unsigned long uprobe_get_swbp_addr(struct pt_regs *regs)
  * own address. It is assumed that anything like do_page_fault/do_trap/etc
  * sets thread.trap_nr != -1.
  *
- * FIXME: powerpc however doesn't have thread.trap_nr yet.
- *
  * arch_uprobe_pre_xol/arch_uprobe_post_xol save/restore thread.trap_nr,
  * arch_uprobe_xol_was_trapped() simply checks that ->trap_nr is not equal to
  * UPROBE_TRAP_NR == -1 set by arch_uprobe_pre_xol().
  */
 bool arch_uprobe_xol_was_trapped(struct task_struct *t)
 {
-	/* FIXME: We don't support abort_xol on powerpc for now */
+	if (t->thread.trap_nr != UPROBE_TRAP_NR)
+		return true;
+
 	return false;
 }
 
@@ -92,7 +97,11 @@ bool arch_uprobe_xol_was_trapped(struct task_struct *t)
  */
 int arch_uprobe_post_xol(struct arch_uprobe *auprobe, struct pt_regs *regs)
 {
-	/* FIXME: We don't support abort_xol on powerpc for now */
+	struct uprobe_task *utask = current->utask;
+
+	WARN_ON_ONCE(current->thread.trap_nr != UPROBE_TRAP_NR);
+
+	current->thread.trap_nr = utask->autask.saved_trap_nr;
 
 	/*
 	 * On powerpc, except for loads and stores, most instructions
@@ -101,7 +110,7 @@ int arch_uprobe_post_xol(struct arch_uprobe *auprobe, struct pt_regs *regs)
 	 * support doesn't exist and have to fix-up the next instruction
 	 * to be executed.
 	 */
-	regs->nip = current->utask->vaddr + MAX_UINSN_BYTES;
+	regs->nip = utask->vaddr + MAX_UINSN_BYTES;
 	return 0;
 }
 
@@ -110,24 +119,23 @@ int arch_uprobe_exception_notify(struct notifier_block *self, unsigned long val,
 {
 	struct die_args *args = data;
 	struct pt_regs *regs = args->regs;
-	int ret = NOTIFY_DONE;
 
 	/* We are only interested in userspace traps */
 	if (regs && !user_mode(regs))
-		 return NOTIFY_DONE;
+		return NOTIFY_DONE;
 
 	switch (val) {
 	case DIE_BPT:
-		 if (uprobe_pre_sstep_notifier(regs))
-			  ret = NOTIFY_STOP;
-		 break;
+		if (uprobe_pre_sstep_notifier(regs))
+			return NOTIFY_STOP;
+		break;
 	case DIE_SSTEP:
-		 if (uprobe_post_sstep_notifier(regs))
-			  ret = NOTIFY_STOP;
+		if (uprobe_post_sstep_notifier(regs))
+			return NOTIFY_STOP;
 	default:
-		 break;
+		break;
 	}
-	return ret;
+	return NOTIFY_DONE;
 }
 
 /*
@@ -137,8 +145,10 @@ int arch_uprobe_exception_notify(struct notifier_block *self, unsigned long val,
  */
 void arch_uprobe_abort_xol(struct arch_uprobe *auprobe, struct pt_regs *regs)
 {
-	/* FIXME: We don't support abort_xol on powerpc for now */
-	return;
+	struct uprobe_task *utask = current->utask;
+
+	current->thread.trap_nr = utask->autask.saved_trap_nr;
+	instruction_pointer_set(regs, utask->vaddr);
 }
 
 /*
@@ -158,7 +168,7 @@ bool arch_uprobe_skip_sstep(struct arch_uprobe *auprobe, struct pt_regs *regs)
 	 */
 	ret = emulate_step(regs, insn);
 	if (ret > 0)
-		 return true;
+		return true;
 
 	return false;
 }
