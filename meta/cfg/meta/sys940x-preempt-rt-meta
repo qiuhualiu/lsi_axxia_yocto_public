@@ -111,6 +111,40 @@
 # _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ftrace/ftrace.cfg
 # _mark ftrace_37661c68a0b9f963d2fce7a0d5afdb9c end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ftrace
+# _mark uprobe_e0bc85c44851f37140a0147249a25184 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-mm-x86-Add-the-ability-to-install-and-remove.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Clean-up-refactor-and-improve-the-code.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-Move-to-kernel-events.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Make-instruction-tables-volatile.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Remove-uprobe_opcode_sz.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Move-insn-to-arch-specific-structure.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-Update-copyright-notices.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Make-macro-names-consistent.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Make-order-of-function-parameters-consi.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Rename-bkpt-to-swbp.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Handle-breakpoint-and-singlestep-except.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Allocate-XOL-slots-for-uprobes-use.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Optimize-probe-hits-with-the-help-of-a-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Make-background-page-replacement-logic-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Decrement-uprobe-count-before-the-pages.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/tracing-Modify-is_delete-is_return-from-int-to-bool.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/tracing-Extract-out-common-code-for-kprobes-uprobes-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/tracing-Provide-trace-events-interface-for-uprobes.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/tracing-Fix-kconfig-warning-due-to-a-typo.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/perf-probe-Provide-perf-interface-for-uprobes.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/perf-probe-Detect-probe-target-when-m-x-options-are-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/On-RISC-architectures-like-powerpc-instructions-are-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/This-is-the-port-of-uprobes-to-powerpc.-Usage-is-sim.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/powerpc-uprobes-removed-external-declaration-of-upro.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/move-key_repace_session_keyring-into-tracehook_notif.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/task_work_add-generic-process-context-callbacks.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/genirq-reimplement-exit_irq_thread-hook-via-task_wor.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/keys-change-keyctl_session_to_parent-to-use-task_wor.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/keys-kill-the-dummy-key_replace_session_keyring.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/keys-kill-task_struct-replacement_session_keyring.patch
+# _mark uprobe_e0bc85c44851f37140a0147249a25184 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe
+# _git tag uprobe
 # _mark patches_83c0eeef08d6545c64a7f721d99ebd01 start
 # _mark drivers_08f2ae0e03f5c871e336ad057bcb8831 start
 # _mark drivers_08f2ae0e03f5c871e336ad057bcb8831 end
@@ -447,6 +481,24 @@
 # _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/efi.cfg
 # _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/efi-ext.cfg
 # _mark efi_ext_6a48f510ba10d5b2a299587bd8cf9ddc end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
+# _mark usb_mass_storage_452ed4ea4692656cb7d4751e8ba6338b start
+# _define KFEATURE_DESCRIPTION 'Enable options required for USB mass storage devices'
+# _define KFEATURE_COMPATIBILITY 'all'
+# _mark disk_cb5c5c191a650a9565a0f8f4bd65a069 start
+# _define KFEATURE_DESCRIPTION 'Enable options for SCSI disk support'
+# _define KFEATURE_COMPATIBILITY 'board'
+# _mark scsi_11d74ab825273f61c69f4f912db6e8ca start
+# _define KFEATURE_DESCRIPTION 'Enable options for SCSI support'
+# _define KFEATURE_COMPATIBILITY 'board'
+# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi/scsi.cfg
+# _mark scsi_11d74ab825273f61c69f4f912db6e8ca end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi
+# _kconf hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi/disk.cfg
+# _mark disk_cb5c5c191a650a9565a0f8f4bd65a069 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/scsi
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg/usb-mass-storage.cfg
+# _mark usb_mass_storage_452ed4ea4692656cb7d4751e8ba6338b end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/cfg
 # _mark boot_live_1b82dcaa85831c3d21ff2a6bc44c0119 start
 # _define KFEATURE_DESCRIPTION 'Live boot support'

@@ -41,6 +41,25 @@
 # _mark utrace_64b5789ddd20b47f7e28dab59029b03f end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/utrace
 # _git tag utrace
+# _mark seccomp_14211de4bb3aec442da9b90b2d90b16c start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/Add-PR_-GET-SET-_NO_NEW_PRIVS-to-prevent-execve-from.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/Fix-execve-behavior-apparmor-for-PR_-GET-SET-_NO_NEW.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/sk_run_filter-add-BPF_S_ANC_SECCOMP_LD_W.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/net-compat.c-linux-filter.h-share-compat_sock_fprog.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/seccomp-kill-the-seccomp_t-typedef.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/asm-syscall.h-add-syscall_get_arch.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/arch-x86-add-syscall_get_arch-to-syscall.h.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/seccomp-add-system-call-filtering-using-BPF.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/seccomp-remove-duplicated-failure-logging.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/seccomp-add-SECCOMP_RET_ERRNO.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/signal-x86-add-SIGSYS-info-and-make-it-synchronous.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/seccomp-Add-SECCOMP_RET_TRAP.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/ptrace-seccomp-Add-PTRACE_SECCOMP-support.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/x86-Enable-HAVE_ARCH_SECCOMP_FILTER.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp/Documentation-prctl-seccomp_filter.patch
+# _mark seccomp_14211de4bb3aec442da9b90b2d90b16c end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/seccomp
+# _git tag seccomp
 # _mark arm_b88685ebecb617ff2f1a9e0787c6e3e1 start
 # _mark v7_A15_450d5417fab558aa1e41e123697d081c start
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15/ARM-Use-TTBR1-instead-of-reserved-context-ID.patch
@@ -58,6 +77,7 @@
 # _mark v7_A15_450d5417fab558aa1e41e123697d081c end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/v7-A15
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/arm-ARM-EABI-socketcall.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm/arm-versatile-fix-and-enable-PCI-I-O-space.patch
 # _mark arm_b88685ebecb617ff2f1a9e0787c6e3e1 end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/arch/arm
 # _git tag arm
@@ -87,6 +107,40 @@
 # _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ftrace/ftrace.cfg
 # _mark ftrace_37661c68a0b9f963d2fce7a0d5afdb9c end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ftrace
+# _mark uprobe_e0bc85c44851f37140a0147249a25184 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-mm-x86-Add-the-ability-to-install-and-remove.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Clean-up-refactor-and-improve-the-code.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-Move-to-kernel-events.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Make-instruction-tables-volatile.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Remove-uprobe_opcode_sz.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Move-insn-to-arch-specific-structure.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-Update-copyright-notices.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Make-macro-names-consistent.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Make-order-of-function-parameters-consi.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Rename-bkpt-to-swbp.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Handle-breakpoint-and-singlestep-except.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Allocate-XOL-slots-for-uprobes-use.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Optimize-probe-hits-with-the-help-of-a-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Make-background-page-replacement-logic-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/uprobes-core-Decrement-uprobe-count-before-the-pages.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/tracing-Modify-is_delete-is_return-from-int-to-bool.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/tracing-Extract-out-common-code-for-kprobes-uprobes-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/tracing-Provide-trace-events-interface-for-uprobes.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/tracing-Fix-kconfig-warning-due-to-a-typo.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/perf-probe-Provide-perf-interface-for-uprobes.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/perf-probe-Detect-probe-target-when-m-x-options-are-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/On-RISC-architectures-like-powerpc-instructions-are-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/This-is-the-port-of-uprobes-to-powerpc.-Usage-is-sim.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/powerpc-uprobes-removed-external-declaration-of-upro.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/move-key_repace_session_keyring-into-tracehook_notif.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/task_work_add-generic-process-context-callbacks.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/genirq-reimplement-exit_irq_thread-hook-via-task_wor.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/keys-change-keyctl_session_to_parent-to-use-task_wor.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/keys-kill-the-dummy-key_replace_session_keyring.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe/keys-kill-task_struct-replacement_session_keyring.patch
+# _mark uprobe_e0bc85c44851f37140a0147249a25184 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uprobe
+# _git tag uprobe
 # _mark patches_83c0eeef08d6545c64a7f721d99ebd01 start
 # _mark drivers_08f2ae0e03f5c871e336ad057bcb8831 start
 # _mark drivers_08f2ae0e03f5c871e336ad057bcb8831 end
@@ -132,6 +186,8 @@
 # _mark yaffs2_2bbfcc71d69ff5cb860648c5bef2d6bd start
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/yaffs2/yaffs2-import-core-support.patch
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/yaffs2/yaffs2-replace-d_alloc_root-with-d_make_root.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/yaffs2/yaffs-change-type-for-mode-to-umode_t.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/yaffs2/yaffs-add-leading-underscore-to-mtd_info-function-na.patch
 # _mark yaffs2_2bbfcc71d69ff5cb860648c5bef2d6bd end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/yaffs2
 # _mark unionfs_33fe2d0d0ead3f460bb3fab924edd43e start
@@ -140,6 +196,8 @@
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/unionfs-use-proper-accessors-for-i_nlink.patch
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/unionfs-replace-d_alloc_root-with-d_make_root.patch
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/unionfs-v3.4-build-fixups.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/Unionfs-update-show_options-prototype.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs/Unionfs-use-mode_t.patch
 # _mark unionfs_33fe2d0d0ead3f460bb3fab924edd43e end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/unionfs
 # _mark cgroups_8c78cbf1f283ed7792d5171822d82b4e start
@@ -156,6 +214,11 @@
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/namespaces
 # _mark cgroups_8c78cbf1f283ed7792d5171822d82b4e end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/cgroups
+# _mark net_sched_f089015256e79a1d7dea07a41484f0cc start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/net_sched/codel-Controlled-Delay-AQM.patch
+# _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/net_sched/net_sched.cfg
+# _mark net_sched_f089015256e79a1d7dea07a41484f0cc end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/net_sched
 # _mark kexec_05aacabed64eac92e9f5c6e18ca4c618 start
 # _mark kexec_05aacabed64eac92e9f5c6e18ca4c618 end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/kexec
@@ -214,13 +277,35 @@
 # _kconf non-hardware /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/fuse/fuse.cfg
 # _mark fuse_0111f6809cfd091678a2717784ac8b77 end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/fuse
+# _mark xx8250_7172da2381de172722e388df19aaf4d9 start
+# _define KFEATURE_DESCRIPTION 'Enable 8250 serial support'
+# _define KFEATURE_COMPATIBILITY 'board'
+# _mark xx8250_7172da2381de172722e388df19aaf4d9 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/serial
 # _mark uptime_1986acf079a01853f3a334f49cac8e13 start
 # _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uptime/uptime-allow-the-optional-limiting-of-kernel-runtime.patch
 # _mark uptime_1986acf079a01853f3a334f49cac8e13 end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/uptime
-# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard/perf-force-include-of-stdbool.h.patch
-# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard/perf-hard-code-NO_LIBPERL-NO_LIBPYTHON.patch
-# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard/arm-versatile-restore-io.h-for-mach-versatile.patch
+# _mark ktest_e6a617d76b1742b96d9608cd104846ab start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest/ktest-Fix-kernelrevision-with-POST_BUILD.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest/ktest-Add-MIN_CONFIG_TYPE-to-allow-making-a-minum-.c.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest/ktest-Add-USE_OUTPUT_MIN_CONFIG-to-avoid-prompt-on-m.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest/ktest-Add-useful-example-configs.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest/ktest-Add-kvm.conf-example-config.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest/ktest-Add-an-example-config-that-does-cross-compilin.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest/ktest-Add-the-snowball.conf-example-config.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest/ktest-Add-README-to-explain-what-is-in-the-examples-.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest/ktest-Change-singular-paranthesis-to-plural-parenthe.patch
+# _mark ktest_e6a617d76b1742b96d9608cd104846ab end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/ktest
+# _mark perf_425ab123620dc5896a25008861610bb6 start
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/perf/perf-force-include-of-stdbool.h.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/perf/perf-use-pkg-config-instead-of-python-config.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/perf/perf-add-libperl-not-found-warning.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/perf/perf-change-root-to-prefix-for-python-install.patch
+# _patch /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/perf/perf-add-sgidefs.h-to-for-mips-builds.patch
+# _mark perf_425ab123620dc5896a25008861610bb6 end
+# _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/features/perf
 # _mark standard_nocfg_27efe4ea84abc4cb175a9bdcefefc6e2 end
 # _cfg /home/bruce/poky-kernel/new-repo/meta/cfg/kernel-cache/ktypes/standard
 # _branch_begin tiny

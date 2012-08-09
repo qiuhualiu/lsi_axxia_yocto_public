@@ -39,6 +39,9 @@ tag powerpc
 include features/hrt/hrt.scc
 include features/ftrace/ftrace.scc
 
+include features/uprobe/uprobe.scc
+tag uprobe
+
 include patches/patches.scc
 
 include features/initramfs/initramfs.scc
@@ -81,6 +84,5 @@ include features/uptime/uptime.scc
 
 include features/ktest/ktest.scc
 
-patch perf-force-include-of-stdbool.h.patch
-patch perf-hard-code-NO_LIBPERL-NO_LIBPYTHON.patch
+include features/perf/perf.scc
 
