@@ -1618,7 +1618,15 @@ static inline void __hrtimer_peek_ahead_timers(void) { }
 #endif	/* !CONFIG_HIGH_RES_TIMERS */
 
 static void run_hrtimer_softirq(struct softirq_action *h)
-{	hrtimer_rt_run_pending();
+{
+	struct hrtimer_cpu_base *cpu_base = &__get_cpu_var(hrtimer_bases);
+
+	if (cpu_base->clock_was_set) {
+		cpu_base->clock_was_set = 0;
+		clock_was_set();
+	}
+
+	hrtimer_rt_run_pending();
 }
 
 /*
