@@ -75,7 +75,7 @@ int res_counter_charge_nofail(struct res_counter *counter, unsigned long val,
 
 	r = ret = 0;
 	*limit_fail_at = NULL;
-	local_irq_save(flags);
+	local_irq_save_nort(flags);
 	for (c = counter; c != NULL; c = c->parent) {
 		spin_lock(&c->lock);
 		r = res_counter_charge_locked(c, val);
@@ -87,7 +87,7 @@ int res_counter_charge_nofail(struct res_counter *counter, unsigned long val,
 			ret = r;
 		}
 	}
-	local_irq_restore(flags);
+	local_irq_restore_nort(flags);
 
 	return ret;
 }
