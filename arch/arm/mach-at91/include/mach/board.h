@@ -121,7 +121,6 @@ extern void __init at91_add_device_spi(struct spi_board_info *devices, int nr_de
 #define ATMEL_UART_RI	0x20
 
 extern void __init at91_register_uart(unsigned id, unsigned portnr, unsigned pins);
-extern void __init at91_set_serial_console(unsigned portnr);
 
 extern struct platform_device *atmel_default_console_device;
 
@@ -176,7 +175,9 @@ extern void __init at91_add_device_isi(struct isi_platform_data *data,
  /* Touchscreen Controller */
 struct at91_tsadcc_data {
 	unsigned int    adc_clock;
+	u8		filtering_average;
 	u8		pendet_debounce;
+	u8		pendet_sensitivity;
 	u8		ts_sample_hold_time;
 };
 extern void __init at91_add_device_tsadcc(struct at91_tsadcc_data *data);

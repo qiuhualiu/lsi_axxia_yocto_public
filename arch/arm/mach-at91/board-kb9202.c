@@ -37,6 +37,7 @@
 
 #include <mach/board.h>
 #include <mach/cpu.h>
+#include <mach/at91_aic.h>
 #include <mach/at91rm9200_mc.h>
 #include <mach/at91_ramc.h>
 
@@ -50,24 +51,6 @@ static void __init kb9202_init_early(void)
 
 	/* Initialize processor: 10 MHz crystal */
 	at91_initialize(10000000);
-
-	/* Set up the LEDs */
-	at91_init_leds(AT91_PIN_PC19, AT91_PIN_PC18);
-
-	/* DBGU on ttyS0. (Rx & Tx only) */
-	at91_register_uart(0, 0, 0);
-
-	/* USART0 on ttyS1 (Rx & Tx only) */
-	at91_register_uart(AT91RM9200_ID_US0, 1, 0);
-
-	/* USART1 on ttyS2 (Rx & Tx only) - IRDA (optional) */
-	at91_register_uart(AT91RM9200_ID_US1, 2, 0);
-
-	/* USART3 on ttyS3 (Rx, Tx, CTS, RTS) - RS485 (optional) */
-	at91_register_uart(AT91RM9200_ID_US3, 3, ATMEL_UART_CTS | ATMEL_UART_RTS);
-
-	/* set serial console to ttyS0 (ie, DBGU) */
-	at91_set_serial_console(0);
 }
 
 static struct macb_platform_data __initdata kb9202_eth_data = {
@@ -86,12 +69,12 @@ static struct at91_udc_data __initdata kb9202_udc_data = {
 	.pullup_pin	= AT91_PIN_PB22,
 };
 
-static struct at91_mmc_data __initdata kb9202_mmc_data = {
-	.det_pin	= AT91_PIN_PB2,
-	.slot_b		= 0,
-	.wire4		= 1,
-	.wp_pin		= -EINVAL,
-	.vcc_pin	= -EINVAL,
+static struct mci_platform_data __initdata kb9202_mci0_data = {
+	.slot[0] = {
+		.bus_width	= 4,
+		.detect_pin	= AT91_PIN_PB2,
+		.wp_pin		= -EINVAL,
+	},
 };
 
 static struct mtd_partition __initdata kb9202_nand_partition[] = {
@@ -115,7 +98,21 @@ static struct atmel_nand_data __initdata kb9202_nand_data = {
 
 static void __init kb9202_board_init(void)
 {
+	/* Set up the LEDs */
+	at91_init_leds(AT91_PIN_PC19, AT91_PIN_PC18);
+
 	/* Serial */
+	/* DBGU on ttyS0. (Rx & Tx only) */
+	at91_register_uart(0, 0, 0);
+
+	/* USART0 on ttyS1 (Rx & Tx only) */
+	at91_register_uart(AT91RM9200_ID_US0, 1, 0);
+
+	/* USART1 on ttyS2 (Rx & Tx only) - IRDA (optional) */
+	at91_register_uart(AT91RM9200_ID_US1, 2, 0);
+
+	/* USART3 on ttyS3 (Rx, Tx, CTS, RTS) - RS485 (optional) */
+	at91_register_uart(AT91RM9200_ID_US3, 3, ATMEL_UART_CTS | ATMEL_UART_RTS);
 	at91_add_device_serial();
 	/* Ethernet */
 	at91_add_device_eth(&kb9202_eth_data);
@@ -124,7 +121,7 @@ static void __init kb9202_board_init(void)
 	/* USB Device */
 	at91_add_device_udc(&kb9202_udc_data);
 	/* MMC */
-	at91_add_device_mmc(0, &kb9202_mmc_data);
+	at91_add_device_mci(0, &kb9202_mci0_data);
 	/* I2C */
 	at91_add_device_i2c(NULL, 0);
 	/* SPI */
@@ -137,6 +134,7 @@ MACHINE_START(KB9200, "KB920x")
 	/* Maintainer: KwikByte, Inc. */
 	.timer		= &at91rm9200_timer,
 	.map_io		= at91_map_io,
+	.handle_irq	= at91_aic_handle_irq,
 	.init_early	= kb9202_init_early,
 	.init_irq	= at91_init_irq_default,
 	.init_machine	= kb9202_board_init,

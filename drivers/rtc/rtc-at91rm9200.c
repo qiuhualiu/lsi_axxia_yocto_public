@@ -27,7 +27,9 @@
 #include <linux/interrupt.h>
 #include <linux/ioctl.h>
 #include <linux/completion.h>
+#include <linux/io.h>
 
+#include <asm/io.h>
 #include <asm/uaccess.h>
 
 #include <mach/at91_rtc.h>

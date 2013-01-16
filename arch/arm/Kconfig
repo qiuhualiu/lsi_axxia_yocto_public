@@ -4,6 +4,8 @@ config ARM
 	select HAVE_AOUT
 	select HAVE_DMA_API_DEBUG
 	select HAVE_IDE if PCI || ISA || PCMCIA
+	select HAVE_DMA_ATTRS
+	select HAVE_DMA_CONTIGUOUS if MMU
 	select HAVE_MEMBLOCK
 	select RTC_LIB
 	select SYS_SUPPORTS_APM_EMULATION
@@ -44,6 +46,14 @@ config ARM
 	  <http://www.arm.linux.org.uk/>.
 
 config ARM_HAS_SG_CHAIN
+	bool
+
+config NEED_SG_DMA_LENGTH
+	bool
+
+config ARM_DMA_USE_IOMMU
+	select NEED_SG_DMA_LENGTH
+	select ARM_HAS_SG_CHAIN
 	bool
 
 config HAVE_PWM
@@ -341,9 +351,11 @@ config ARCH_AT91
 	select CLKDEV_LOOKUP
 	select IRQ_DOMAIN
 	select NEED_MACH_IO_H if PCCARD
+	select PINCTRL
+	select PINCTRL_AT91 if USE_OF
 	help
-	  This enables support for systems based on the Atmel AT91RM9200,
-	  AT91SAM9 processors.
+	  This enables support for systems based on Atmel
+	  AT91RM9200 and AT91SAM9* processors.
 
 config ARCH_BCMRING
 	bool "Broadcom BCMRING"

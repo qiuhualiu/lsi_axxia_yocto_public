@@ -1331,6 +1331,21 @@ M:	Nicolas Ferre <nicolas.ferre@atmel.com>
 S:	Supported
 F:	drivers/tty/serial/atmel_serial.c
 
+ATMEL DMA DRIVER
+M:	Nicolas Ferre <nicolas.ferre@atmel.com>
+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
+S:	Supported
+F:	drivers/dma/at_hdmac.c
+F:	drivers/dma/at_hdmac_regs.h
+F:	arch/arm/mach-at91/include/mach/at_hdmac.h
+
+ATMEL ISI DRIVER
+M:	Josh Wu <josh.wu@atmel.com>
+L:	linux-media@vger.kernel.org
+S:	Supported
+F:	drivers/media/video/atmel-isi.c
+F:	include/media/atmel-isi.h
+
 ATMEL LCDFB DRIVER
 M:	Nicolas Ferre <nicolas.ferre@atmel.com>
 L:	linux-fbdev@vger.kernel.org
@@ -1348,10 +1363,22 @@ M:	Nicolas Ferre <nicolas.ferre@atmel.com>
 S:	Supported
 F:	drivers/spi/spi-atmel.*
 
+ATMEL Timer Counter (TC) AND CLOCKSOURCE DRIVERS
+M:	Nicolas Ferre <nicolas.ferre@atmel.com>
+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
+S:	Supported
+F:	drivers/misc/atmel_tclib.c
+F:	drivers/clocksource/tcb_clksrc.c
+
+ATMEL TSADCC DRIVER
+M:	Josh Wu <josh.wu@atmel.com>
+L:	linux-input@vger.kernel.org
+S:	Supported
+F:	drivers/input/touchscreen/atmel_tsadcc.c
+
 ATMEL USBA UDC DRIVER
 M:	Nicolas Ferre <nicolas.ferre@atmel.com>
 L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
-W:	http://avr32linux.org/twiki/bin/view/Main/AtmelUsbDeviceDriver
 S:	Supported
 F:	drivers/usb/gadget/atmel_usba_udc.*
 
@@ -4257,6 +4284,13 @@ T:	git git://github.com/linux-test-project/ltp.git
 T:	git git://ltp.git.sourceforge.net/gitroot/ltp/ltp-dev
 S:	Maintained
 
+LTTng (Linux Trace Toolkit Next Generation)
+M:	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+L:	lttng-dev@lists.lttng.org (moderated for non-subscribers)
+W:	http://lttng.org
+S:	Maintained
+F:	drivers/staging/lttng/
+
 M32R ARCHITECTURE
 M:	Hirokazu Takata <takata@linux-m32r.org>
 L:	linux-m32r@ml.linux-m32r.org (moderated for non-subscribers)
@@ -5352,6 +5386,15 @@ L:	netdev@vger.kernel.org
 S:	Maintained
 F:	drivers/net/ppp/pptp.c
 W:	http://sourceforge.net/projects/accel-pptp
+
+PRAM FILE SYSTEM
+M:	Marco Stornelli <marco.stornelli@gmail.com>
+W:	http://pramfs.sourceforge.net
+L:	pramfs-devel@lists.sourceforge.net (subscribers-only)
+S:	Maintained
+F:	Documentation/filesystems/pramfs.txt
+F:	fs/pramfs/
+F:	include/linux/pram*
 
 PREEMPTIBLE KERNEL
 M:	Robert Love <rml@tech9.net>

@@ -10,6 +10,7 @@
 #include <linux/mm.h>
 #include <linux/pm.h>
 #include <linux/of_address.h>
+#include <linux/pinctrl/machine.h>
 
 #include <asm/system_misc.h>
 #include <asm/mach/map.h>
@@ -47,7 +48,7 @@ void __init at91_init_irq_default(void)
 void __init at91_init_interrupts(unsigned int *priority)
 {
 	/* Initialize the AIC interrupt controller */
-	at91_aic_init(priority);
+	at91_aic_init(priority, at91_extern_irq);
 
 	/* Enable GPIO interrupts */
 	at91_gpio_irq_setup();
@@ -143,6 +144,11 @@ static void __init soc_detect(u32 dbgu_base)
 		at91_soc_initdata.type = AT91_SOC_SAM9X5;
 		at91_boot_soc = at91sam9x5_soc;
 		break;
+
+	case ARCH_ID_AT91SAM9N12:
+		at91_soc_initdata.type = AT91_SOC_SAM9N12;
+		at91_boot_soc = at91sam9n12_soc;
+		break;
 	}
 
 	/* at91sam9g10 */
@@ -210,6 +216,7 @@ static const char *soc_name[] = {
 	[AT91_SOC_SAM9G45]	= "at91sam9g45",
 	[AT91_SOC_SAM9RL]	= "at91sam9rl",
 	[AT91_SOC_SAM9X5]	= "at91sam9x5",
+	[AT91_SOC_SAM9N12]	= "at91sam9n12",
 	[AT91_SOC_NONE]		= "Unknown"
 };
 
@@ -442,7 +449,8 @@ void __init at91_dt_initialize(void)
 	/* Register the processor-specific clocks */
 	at91_boot_soc.register_clocks();
 
-	at91_boot_soc.init();
+	if (at91_boot_soc.init)
+		at91_boot_soc.init();
 }
 #endif
 
@@ -457,4 +465,6 @@ void __init at91_initialize(unsigned long main_clock)
 	at91_boot_soc.register_clocks();
 
 	at91_boot_soc.init();
+
+	pinctrl_provide_dummies();
 }

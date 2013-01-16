@@ -13,10 +13,12 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/irq.h>
+#include <linux/io.h>
 #include <asm/proc-fns.h>
 #include <asm/system_misc.h>
 #include <asm/mach/arch.h>
 #include <mach/at91x40.h>
+#include <mach/at91_aic.h>
 #include <mach/at91_st.h>
 #include <mach/timex.h>
 #include "generic.h"
@@ -86,6 +88,6 @@ void __init at91x40_init_interrupts(unsigned int priority[NR_AIC_IRQS])
 	if (!priority)
 		priority = at91x40_default_irq_priority;
 
-	at91_aic_init(priority);
+	at91_aic_init(priority, at91_extern_irq);
 }
 

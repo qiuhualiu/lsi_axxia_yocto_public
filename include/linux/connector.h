@@ -44,8 +44,10 @@
 #define CN_VAL_DRBD			0x1
 #define CN_KVP_IDX			0x9	/* HyperV KVP */
 #define CN_KVP_VAL			0x1	/* queries from the kernel */
+#define CN_IDX_NFDBUS                   0xA     /* netfilter D-Bus */
+#define CN_VAL_NFDBUS                   0x1
 
-#define CN_NETLINK_USERS		10	/* Highest index + 1 */
+#define CN_NETLINK_USERS		11	/* Highest index + 1 */
 
 /*
  * Maximum connector's message size.
@@ -125,6 +127,7 @@ int cn_add_callback(struct cb_id *id, const char *name,
 		    void (*callback)(struct cn_msg *, struct netlink_skb_parms *));
 void cn_del_callback(struct cb_id *);
 int cn_netlink_send(struct cn_msg *, u32, gfp_t);
+int cn_netlink_reply(struct cn_msg *, u32, gfp_t);
 
 int cn_queue_add_callback(struct cn_queue_dev *dev, const char *name,
 			  struct cb_id *id,
