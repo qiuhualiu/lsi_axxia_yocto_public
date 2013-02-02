@@ -2765,7 +2765,6 @@ unsigned long ring_buffer_oldest_event_ts(struct ring_buffer *buffer, int cpu)
 		bpage = cpu_buffer->reader_page;
 	else
 		bpage = rb_set_head_page(cpu_buffer);
-
 	if (bpage)
 		ret = bpage->page->time_stamp;
 	spin_unlock_irqrestore(&cpu_buffer->reader_lock, flags);
