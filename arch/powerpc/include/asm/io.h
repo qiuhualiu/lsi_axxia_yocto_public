@@ -29,6 +29,7 @@ extern int check_legacy_ioport(unsigned long base_port);
 #include <asm/synch.h>
 #include <asm/delay.h>
 #include <asm/mmu.h>
+#include <asm/ppc-opcode.h>
 
 #include <asm-generic/iomap.h>
 
@@ -134,6 +135,26 @@ static inline void name(volatile u##size __iomem *addr, u##size val)	\
 }
 #endif
 
+#if defined(CONFIG_ACP)
+#define DEF_MMIO_IN_BE(name, size, insn)				\
+static inline u##size name(const volatile u##size __iomem *addr)	\
+{									\
+	u##size ret;						\
+	__asm__ __volatile__(PPC_MBAR); \
+	__asm__ __volatile__(#insn"%U1%X1 %0,%1;twi 0,%0,0;isync"\
+		: "=r" (ret) : "m" (*addr) : "memory");			\
+	return ret;							\
+}
+
+#define DEF_MMIO_OUT_BE(name, size, insn)				\
+static inline void name(volatile u##size __iomem *addr, u##size val)	\
+{									\
+	__asm__ __volatile__(PPC_MBAR); \
+	__asm__ __volatile__(#insn"%U0%X0 %1,%0"			\
+		: "=m" (*addr) : "r" (val) : "memory");			\
+	IO_SET_SYNC_FLAG();						\
+}
+#else
 #define DEF_MMIO_IN_BE(name, size, insn)				\
 static inline u##size name(const volatile u##size __iomem *addr)	\
 {									\
@@ -150,7 +171,7 @@ static inline void name(volatile u##size __iomem *addr, u##size val)	\
 		: "=m" (*addr) : "r" (val) : "memory");			\
 	IO_SET_SYNC_FLAG();						\
 }
-
+#endif
 
 DEF_MMIO_IN_BE(in_8,     8, lbz);
 DEF_MMIO_IN_BE(in_be16, 16, lhz);

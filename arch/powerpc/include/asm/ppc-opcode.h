@@ -93,6 +93,8 @@
 #define PPC_INST_MULLW			0x7c0001d6
 #define PPC_INST_MULHWU			0x7c000016
 #define PPC_INST_MULLI			0x1c000000
+#define PPC_INST_MSYNC			0x7c0004ac /* == "sync 0" */
+#define PPC_INST_MBAR			0x7c0006ac /* mbar ppc476 */
 #define PPC_INST_DIVWU			0x7c0003d6
 #define PPC_INST_RLWINM			0x54000000
 #define PPC_INST_RLDICR			0x78000004
@@ -148,6 +150,8 @@
 					__PPC_RB(b) | __PPC_EH(eh))
 #define PPC_MSGSND(b)		stringify_in_c(.long PPC_INST_MSGSND | \
 					__PPC_RB(b))
+#define PPC_MSYNC		stringify_in_c(.long PPC_INST_MSYNC)
+#define PPC_MBAR		stringify_in_c(.long PPC_INST_MBAR)
 #define PPC_POPCNTB(a, s)	stringify_in_c(.long PPC_INST_POPCNTB | \
 					__PPC_RA(a) | __PPC_RS(s))
 #define PPC_POPCNTD(a, s)	stringify_in_c(.long PPC_INST_POPCNTD | \
