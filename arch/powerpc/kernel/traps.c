@@ -415,14 +415,19 @@ int machine_check_47x(struct pt_regs *regs)
 	unsigned long reason = get_mc_reason(regs);
 	u32 mcsr;
 
-	printk(KERN_ERR "Machine check in kernel mode.\n");
 	if (reason & ESR_IMCP) {
 		printk(KERN_ERR
-		       "Instruction Synchronous Machine Check exception\n");
+		       "Instruction Synchronous Machine Check exception reason %lx\n", reason);
 		mtspr(SPRN_ESR, reason & ~ESR_IMCP);
 		return 0;
 	}
+	if (acp_rio_mcheck_exception(regs))
+		goto silent_out;
+
+	printk(KERN_ERR "Machine check in kernel mode. reason %lx\n", reason);
 	mcsr = mfspr(SPRN_MCSR);
+
+
 	if (mcsr & MCSR_IB)
 		printk(KERN_ERR "Instruction Read PLB Error\n");
 	if (mcsr & MCSR_DRB)
@@ -448,6 +453,8 @@ int machine_check_47x(struct pt_regs *regs)
 	mtspr(SPRN_MCSR, mcsr);
 
 	return 0;
+silent_out:
+	return mfspr(SPRN_MCSR) == 0;
 }
 #elif defined(CONFIG_E500)
 int machine_check_e500mc(struct pt_regs *regs)
