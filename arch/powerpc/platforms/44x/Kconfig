@@ -345,6 +345,18 @@ config ACP3400_GPIO
 	help
 	  Enable gpiolib support for acp476 based boards
 
+config PCA9554_GPIO
+	bool "PCA9554 GPIO expander"
+	depends on ACP
+	default n
+	select ARCH_WANT_OPTIONAL_GPIOLIB
+	select GENERIC_GPIO
+	select GPIOLIB
+	select I2C
+	select OF_I2C
+	help
+	  GPIO expander driver for PCA9554
+
 config ACP3400_I2C
 	bool "ACP3400 I2C support"
 	depends on ACP
