@@ -30,6 +30,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
+ * These patches add ACP3400 support signed-off-by: john.jacques@lsi.com
  */
 
 #include <linux/module.h>
@@ -48,6 +49,36 @@
 #include <linux/leds.h>
 #include <linux/io.h>
 #include <linux/mtd/partitions.h>
+
+#ifdef CONFIG_MTD_NAND_EP501X
+#define LSI_NAND_BASE         0xf0040000
+#define NAND_DATA_REG         0x00000000
+#define NAND_CMD_REG          0x00008000
+#define NAND_INDEX_REG        0x00008004
+#define NAND_STATUS1_REG      0x00008008
+#define NAND_STATUS2_REG      0x0000800C
+#define NAND_ID0_REG          0x00008010
+#define NAND_ID1_REG          0x00008014
+#define NAND_ID2_REG          0x00008018
+#define NAND_ID3_REG          0x0000801C
+#define NAND_ID4_REG          0x00008020
+#define NAND_ID5_REG          0x00008024
+#define NAND_ID6_REG          0x00008028
+#define NAND_ID7_REG          0x0000802C
+#define NAND_INTR_EN_REG      0x00008030
+#define NAND_INTR_STATUS_REG  0x00008034
+#define NAND_INTR_REG         0x00008038
+#define NAND_ECC_ADDR_LOG_REG 0x0000803C
+#define NAND_ECC_VAL_REG      0x00008040
+#define NAND_ECC_INJECT_REG   0x00008044
+#define NAND_EXT_INDEX_REG    0x00008048
+#define NAND_TIMING1_REG      0x0000804C
+#define NAND_TIMING2_REG      0x00008050
+#define NAND_CONFIG_REG       0x00008054
+#define NAND_PECC_REG         0x00008058
+
+extern lsi_nand_set_config(struct mtd_inf *, struct nand_chip *);
+#endif /* CONFIG_MTD_NAND_EP501X */
 
 /* Define default oob placement schemes for large and small page devices */
 static struct nand_ecclayout nand_oob_8 = {
@@ -482,7 +513,12 @@ static int nand_check_wp(struct mtd_info *mtd)
 
 	/* Check the WP bit */
 	chip->cmdfunc(mtd, NAND_CMD_STATUS, -1, -1);
+#ifdef CONFIG_MTD_NAND_EP501X
+	return (readl(chip->IO_ADDR_R + NAND_STATUS1_REG) &
+		NAND_STATUS_WP) ? 0 : 1;
+#else
 	return (chip->read_byte(mtd) & NAND_STATUS_WP) ? 0 : 1;
+#endif
 }
 
 /**
@@ -1489,7 +1525,7 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
 		bytes = min(mtd->writesize - col, readlen);
 		aligned = (bytes == mtd->writesize);
 
-		/* Is the current page in the buffer? */
+
 		if (realpage != chip->pagebuf || oob) {
 			bufpoi = aligned ? buf : chip->buffers->databuf;
 
@@ -2674,6 +2710,12 @@ erase_exit:
 	/* Deselect and wake up anyone waiting on the device */
 	nand_release_device(mtd);
 
+#ifdef CONFIG_MTD_NAND_EP501X
+	/* if erase failed for a block, mark it as bad block */
+	if (status & NAND_STATUS_FAIL)
+		mtd_block_markbad(mtd, page << chip->page_shift);
+#endif /* CONFIG_MTD_NAND_EP501X */
+
 	/* Do call back function */
 	if (!ret)
 		mtd_erase_callback(instr);
@@ -2940,8 +2982,13 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	chip->cmdfunc(mtd, NAND_CMD_READID, 0x00, -1);
 
 	/* Read manufacturer and device IDs */
+#ifdef CONFIG_MTD_NAND_EP501X
+	*maf_id = readb(chip->IO_ADDR_R + NAND_ID0_REG);
+	*dev_id = readb(chip->IO_ADDR_R + NAND_ID2_REG);
+#else  /* CONFIG_MTD_NAND_EP501X */
 	*maf_id = chip->read_byte(mtd);
 	*dev_id = chip->read_byte(mtd);
+#endif
 
 	/*
 	 * Try again to make sure, as some systems the bus-hold or other
@@ -2952,8 +2999,13 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 
 	chip->cmdfunc(mtd, NAND_CMD_READID, 0x00, -1);
 
+#ifdef CONFIG_MTD_NAND_EP501X
+	id_data[0] = readb(chip->IO_ADDR_R + NAND_ID0_REG);
+	id_data[1] = readb(chip->IO_ADDR_R + NAND_ID2_REG);
+#else
 	for (i = 0; i < 2; i++)
 		id_data[i] = chip->read_byte(mtd);
+#endif
 
 	if (id_data[0] != *maf_id || id_data[1] != *dev_id) {
 		pr_info("%s: second ID read did not match "
@@ -2980,9 +3032,15 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	chip->cmdfunc(mtd, NAND_CMD_READID, 0x00, -1);
 
 	/* Read entire ID string */
-
+#ifdef CONFIG_MTD_NAND_EP501X
+	id_data[0] = readb(chip->IO_ADDR_R + NAND_ID0_REG);
+	id_data[1] = readb(chip->IO_ADDR_R + NAND_ID2_REG);
+	id_data[2] = readb(chip->IO_ADDR_R + NAND_ID4_REG);
+	id_data[3] = readb(chip->IO_ADDR_R + NAND_ID6_REG);
+#else
 	for (i = 0; i < 8; i++)
 		id_data[i] = chip->read_byte(mtd);
+#endif
 
 	if (!type->name)
 		return ERR_PTR(-ENODEV);
@@ -2997,10 +3055,17 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		busw = chip->init_size(mtd, chip, id_data);
 	} else if (!type->pagesize) {
 		int extid;
+#ifdef CONFIG_MTD_NAND_EP501X
+		/* The 3rd id byte holds MLC / multichip data */
+		chip->cellinfo = readb(chip->IO_ADDR_R + NAND_ID4_REG);
+		/* The 4th id byte is the important one */
+		extid = readb(chip->IO_ADDR_R + NAND_ID6_REG);
+#else  /* CONFIG_MTD_NAND_EP501X */
 		/* The 3rd id byte holds MLC / multichip data */
 		chip->cellinfo = id_data[2];
 		/* The 4th id byte is the important one */
 		extid = id_data[3];
+#endif
 
 		/*
 		 * Field definitions are in the following datasheets:
@@ -3038,18 +3103,33 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 				(((extid >> 1) & 0x04) | (extid & 0x03));
 			busw = 0;
 		} else {
-			/* Calc pagesize */
-			mtd->writesize = 1024 << (extid & 0x03);
-			extid >>= 2;
-			/* Calc oobsize */
-			mtd->oobsize = (8 << (extid & 0x01)) *
-				(mtd->writesize >> 9);
-			extid >>= 2;
-			/* Calc blocksize. Blocksize is multiples of 64KiB */
-			mtd->erasesize = (64 * 1024) << (extid & 0x03);
-			extid >>= 2;
-			/* Get buswidth information */
-			busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
+			/* Add workaournd for Micron MT29Fxxxxxx NAND flash*/
+			if (id_data[0] == NAND_MFR_MICRON &&
+			    id_data[1] == 0x48) {
+				/* Calc pagesize */
+				mtd->writesize = 1024 << (extid & 0x03);
+				extid >>= 2;				
+				/*Calc oobsize */
+				mtd->oobsize =
+					((extid & 0x03) == 0x03) ? 218: 224;
+				extid >>= 3;
+				/* Blocksize is in multiples of 256KiB */
+				mtd->erasesize = (256 * 1024) << (extid & 0x03);
+				busw = 0;
+			}else{
+				/* Calc pagesize */
+				mtd->writesize = 1024 << (extid & 0x03);
+				extid >>= 2;
+				/* Calc oobsize */
+				mtd->oobsize = (8 << (extid & 0x01)) *
+					(mtd->writesize >> 9);
+				extid >>= 2;
+				/* Blocksize is in multiples of 64KiB */
+				mtd->erasesize = (64 * 1024) << (extid & 0x03);
+				extid >>= 2;
+				/* Get buswidth information */
+				busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
+			}
 		}
 	} else {
 		/*
@@ -3088,6 +3168,11 @@ ident_done:
 	 * Set chip as a default. Board drivers can override it, if necessary.
 	 */
 	chip->options |= NAND_NO_AUTOINCR;
+
+#ifdef CONFIG_MTD_NAND_EP501X
+	/* Set the EP501/EP501G1 config register. */
+	lsi_nand_set_config(mtd, chip);
+#endif /* CONFIG_MTD_NAND_EP501X */
 
 	/* Try to identify manufacturer */
 	for (maf_idx = 0; nand_manuf_ids[maf_idx].id != 0x0; maf_idx++) {
@@ -3226,7 +3311,6 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
 	return 0;
 }
 EXPORT_SYMBOL(nand_scan_ident);
-
 
 /**
  * nand_scan_tail - [NAND Interface] Scan for the NAND device

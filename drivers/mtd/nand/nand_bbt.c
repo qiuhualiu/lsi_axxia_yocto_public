@@ -248,6 +248,9 @@ static int read_bbt(struct mtd_info *mtd, uint8_t *buf, int page, int num,
 		totlen -= len;
 		from += len;
 	}
+	if(mtd->ecc_stats.badblocks > 0) {
+		printk(KERN_DEBUG "nand_read_bbt: %d bad blocks\n", mtd->ecc_stats.badblocks); 
+	}
 	return ret;
 }
 
