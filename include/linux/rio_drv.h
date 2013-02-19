@@ -444,14 +444,18 @@ extern struct rio_dev *rio_get_asm(u16 vid, u16 did, u16 asm_vid, u16 asm_did,
 extern struct rio_mport *rio_get_mport(int hostid, struct rio_mport *from);
 extern struct rio_dev **rio_get_all_devices(struct rio_mport *mport, int *n);
 extern struct rio_dev *lookup_rdev(struct rio_mport *mport, u16 destid);
+#define RIO_JOB_FLAG_STATIC   0x1
+
+extern int rio_job_init(struct rio_mport *mport, struct rio_dev *rdev,
+			int port, u32 flags, int hw_access, int event);
+extern struct rio_dev *rio_get_root_node(struct rio_mport *mport);
+extern int rio_lookup_next_destid(struct rio_mport *mport, u16 parent_destid,
+				  int port_num, u8 hopcount, u16 *id);
 
 #if defined(CONFIG_RAPIDIO_HOTPLUG)
 
 extern void rio_rescan_mport(struct rio_mport *mport);
 extern void rio_remove_mport_net(struct rio_mport *mport, int hw_access);
-extern struct rio_dev *rio_get_root_node(struct rio_mport *mport);
-extern int rio_lookup_next_destid(struct rio_mport *mport, u16 parent_destid,
-				  int port_num, u8 hopcount, u16 *id);
 
 static inline int rio_hotswap(struct rio_mport *mport, u8 flags)
 {
@@ -479,10 +483,6 @@ static inline int rio_port_op_state(struct rio_mport *mport)
 	else
 		return MPORT_STATE_UNKNOWN;
 }
-#define RIO_JOB_FLAG_STATIC   0x1
-
-extern int rio_job_init(struct rio_mport *mport, struct rio_dev *rdev,
-			int port, u32 flags, int hw_access, int event);
 
 extern int rio_setup_event(struct rio_dev *rdev, int portnum, int event);
 extern int rio_setup_event_force(struct rio_dev *rdev, int portnum, int event);
