@@ -42,7 +42,11 @@ obj-$(CONFIG_XILINX_VIRTEX)	+= xilinx_intc.o
 obj-$(CONFIG_XILINX_PCI)	+= xilinx_pci.o
 obj-$(CONFIG_OF_RTC)		+= of_rtc.o
 ifeq ($(CONFIG_PCI),y)
+ifeq ($(CONFIG_ACP),y)
+obj-$(CONFIG_ACP3400_PCI_4xx)	+= lsi_ppc4xx_pci.o
+else
 obj-$(CONFIG_4xx)		+= ppc4xx_pci.o
+endif
 endif
 obj-$(CONFIG_PPC4xx_MSI)	+= ppc4xx_msi.o
 obj-$(CONFIG_PPC4xx_CPM)	+= ppc4xx_cpm.o
