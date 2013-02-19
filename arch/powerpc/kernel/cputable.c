@@ -1873,6 +1873,9 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.icache_bsize		= 32,
 		.dcache_bsize		= 128,
 		.machine_check		= machine_check_47x,
+		.num_pmcs		= 8,
+		.oprofile_cpu_type      = "ppc/476",
+		.oprofile_type          = PPC_OPROFILE_ACP_PMU,
 		.platform		= "ppc470",
 	},
 	{ /* 476 others */
