@@ -26,6 +26,8 @@
  * under  the terms of  the GNU General  Public License as published by the
  * Free Software Foundation;  either version 2 of the  License, or (at your
  * option) any later version.
+ *
+ * These patches add ACP3400 support signed-off-by: john.jacques@lsi.com
  */
 
 #include <linux/init.h>
@@ -1200,6 +1202,55 @@ clear_utlb_entry:
 	/* Force context change */
 	isync
 #endif /* CONFIG_PPC_EARLY_DEBUG_44x */
+
+#ifdef CONFIG_ACP
+	/* Add bolted entries for I/O. */
+
+#ifdef CONFIG_PPC_EARLY_DEBUG_AXXIA
+
+ 	/* Word 0 */
+	lis	r3,AXXIA_EARLY_DEBUG_VIRTADDR@h
+	ori	r3,r3,PPC47x_TLB0_VALID | PPC47x_TLB0_1M
+
+	/* Word 1 */
+	lis	r4,CONFIG_PPC_EARLY_DBG_AXXIA_PHYSLOW@h
+	ori	r4,r4,CONFIG_PPC_EARLY_DBG_AXXIA_PHYSHIGH
+
+	/* Word 2 */
+	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I | PPC47x_TLB2_G)
+
+	/* Bolted in way 0, bolt slot 4, we -hope- we don't hit the same
+	 * congruence class as the kernel, we need to make sure of it at
+	 * some point
+	 */
+        lis	r0,0x8d00
+	tlbwe	r3,r0,0
+	tlbwe	r4,r0,1
+	tlbwe	r5,r0,2
+#endif
+ 	/* Word 0 */
+	lis	r3,(0xf0100000)@h
+	ori	r3,r3,PPC47x_TLB0_VALID | PPC47x_TLB0_1M
+
+	/* Word 1 */
+	lis	r4,(0x00500000)@h
+	ori	r4,r4,0x20
+
+	/* Word 2 */
+	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I | PPC47x_TLB2_G)
+
+	/* Bolted in way 0, bolt slot 4, we -hope- we don't hit the same
+	 * congruence class as the kernel, we need to make sure of it at
+	 * some point
+	 */
+        lis	r0,0x8c00
+	tlbwe	r3,r0,0
+	tlbwe	r4,r0,1
+	tlbwe	r5,r0,2
+
+	/* Force context change */
+	isync
+#endif /* CONFIG_ACP */
 
 	/* Establish the interrupt vector offsets */
 	SET_IVOR(0,  CriticalInput);

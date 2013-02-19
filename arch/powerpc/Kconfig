@@ -180,6 +180,11 @@ config PPC_UDBG_16550
 	bool
 	default n
 
+config PPC_UDBG_ARM_AMBA
+	bool
+	default n
+	depends on ACP
+
 config GENERIC_TBSYNC
 	bool
 	default y if PPC32 && SMP
@@ -334,7 +339,7 @@ config SWIOTLB
 
 config HOTPLUG_CPU
 	bool "Support for enabling/disabling CPUs"
-	depends on SMP && HOTPLUG && EXPERIMENTAL && (PPC_PSERIES || PPC_PMAC || PPC_POWERNV)
+	depends on SMP && HOTPLUG && EXPERIMENTAL && (PPC_PSERIES || PPC_PMAC || PPC_POWERNV || ACP)
 	---help---
 	  Say Y here to be able to disable and re-enable individual
 	  CPUs at runtime on SMP machines.
@@ -823,6 +828,7 @@ config LOWMEM_SIZE_BOOL
 
 config LOWMEM_SIZE
 	hex "Maximum low memory size (in bytes)" if LOWMEM_SIZE_BOOL
+	default "0x40000000" if ACP && !ELPASO
 	default "0x30000000"
 
 config LOWMEM_CAM_NUM_BOOL
@@ -895,6 +901,7 @@ config PAGE_OFFSET_BOOL
 
 config PAGE_OFFSET
 	hex "Virtual address of memory base" if PAGE_OFFSET_BOOL
+	default "0xa0000000" if ACP && !ELPASO
 	default "0xc0000000"
 
 config KERNEL_START_BOOL
@@ -912,6 +919,8 @@ config KERNEL_START
 	hex "Virtual address of kernel base" if KERNEL_START_BOOL
 	default PAGE_OFFSET if PAGE_OFFSET_BOOL
 	default "0xc2000000" if CRASH_DUMP && !NONSTATIC_KERNEL
+	default "0xa0800000" if ACP && !ELPASO
+	default "0xc0100000" if ELPASO
 	default "0xc0000000"
 
 config PHYSICAL_START_BOOL
@@ -925,6 +934,8 @@ config PHYSICAL_START_BOOL
 config PHYSICAL_START
 	hex "Physical address where the kernel is loaded" if PHYSICAL_START_BOOL
 	default "0x02000000" if PPC_STD_MMU && CRASH_DUMP && !NONSTATIC_KERNEL
+	default "0x800000" if ACP && !ELPASO
+	default "0x400000" if ELPASO
 	default "0x00000000"
 
 config PHYSICAL_ALIGN
@@ -948,6 +959,7 @@ config TASK_SIZE_BOOL
 config TASK_SIZE
 	hex "Size of user task space" if TASK_SIZE_BOOL
 	default "0x80000000" if PPC_PREP || PPC_8xx
+	default "0xa0000000" if ACP && !ELPASO
 	default "0xc0000000"
 
 config CONSISTENT_SIZE_BOOL

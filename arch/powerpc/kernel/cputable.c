@@ -1831,9 +1831,9 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.platform		= "ppc440",
 	},
 	{ /* 476 DD2 core */
-		.pvr_mask		= 0xffffffff,
+		.pvr_mask		= 0xffffff80,
 		.pvr_value		= 0x11a52080,
-		.cpu_name		= "476",
+		.cpu_name		= "476dd2",
 		.cpu_features		= CPU_FTRS_47X | CPU_FTR_476_DD2,
 		.cpu_user_features	= COMMON_USER_BOOKE |
 			PPC_FEATURE_HAS_FPU,
@@ -1842,6 +1842,9 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.icache_bsize		= 32,
 		.dcache_bsize		= 128,
 		.machine_check		= machine_check_47x,
+		.num_pmcs		= 8,
+		.oprofile_cpu_type      = "ppc/476",
+                .oprofile_type          = PPC_OPROFILE_ACP_PMU,
 		.platform		= "ppc470",
 	},
 	{ /* 476fpe */
