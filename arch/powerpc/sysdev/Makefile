@@ -50,6 +50,7 @@ obj-$(CONFIG_PPC4xx_GPIO)	+= ppc4xx_gpio.o
 
 obj-$(CONFIG_ACP3400_GPIO)      += acp3400-gpio.o
 obj-$(CONFIG_ACP3400_I2C)       += acp3400-i2c.o
+obj-$(CONFIG_ACP3400_SSP)       += acp3400-ssp.o
 obj-$(CONFIG_CPM)		+= cpm_common.o
 obj-$(CONFIG_CPM2)		+= cpm2.o cpm2_pic.o
 obj-$(CONFIG_QUICC_ENGINE)	+= cpm_common.o
