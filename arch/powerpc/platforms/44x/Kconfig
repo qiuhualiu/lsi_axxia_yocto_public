@@ -345,6 +345,15 @@ config ACP3400_GPIO
 	help
 	  Enable gpiolib support for acp476 based boards
 
+config ACP3400_I2C
+	bool "ACP3400 I2C support"
+	depends on ACP
+	default n
+	select I2C
+	select OF_I2C
+	help
+	  I2C adapter for acp476 based boards
+
 config ACP_PCIE_HOTPLUG
 	bool "PCIE Hotplug enabler in LSI Axxia 3400"
 	depends on ACP3400_PCI_4xx
