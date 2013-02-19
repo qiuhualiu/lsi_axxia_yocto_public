@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/rio.h>
 #include <linux/rio_ids.h>
+#include <linux/rio_drv.h>
 
 #include "rio.h"
 
@@ -56,9 +57,12 @@ static const struct rio_device_id *rio_match_device(const struct rio_device_id
  */
 struct rio_dev *rio_dev_get(struct rio_dev *rdev)
 {
-	if (rdev)
+	if (rdev) {
 		get_device(&rdev->dev);
+//		pr_info("%s: for %s refcount after: %d\n",
+//			__func__, rio_name(rdev), atomic_read(&rdev->dev.kobj.kref.refcount));
 
+	}
 	return rdev;
 }
 
@@ -73,8 +77,12 @@ struct rio_dev *rio_dev_get(struct rio_dev *rdev)
  */
 void rio_dev_put(struct rio_dev *rdev)
 {
-	if (rdev)
+	if (rdev) {
+//		pr_info("%s: for %s refcount before: %d\n",
+//			__func__, rio_name(rdev), atomic_read(&rdev->dev.kobj.kref.refcount));
+
 		put_device(&rdev->dev);
+	}
 }
 
 /**
@@ -98,10 +106,13 @@ static int rio_device_probe(struct device *dev)
 		if (id)
 			error = rdrv->probe(rdev, id);
 		if (error >= 0) {
+			pr_debug("%s: for %s got driver %pF\n", __func__, rio_name(rdev), rdrv->probe);
 			rdev->driver = rdrv;
 			error = 0;
-		} else
+		} else {
+			pr_debug("%s: for %s probe fail\n", __func__, rio_name(rdev));
 			rio_dev_put(rdev);
+		}
 	}
 	return error;
 }
@@ -120,9 +131,14 @@ static int rio_device_remove(struct device *dev)
 	struct rio_dev *rdev = to_rio_dev(dev);
 	struct rio_driver *rdrv = rdev->driver;
 
+	pr_debug("device remove for %s\n", rio_name(rdev));
 	if (rdrv) {
-		if (rdrv->remove)
+		if (rdrv->remove) {
+			pr_debug("driver remove for %s using %pF\n", rio_name(rdev), rdrv->remove);
 			rdrv->remove(rdev);
+		} else {
+			pr_debug("driver not registered for %s\n", rio_name(rdev));
+		}
 		rdev->driver = NULL;
 	}
 
@@ -142,12 +158,38 @@ static int rio_device_remove(struct device *dev)
  */
 int rio_register_driver(struct rio_driver *rdrv)
 {
+	int rc;
+
 	/* initialize common driver fields */
 	rdrv->driver.name = rdrv->name;
 	rdrv->driver.bus = &rio_bus_type;
+	rdrv->driver.owner = THIS_MODULE;
+	rdrv->driver.mod_name = KBUILD_MODNAME;
+
+	spin_lock_init(&rdrv->dynids.lock);
+	INIT_LIST_HEAD(&rdrv->dynids.list);
 
 	/* register with core */
-	return driver_register(&rdrv->driver);
+	rc = driver_register(&rdrv->driver);
+	if (rc)
+		goto out;
+
+	rc = rio_create_newid_file(rdrv);
+	if (rc)
+		goto out_newid;
+
+	rc = rio_create_removeid_file(rdrv);
+	if (rc)
+		goto out_removeid;
+out:
+	return rc;
+
+out_removeid:
+	rio_remove_newid_file(rdrv);
+out_newid:
+	driver_unregister(&rdrv->driver);
+	goto out;
+
 }
 
 /**
@@ -161,6 +203,8 @@ int rio_register_driver(struct rio_driver *rdrv)
  */
 void rio_unregister_driver(struct rio_driver *rdrv)
 {
+	rio_remove_removeid_file(rdrv);
+	rio_remove_newid_file(rdrv);
 	driver_unregister(&rdrv->driver);
 }
 

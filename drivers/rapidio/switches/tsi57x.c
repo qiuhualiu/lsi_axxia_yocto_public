@@ -213,7 +213,7 @@ tsi57x_em_init(struct rio_dev *rdev)
 static int
 tsi57x_em_handler(struct rio_dev *rdev, u8 portnum)
 {
-	struct rio_mport *mport = rdev->net->hport;
+	struct rio_mport *mport = rdev->hport;
 	u32 intstat, err_status;
 	int sendcount, checkcount;
 	u8 route_port;
@@ -279,7 +279,13 @@ exit_es:
 		rio_read_config_32(rdev,
 				TSI578_SP_LUT_PEINF(portnum), &regval);
 		regval = (mport->sys_size) ? (regval >> 16) : (regval >> 24);
+#ifdef NEW_STYLE
+		tsi57x_route_get_entry(rdev->hport, rdev->destid,
+				       rdev->hopcount, RIO_GLOBAL_TABLE,
+				       regval, &route_port);
+#else
 		route_port = rdev->rswitch->route_table[regval];
+#endif
 		pr_debug("RIO: TSI578[%s] P%d LUT Parity Error (destID=%d)\n",
 			rio_name(rdev), portnum, regval);
 		tsi57x_route_add_entry(mport, rdev->destid, rdev->hopcount,

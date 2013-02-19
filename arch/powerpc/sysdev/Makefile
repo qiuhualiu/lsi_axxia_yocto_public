@@ -57,6 +57,12 @@ obj-$(CONFIG_ACP3400_GPIO)      += acp3400-gpio.o
 obj-$(CONFIG_PCA9554_GPIO)	+= dus_pca9554.o
 obj-$(CONFIG_ACP3400_I2C)       += acp3400-i2c.o
 obj-$(CONFIG_ACP3400_SSP)       += acp3400-ssp.o
+obj-$(CONFIG_ACP3400_RIO)	+= acp3400-rio.o acp3400-rio-hotplug.o acp3400-rio-irq.o acp3400-rio-sysfs.o
+
+ifeq ($(CONFIG_ACP3400_RIO_DEBUG),y)
+CFLAGS_acp3400-rio.o := -DDEBUG
+endif
+
 obj-$(CONFIG_CPM)		+= cpm_common.o
 obj-$(CONFIG_CPM2)		+= cpm2.o cpm2_pic.o
 obj-$(CONFIG_QUICC_ENGINE)	+= cpm_common.o

@@ -388,8 +388,8 @@ static void rionet_remove(struct rio_dev *rdev)
 	struct net_device *ndev = rio_get_drvdata(rdev);
 	struct rionet_peer *peer, *tmp;
 
-	free_pages((unsigned long)rionet_active, get_order(sizeof(void *) *
-			RIO_MAX_ROUTE_ENTRIES(rdev->net->hport->sys_size)));
+	free_pages((unsigned long)rionet_active, rdev->hport->sys_size ?
+					__fls(sizeof(void *)) + 4 : 0);
 	unregister_netdev(ndev);
 	free_netdev(ndev);
 
@@ -445,16 +445,15 @@ static int rionet_setup_netdev(struct rio_mport *mport, struct net_device *ndev)
 	int rc = 0;
 	struct rionet_private *rnet;
 	u16 device_id;
-	const size_t rionet_active_bytes = sizeof(void *) *
-				RIO_MAX_ROUTE_ENTRIES(mport->sys_size);
 
 	rionet_active = (struct rio_dev **)__get_free_pages(GFP_KERNEL,
-			get_order(rionet_active_bytes));
+			mport->sys_size ? __fls(sizeof(void *)) + 4 : 0);
 	if (!rionet_active) {
 		rc = -ENOMEM;
 		goto out;
 	}
-	memset((void *)rionet_active, 0, rionet_active_bytes);
+	memset((void *)rionet_active, 0, sizeof(void *) *
+				RIO_MAX_ROUTE_ENTRIES(mport->sys_size));
 
 	/* Set up private area */
 	rnet = netdev_priv(ndev);
@@ -511,6 +510,8 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 	/* Allocate our net_device structure */
 	ndev = alloc_etherdev(sizeof(struct rionet_private));
 	if (ndev == NULL) {
+		printk(KERN_INFO "%s: could not allocate ethernet device.\n",
+		       DRV_NAME);
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -521,9 +522,10 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 	 * on later probes
 	 */
 	if (!rionet_check) {
-		rio_local_read_config_32(rdev->net->hport, RIO_SRC_OPS_CAR,
+		rio_local_read_config_32(rdev->hport, RIO_PEF_CAR, &lpef);
+		rio_local_read_config_32(rdev->hport, RIO_SRC_OPS_CAR,
 					 &lsrc_ops);
-		rio_local_read_config_32(rdev->net->hport, RIO_DST_OPS_CAR,
+		rio_local_read_config_32(rdev->hport, RIO_DST_OPS_CAR,
 					 &ldst_ops);
 		if (!is_rionet_capable(lsrc_ops, ldst_ops)) {
 			printk(KERN_ERR
@@ -534,7 +536,7 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 			goto out;
 		}
 
-		rc = rionet_setup_netdev(rdev->net->hport, ndev);
+		rc = rionet_setup_netdev(rdev->hport, ndev);
 		rionet_check = 1;
 		nact = 0;
 	}
