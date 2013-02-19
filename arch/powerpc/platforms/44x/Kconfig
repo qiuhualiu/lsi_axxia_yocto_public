@@ -335,6 +335,16 @@ config PPC4xx_GPIO
 	help
 	  Enable gpiolib support for ppc440 based boards
 
+config ACP3400_GPIO
+	bool "ACP3400 GPIO support"
+	depends on ACP
+	default n
+	select ARCH_WANT_OPTIONAL_GPIOLIB
+	select GENERIC_GPIO
+	select GPIOLIB
+	help
+	  Enable gpiolib support for acp476 based boards
+
 config ACP_PCIE_HOTPLUG
 	bool "PCIE Hotplug enabler in LSI Axxia 3400"
 	depends on ACP3400_PCI_4xx
