@@ -27,17 +27,6 @@
 struct acp_pmu {
 	const char	*name;
 	int		n_counter; /* total number of counters */
-#if 0
-	/*
-	 * The number of contiguous counters starting at zero that
-	 * can hold restricted events, or zero if there are no
-	 * restricted events.
-	 *
-	 * This isn't a very flexible method of expressing constraints,
-	 * but it's very simple and is adequate for existing chips.
-	 */
-	int		n_restricted;
-#endif
 	/* Returns event flags */
 	u64		(*xlate_event)(u64 event_id);
 
