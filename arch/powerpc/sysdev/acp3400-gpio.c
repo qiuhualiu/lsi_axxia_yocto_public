@@ -287,7 +287,7 @@ static int acp3400_gpio_direction_out(struct gpio_chip *gc,
 	 * configure direction first; opposite sequence is
 	 * ignored by the GPIO block, which is sad
 	 */
- 	chip->gpio_regs[pin->block]->gpiodir |= pin->mask;
+	chip->gpio_regs[pin->block]->gpiodir |= pin->mask;
 
 	if (val)
 		chip->gpio_regs[pin->block]->gpiodata[pin->addr] = ~0;

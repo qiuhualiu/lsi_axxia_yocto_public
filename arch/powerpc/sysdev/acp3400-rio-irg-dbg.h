@@ -47,34 +47,34 @@ enum rio_irq_dbg {
 	RIO_MISC_OB_DB_PENDING,
 	RIO_MISC_IB_DB,
 	RIO_MISC_IB_DB_SPURIOUS,
-        RIO_OB_DME_STAT_RESP_TO,
-        RIO_OB_DME_STAT_RESP_ERR,
-        RIO_OB_DME_STAT_DATA_TRANS_ERR,
-        RIO_OB_DME_STAT_DESC_UPD_ERR,
-        RIO_OB_DME_STAT_DESC_ERR,
-        RIO_OB_DME_STAT_DESC_FETCH_ERR,
-        RIO_OB_DME_STAT_SLEEPING,
-        RIO_OB_DME_STAT_DESC_XFER_CPLT,
-        RIO_OB_DME_STAT_DESC_CHAIN_XFER_CPLT,
-        RIO_OB_DME_STAT_TRANS_PEND,
-        RIO_OB_DME_DESC_DW0_RIO_ERR,
-        RIO_OB_DME_DESC_DW0_AXI_ERR,
-        RIO_OB_DME_DESC_DW0_TIMEOUT_ERR,
-        RIO_OB_DME_DESC_DESC_DW0_DONE,
-        RIO_IB_DME_STAT_MSG_TIMEOUT,
-        RIO_IB_DME_STAT_MSG_ERR,
-        RIO_IB_DME_STAT_DATA_TRANS_ERR,
-        RIO_IB_DME_STAT_DESC_UPDATE_ERR,
-        RIO_IB_DME_STAT_DESC_ERR,
-        RIO_IB_DME_STAT_FETCH_ERR,
-        RIO_IB_DME_STAT_SLEEPING,
-        RIO_IB_DME_STAT_DESC_XFER_CPLT,
-        RIO_IB_DME_STAT_DESC_CHAIN_XFER_CPLT,
-        RIO_IB_DME_STAT_TRANS_PEND,
-        RIO_IB_DME_DESC_DW0_RIO_ERR,
-        RIO_IB_DME_DESC_DW0_AXI_ERR,
-        RIO_IB_DME_DESC_DW0_TIMEOUT_ERR,
-        RIO_IB_DME_DESC_DESC_DW0_DONE,
+	RIO_OB_DME_STAT_RESP_TO,
+	RIO_OB_DME_STAT_RESP_ERR,
+	RIO_OB_DME_STAT_DATA_TRANS_ERR,
+	RIO_OB_DME_STAT_DESC_UPD_ERR,
+	RIO_OB_DME_STAT_DESC_ERR,
+	RIO_OB_DME_STAT_DESC_FETCH_ERR,
+	RIO_OB_DME_STAT_SLEEPING,
+	RIO_OB_DME_STAT_DESC_XFER_CPLT,
+	RIO_OB_DME_STAT_DESC_CHAIN_XFER_CPLT,
+	RIO_OB_DME_STAT_TRANS_PEND,
+	RIO_OB_DME_DESC_DW0_RIO_ERR,
+	RIO_OB_DME_DESC_DW0_AXI_ERR,
+	RIO_OB_DME_DESC_DW0_TIMEOUT_ERR,
+	RIO_OB_DME_DESC_DESC_DW0_DONE,
+	RIO_IB_DME_STAT_MSG_TIMEOUT,
+	RIO_IB_DME_STAT_MSG_ERR,
+	RIO_IB_DME_STAT_DATA_TRANS_ERR,
+	RIO_IB_DME_STAT_DESC_UPDATE_ERR,
+	RIO_IB_DME_STAT_DESC_ERR,
+	RIO_IB_DME_STAT_FETCH_ERR,
+	RIO_IB_DME_STAT_SLEEPING,
+	RIO_IB_DME_STAT_DESC_XFER_CPLT,
+	RIO_IB_DME_STAT_DESC_CHAIN_XFER_CPLT,
+	RIO_IB_DME_STAT_TRANS_PEND,
+	RIO_IB_DME_DESC_DW0_RIO_ERR,
+	RIO_IB_DME_DESC_DW0_AXI_ERR,
+	RIO_IB_DME_DESC_DW0_TIMEOUT_ERR,
+	RIO_IB_DME_DESC_DESC_DW0_DONE,
 	RIO_PIO_COMPLETE,
 	RIO_PIO_FAILED,
 	RIO_PIO_RSP_ERR,
@@ -141,7 +141,8 @@ static inline void __irq_dbg(struct rio_priv *priv, enum rio_misc_dbg id)
 {
 	atomic_inc(&priv->irq[id]);
 }
-static inline void __misc_fatal_dbg(struct rio_priv *priv, u32 misc_state, u32 amast)
+static inline void __misc_fatal_dbg(struct rio_priv *priv,
+				    u32 misc_state, u32 amast)
 {
 	if (misc_stat & AMST_INT) {
 		__irq_dbg(priv, RIO_MISC_AMST);
@@ -165,7 +166,8 @@ static inline void __misc_info_dbg(struct rio_priv *priv, u32 misc_state)
 {
 	/* Log only - no enable bit or state to clear */
 	if (misc_state & (UNEXP_MSG_LOG |
-			  LL_TL_INT | GRIO_INT | UNSP_RIO_REQ_INT | RIO_MISC_UNEXP)) {
+			  LL_TL_INT | GRIO_INT |
+			  UNSP_RIO_REQ_INT | RIO_MISC_UNEXP)) {
 		if (misc_state & UNEXP_MSG_LOG)
 			__irq_dbg(priv, RIO_MISC_LOG);
 		if (misc_state & LL_TL_INT)
@@ -179,7 +181,7 @@ static inline void __misc_info_dbg(struct rio_priv *priv, u32 misc_state)
 	}
 }
 
-static inline void __ob_db_dbg(struct rio_priv* priv)
+static inline void __ob_db_dbg(struct rio_priv *priv)
 {
 	int db;
 	u32 csr;
@@ -193,13 +195,13 @@ static inline void __ob_db_dbg(struct rio_priv* priv)
 			__irq_dbg(priv, RIO_MISC_OB_DB_RETRY);
 		else if (OB_DB_STATUS(csr) == OB_DB_STATUS_ERROR)
 			__irq_dbg(priv, RIO_MISC_OB_DB_ERROR);
-	        else if (OB_DB_STATUS(csr) == OB_DB_STATUS_TIMEOUT)
+		else if (OB_DB_STATUS(csr) == OB_DB_STATUS_TIMEOUT)
 			__irq_dbg(priv, RIO_MISC_OB_DB_TO);
 		else if (status == OB_DB_STATUS_PENDING)
 			__add_irq_dbg(priv, RIO_MISC_OB_DB_PENDING);
 	}
 }
-static inline void __ob_dme_dbg(struct rio_priv* priv, u32 dme_stat)
+static inline void __ob_dme_dbg(struct rio_priv *priv, u32 dme_stat)
 {
 	if (dme_stat & OB_DME_STAT_ERROR_MASK) {
 		if (dme_stat & OB_DME_STAT_RESP_TO)
@@ -225,7 +227,7 @@ static inline void __ob_dme_dbg(struct rio_priv* priv, u32 dme_stat)
 		__irq_dbg(priv, RIO_OB_DME_STAT_TRANS_PEND);
 
 }
-static inline void __ob_dme_dw_dbg(struct rio_priv* priv, u32 dw0)
+static inline void __ob_dme_dw_dbg(struct rio_priv *priv, u32 dw0)
 {
 	if (dw0 & DME_DESC_DW0_ERROR_MASK) {
 		if (dw0 & DME_DESC_DW0_RIO_ERR)

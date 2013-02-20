@@ -96,38 +96,38 @@ enum rio_irq_dbg {
 	/**
 	 * Outbound Messaging unit - service irq
 	 */
-        RIO_OB_DME_STAT_RESP_TO,
-        RIO_OB_DME_STAT_RESP_ERR,
-        RIO_OB_DME_STAT_DATA_TRANS_ERR,
-        RIO_OB_DME_STAT_DESC_UPD_ERR,
-        RIO_OB_DME_STAT_DESC_ERR,
-        RIO_OB_DME_STAT_DESC_FETCH_ERR,
-        RIO_OB_DME_STAT_SLEEPING,
-        RIO_OB_DME_STAT_DESC_XFER_CPLT,
-        RIO_OB_DME_STAT_DESC_CHAIN_XFER_CPLT,
-        RIO_OB_DME_STAT_TRANS_PEND,
-        RIO_OB_DME_DESC_DW0_RIO_ERR,
-        RIO_OB_DME_DESC_DW0_AXI_ERR,
-        RIO_OB_DME_DESC_DW0_TIMEOUT_ERR,
-        RIO_OB_DME_DESC_DESC_DW0_DONE,
+	RIO_OB_DME_STAT_RESP_TO,
+	RIO_OB_DME_STAT_RESP_ERR,
+	RIO_OB_DME_STAT_DATA_TRANS_ERR,
+	RIO_OB_DME_STAT_DESC_UPD_ERR,
+	RIO_OB_DME_STAT_DESC_ERR,
+	RIO_OB_DME_STAT_DESC_FETCH_ERR,
+	RIO_OB_DME_STAT_SLEEPING,
+	RIO_OB_DME_STAT_DESC_XFER_CPLT,
+	RIO_OB_DME_STAT_DESC_CHAIN_XFER_CPLT,
+	RIO_OB_DME_STAT_TRANS_PEND,
+	RIO_OB_DME_DESC_DW0_RIO_ERR,
+	RIO_OB_DME_DESC_DW0_AXI_ERR,
+	RIO_OB_DME_DESC_DW0_TIMEOUT_ERR,
+	RIO_OB_DME_DESC_DESC_DW0_DONE,
 	/**
 	 * Inbound Messaging unit - service irq
 	 */
 	RIO_MISC_UNEXP,
-        RIO_IB_DME_STAT_MSG_TIMEOUT,
-        RIO_IB_DME_STAT_MSG_ERR,
-        RIO_IB_DME_STAT_DATA_TRANS_ERR,
-        RIO_IB_DME_STAT_DESC_UPDATE_ERR,
-        RIO_IB_DME_STAT_DESC_ERR,
-        RIO_IB_DME_STAT_FETCH_ERR,
-        RIO_IB_DME_STAT_SLEEPING,
-        RIO_IB_DME_STAT_DESC_XFER_CPLT,
-        RIO_IB_DME_STAT_DESC_CHAIN_XFER_CPLT,
-        RIO_IB_DME_STAT_TRANS_PEND,
-        RIO_IB_DME_DESC_DW0_RIO_ERR,
-        RIO_IB_DME_DESC_DW0_AXI_ERR,
-        RIO_IB_DME_DESC_DW0_TIMEOUT_ERR,
-        RIO_IB_DME_DESC_DESC_DW0_DONE,
+	RIO_IB_DME_STAT_MSG_TIMEOUT,
+	RIO_IB_DME_STAT_MSG_ERR,
+	RIO_IB_DME_STAT_DATA_TRANS_ERR,
+	RIO_IB_DME_STAT_DESC_UPDATE_ERR,
+	RIO_IB_DME_STAT_DESC_ERR,
+	RIO_IB_DME_STAT_FETCH_ERR,
+	RIO_IB_DME_STAT_SLEEPING,
+	RIO_IB_DME_STAT_DESC_XFER_CPLT,
+	RIO_IB_DME_STAT_DESC_CHAIN_XFER_CPLT,
+	RIO_IB_DME_STAT_TRANS_PEND,
+	RIO_IB_DME_DESC_DW0_RIO_ERR,
+	RIO_IB_DME_DESC_DW0_AXI_ERR,
+	RIO_IB_DME_DESC_DW0_TIMEOUT_ERR,
+	RIO_IB_DME_DESC_DESC_DW0_DONE,
 	RIO_IRQ_NUM
 };
 
@@ -157,7 +157,8 @@ enum rio_ob_dme_dbg {
 #define RIO_MSG_MAX_OB_MBOX_MULTI_ENTRIES  15
 #define RIO_MSG_MAX_MSG_SIZE               0x1000 /* 4kB */
 #define RIO_MSG_SEG_SIZE                   0x0100 /* 256B */
-#define RIO_MSG_MAX_ENTRIES                1024 /* Max descriptor table entries */
+#define RIO_MSG_MAX_ENTRIES                1024   /* Max descriptor table
+						     entries */
 #define RIO_MAX_RX_RING_SIZE               RIO_MSG_MAX_ENTRIES
 
 #define DME_MAX_IB_ENGINES          32
@@ -170,10 +171,10 @@ enum rio_ob_dme_dbg {
 
 struct rio_msg_desc {
 	volatile unsigned long state;
-        int desc_no;
+	int desc_no;
 	void __iomem *msg_virt;
 	dma_addr_t msg_phys;
-        int last;
+	int last;
 	void *cookie;
 };
 
@@ -189,12 +190,12 @@ struct rio_msg_dme {
 	struct rio_priv *priv;
 	struct resource dres;
 	int sz;
-        int entries;
-        int write_idx;
-        int read_idx;
+	int entries;
+	int write_idx;
+	int read_idx;
 	int pending;
 	int tx_dme_tmo;
-        void *dev_id;
+	void *dev_id;
 	int dme_no;
 	struct rio_msg_desc *desc;
 	struct rio_msg_tx_ack *tx_ack;
@@ -217,11 +218,11 @@ struct rio_rx_mbox {
 	void *virt_buffer[RIO_MAX_RX_RING_SIZE];
 	int last_rx_slot;
 	int next_rx_slot;
-        int ring_size;
+	int ring_size;
 	struct rio_msg_dme *me[RIO_MSG_MAX_LETTER];
 };
 
-#define PW_MSG_WORDS RIO_PW_MSG_SIZE/sizeof(u32)
+#define PW_MSG_WORDS (RIO_PW_MSG_SIZE/sizeof(u32))
 
 struct rio_pw_irq {
 	/* Port Write */

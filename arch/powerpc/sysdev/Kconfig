@@ -16,8 +16,8 @@ config PPC4xx_MSI
 config ACP3400_PCI_4xx
 	bool
 	depends on PCI && 4xx && ACP
-	default y if PCI && ACP	
-	
+	default y if PCI && ACP
+
 config PPC_MSI_BITMAP
 	bool
 	depends on PCI_MSI

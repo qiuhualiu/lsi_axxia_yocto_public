@@ -84,15 +84,21 @@ static int __acp_local_config_read(struct rio_priv *priv,
 	__asm__ __volatile__(PPC_MSYNC);
 
 	if (offset < 0x20000) {
-		/* RapidIO Standard Registers (0x0000-0xFFFC)
-		   Endpoint Controller Specific Registers (0x1_0000-0x1_FFFC) */
+		/*
+		 * RapidIO Standard Registers (0x0000-0xFFFC)
+		 * Endpoint Controller Specific Registers (0x1_0000-0x1_FFFC)
+		 */
 		*data = in_be32(priv->regs_win_paged + (offset & 0x7ff));
 	} else if ((offset >= 0x20000) && (offset < 0x40000)) {
-		/* Peripheral Bus Bridge Specific Registers (0x2_0000-0x3_FFFC) */
+		/*
+		 * Peripheral Bus Bridge Specific Registers
+		 * (0x2_0000-0x3_FFFC)
+		 */
 		*data = in_le32(priv->regs_win_paged + (offset & 0x7ff));
 	} else {
-                dev_err(priv->dev,
-                        "RIO: Reading config register not specified for AXIA (0x%8.8x)\n", offset);
+		dev_err(priv->dev,
+			"RIO: Reading config register not specified for AXXIA (0x%8.8x)\n",
+			offset);
 	}
 	return 0;
 }
@@ -119,15 +125,19 @@ static int __acp_local_config_write(struct rio_priv *priv,
 	__asm__ __volatile__(PPC_MSYNC);
 
 	if (offset < 0x20000) {
-		/* RapidIO Standard Registers (0x0000-0xFFFC)
-		   Endpoint Controller Specific Registers (0x1_0000-0x1_FFFC) */
+		/*
+		 * RapidIO Standard Registers (0x0000-0xFFFC)
+		 * Endpoint Controller Specific Registers (0x1_0000-0x1_FFFC)
+		 */
 		out_be32(priv->regs_win_paged + (offset & 0x7ff), data);
 	} else if ((offset >= 0x20000) && (offset < 0x40000)) {
-		/* Peripheral Bus Bridge Specific Registers (0x2_0000-0x3_FFFC) */
+		/*
+		 * Peripheral Bus Bridge Specific Registers (0x2_0000-0x3_FFFC)
+		 */
 		out_le32(priv->regs_win_paged + (offset & 0x7ff), data);
 	} else {
-                dev_err(priv->dev, "RIO: Trying to write to config register not specified for AXIA (0x%8.8x)\n",
-                        offset);
+		dev_err(priv->dev, "RIO: Trying to write to config register not specified for AXIA (0x%8.8x)\n",
+			offset);
 	}
 	__asm__ __volatile__(PPC_MSYNC);
 
@@ -146,7 +156,7 @@ static int __acp_local_config_write(struct rio_priv *priv,
  * success or %-EINVAL on failure.
  */
 static int acp_local_config_read(struct rio_mport *mport,
-                                 int index, u32 offset, int len, u32 *data)
+				 int index, u32 offset, int len, u32 *data)
 {
 	struct rio_priv *priv = mport->priv;
 
@@ -165,14 +175,14 @@ static int acp_local_config_read(struct rio_mport *mport,
  * success or %-EINVAL on failure.
  */
 static int acp_local_config_write(struct rio_mport *mport,
-                                  int index, u32 offset, int len, u32 data)
+				  int index, u32 offset, int len, u32 data)
 {
 	struct rio_priv *priv = mport->priv;
 
 	return __acp_local_config_write(priv, offset, data);
 }
 
-#define __acp_read_rio_config(x, addr, err, op)			\
+#define __acp_read_rio_config(x, addr, err, op)	(		\
 	__asm__ __volatile__(					\
 		PPC_MSYNC "\n"					\
 		"0:	"op" %1,0(%2)\n"			\
@@ -191,7 +201,7 @@ static int acp_local_config_write(struct rio_mport *mport,
 		PPC_LONG "2b,4b\n"				\
 		".previous"					\
 		: "=r" (err), "=r" (x)				\
-		: "b" (addr), "i" (-EFAULT), "0" (err))
+		: "b" (addr), "i" (-EFAULT), "0" (err)))
 
 
 int acp_rio_mcheck_exception(struct pt_regs *regs)
@@ -202,7 +212,8 @@ int acp_rio_mcheck_exception(struct pt_regs *regs)
 	if (mcsr & (PPC47x_MCSR_IPR | PPC47x_MCSR_L2)) {
 		entry = search_exception_tables(regs->nip);
 		if (entry) {
-			pr_debug("(%s): Recoverable exception %lx\n", __func__, regs->nip);
+			pr_debug("(%s): Recoverable exception %lx\n",
+				 __func__, regs->nip);
 			regs->msr |= MSR_RI;
 			regs->nip = entry->fixup;
 			mcsr &= ~(PPC47x_MCSR_IPR | PPC47x_MCSR_L2);
@@ -231,22 +242,23 @@ EXPORT_SYMBOL_GPL(acp_rio_mcheck_exception);
  */
 
 static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
-                               u8 hopcount, u32 offset, int len, u32 *val)
+			       u8 hopcount, u32 offset, int len, u32 *val)
 {
 	struct rio_priv *priv = mport->priv;
 	struct atmu_outb *aoutb = &priv->outb_atmu[priv->maint_win_id];
 	u8 *addr;
 	u32 rval = 0;
 	u32 rbar = 0, ctrl;
-        int rc = 0;
+	int rc = 0;
 
 	/* 16MB maintenance windows possible */
 	/* allow only aligned access to maintenance registers */
-	if (offset > (0x1000000 - len) || !IS_ALIGNED(offset, len)) {
+	if (offset > (0x1000000 - len) || !IS_ALIGNED(offset, len))
 		return -EINVAL;
-        }
 
-	__acp_local_config_read(priv, RAB_APIO_AMAP_CTRL(priv->maint_win_id), &ctrl);
+	__acp_local_config_read(priv,
+				RAB_APIO_AMAP_CTRL(priv->maint_win_id),
+				&ctrl);
 
 	if (ctrl & 0x6) { /* Not maintanance */
 		dev_err(priv->dev, "(%s): Window is not setup for Maintanance operations. 0x%8.8x\n",
@@ -255,12 +267,15 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 	}
 
 	rbar |= HOP_COUNT(hopcount);
-	__acp_local_config_write(priv, RAB_APIO_AMAP_RBAR(priv->maint_win_id), rbar);
+	__acp_local_config_write(priv,
+				 RAB_APIO_AMAP_RBAR(priv->maint_win_id),
+				 rbar);
 
 	ctrl &= ~(0xffff0000); /* Target id clear */
 	ctrl |= TARGID(destid); /* Target id set */
-	__acp_local_config_write(priv, RAB_APIO_AMAP_CTRL(priv->maint_win_id), ctrl);
-
+	__acp_local_config_write(priv,
+				 RAB_APIO_AMAP_CTRL(priv->maint_win_id),
+				 ctrl);
 
 	addr = (u8 *) aoutb->win +
 		(offset & (CONFIG_RIO_MAINT_WIN_SIZE - 1));
@@ -302,7 +317,7 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
  * success or %-EINVAL on failure.
  */
 static int acp_rio_config_write(struct rio_mport *mport, int index, u16 destid,
-                                u8 hopcount, u32 offset, int len, u32 val)
+				u8 hopcount, u32 offset, int len, u32 val)
 {
 	struct rio_priv *priv = mport->priv;
 	struct atmu_outb *aoutb = &priv->outb_atmu[priv->maint_win_id];
@@ -314,19 +329,27 @@ static int acp_rio_config_write(struct rio_mport *mport, int index, u16 destid,
 	if (offset > (0x1000000 - len) || !IS_ALIGNED(offset, len))
 		return -EINVAL;
 
-	__acp_local_config_read(priv, RAB_APIO_AMAP_CTRL(priv->maint_win_id), &ctrl);
+	__acp_local_config_read(priv,
+				RAB_APIO_AMAP_CTRL(priv->maint_win_id),
+				&ctrl);
 
 	if (ctrl & 0x6) { /* Not maintanance */
-		dev_err(priv->dev, "(%s): Window is not setup for Maintanance operations.\n", __func__);
+		dev_err(priv->dev,
+			"(%s): Window is not setup for Maintanance operations.\n",
+			__func__);
 		return -EINVAL;
 	}
 
 	rbar |= HOP_COUNT(hopcount);
-	__acp_local_config_write(priv, RAB_APIO_AMAP_RBAR(priv->maint_win_id), rbar);
+	__acp_local_config_write(priv,
+				 RAB_APIO_AMAP_RBAR(priv->maint_win_id),
+				 rbar);
 
 	ctrl &= ~(0xffff0000); /* Target id clear */
 	ctrl |= TARGID(destid); /* Target id set */
-	__acp_local_config_write(priv, RAB_APIO_AMAP_CTRL(priv->maint_win_id), ctrl);
+	__acp_local_config_write(priv,
+				 RAB_APIO_AMAP_CTRL(priv->maint_win_id),
+				 ctrl);
 
 	data = (u8 *) aoutb->win +
 		(offset & (CONFIG_RIO_MAINT_WIN_SIZE - 1));
@@ -386,11 +409,12 @@ static int acp_rio_map_outb_mem(struct rio_mport *mport, u32 win,
 	unsigned long flags;
 	int rc;
 
-	if ((rc = __flags2rio_tr_type(mflags, &trans_type)) < 0) {
-                dev_err(priv->dev, "(%s) invalid transaction flags %x\n",
-                        __func__, mflags);
+	rc = __flags2rio_tr_type(mflags, &trans_type);
+	if (rc < 0) {
+		dev_err(priv->dev, "(%s) invalid transaction flags %x\n",
+			__func__, mflags);
 		return rc;
-        }
+	}
 
 	spin_lock_irqsave(&rio_io_lock, flags);
 
@@ -398,11 +422,11 @@ static int acp_rio_map_outb_mem(struct rio_mport *mport, u32 win,
 	if (unlikely(win >= RIO_OUTB_ATMU_WINDOWS ||
 		     !(aoutb->in_use && aoutb->riores))) {
 		spin_unlock_irqrestore(&rio_io_lock, flags);
-                dev_err(priv->dev, "(%s) faulty ATMU window (%d, %d, %8.8x)\n",
-                        __func__, win, aoutb->in_use, (u32) aoutb->riores);
+		dev_err(priv->dev, "(%s) faulty ATMU window (%d, %d, %8.8x)\n",
+			__func__, win, aoutb->in_use, (u32) aoutb->riores);
 		return -EINVAL;
 	}
-        __rio_local_read_config_32(mport, RAB_APIO_AMAP_CTRL(win), &ctrl);
+	__rio_local_read_config_32(mport, RAB_APIO_AMAP_CTRL(win), &ctrl);
 
 	if ((ctrl & 0x6) != trans_type) {
 		ctrl &= ~0x6;
@@ -410,12 +434,14 @@ static int acp_rio_map_outb_mem(struct rio_mport *mport, u32 win,
 	}
 	if (ctrl & 0x6) { /* RIO adress set - Not maintanance */
 		rbar |= RIO_ADDR_BASE(addr);
-                __rio_local_write_config_32(mport, RAB_APIO_AMAP_RBAR(win), rbar);
+		__rio_local_write_config_32(mport,
+					    RAB_APIO_AMAP_RBAR(win),
+					    rbar);
 	}
 	ctrl &= ~(0xffff0000); /* Target id clear */
 	ctrl |= TARGID(destid); /* Target id set */
 	ctrl |= ENABLE_AMBA; /* Enable window */
-        __rio_local_write_config_32(mport, RAB_APIO_AMAP_CTRL(win), ctrl);
+	__rio_local_write_config_32(mport, RAB_APIO_AMAP_CTRL(win), ctrl);
 
 	res->phys = aoutb->riores->start + RIO_ADDR_OFFSET(addr);
 	res->va = aoutb->win + RIO_ADDR_OFFSET(addr);
@@ -453,15 +479,16 @@ static int acp_rio_req_outb_region(struct rio_mport *mport,
 	unsigned long flags;
 
 	if (!(is_power_of_2(size))) {
-                dev_err(priv->dev, "(%s) size is not power of 2 (%llu)\n",
-                        __func__, size);
+		dev_err(priv->dev, "(%s) size is not power of 2 (%llu)\n",
+			__func__, size);
 		return -EFAULT;
-        }
-	if ((rc = __flags2rio_tr_type(mflags, &trans_type)) < 0) {
-                dev_err(priv->dev, "(%s) invalid transaction flags %x\n",
-                        __func__, mflags);
+	}
+	rc = __flags2rio_tr_type(mflags, &trans_type);
+	if (rc < 0) {
+		dev_err(priv->dev, "(%s) invalid transaction flags %x\n",
+			__func__, mflags);
 		return rc;
-        }
+	}
 
 	spin_lock_irqsave(&rio_io_lock, flags);
 
@@ -472,7 +499,9 @@ static int acp_rio_req_outb_region(struct rio_mport *mport,
 
 	if (win == RIO_OUTB_ATMU_WINDOWS) {
 		spin_unlock_irqrestore(&rio_io_lock, flags);
-                dev_err(priv->dev, "(%s) out of ATMU windows to use\n", __func__);
+		dev_err(priv->dev,
+			"(%s) out of ATMU windows to use\n",
+			__func__);
 		return -ENOMEM;
 	}
 	aoutb = &priv->outb_atmu[win];
@@ -484,7 +513,9 @@ static int acp_rio_req_outb_region(struct rio_mport *mport,
 	if (!riores) {
 		aoutb->in_use = 0;
 		spin_unlock_irqrestore(&rio_io_lock, flags);
-                dev_err(priv->dev, "(%s) failed to allocate resources\n", __func__);
+		dev_err(priv->dev,
+			"(%s) failed to allocate resources\n",
+			__func__);
 		return -ENOMEM;
 	}
 
@@ -494,7 +525,8 @@ static int acp_rio_req_outb_region(struct rio_mport *mport,
 	riores->flags = IORESOURCE_MEM;
 	if (allocate_resource(&mport->iores, riores,
 			      size, mport->iores.start,
-			      mport->iores.end, 0x400, NULL, NULL)) { /* Allign on 1kB boundry */
+			      mport->iores.end, 0x400, NULL, NULL)) {
+		/* Allign on 1kB boundry */
 		rc = -ENOMEM;
 		goto out_err_resource;
 	}
@@ -508,15 +540,15 @@ static int acp_rio_req_outb_region(struct rio_mport *mport,
 	/* Set base adress for window on PIO side */
 	wabar = AXI_BASE_HIGH(riores->start);
 	wabar |= AXI_BASE(riores->start);
-        __rio_local_write_config_32(mport, RAB_APIO_AMAP_ABAR(win), wabar);
+	__rio_local_write_config_32(mport, RAB_APIO_AMAP_ABAR(win), wabar);
 
 	/* Set size of window */
 	win_size |= WIN_SIZE((u32)size);
-        __rio_local_write_config_32(mport, RAB_APIO_AMAP_SIZE(win), win_size);
-        __rio_local_read_config_32(mport, RAB_APIO_AMAP_CTRL(win), &reg);
+	__rio_local_write_config_32(mport, RAB_APIO_AMAP_SIZE(win), win_size);
+	__rio_local_read_config_32(mport, RAB_APIO_AMAP_CTRL(win), &reg);
 	reg &= ~0x6;
 	reg |= trans_type;
-        __rio_local_write_config_32(mport, RAB_APIO_AMAP_CTRL(win), reg);
+	__rio_local_write_config_32(mport, RAB_APIO_AMAP_CTRL(win), reg);
 
 	spin_lock_irqsave(&rio_io_lock, flags);
 	aoutb->win = iowin;
@@ -561,13 +593,15 @@ static void acp_rio_release_outb_region(struct rio_mport *mport,
 
 	spin_lock_irqsave(&rio_io_lock, flags);
 
-        __rio_local_read_config_32(mport, RAB_APIO_AMAP_CTRL(win), &ctrl);
+	__rio_local_read_config_32(mport, RAB_APIO_AMAP_CTRL(win), &ctrl);
 	if (likely(priv->outb_atmu[win].in_use)) {
 		struct atmu_outb *aoutb = &priv->outb_atmu[win];
 		struct resource *riores = aoutb->riores;
 		void __iomem *iowin = aoutb->win;
 
-                __rio_local_write_config_32(mport, RAB_APIO_AMAP_CTRL(win), ctrl & ~ENABLE_AMBA);
+		__rio_local_write_config_32(mport,
+					    RAB_APIO_AMAP_CTRL(win),
+					    ctrl & ~ENABLE_AMBA);
 		aoutb->riores = NULL;
 		aoutb->win = NULL;
 
@@ -599,14 +633,14 @@ void acp3400_rio_set_mport_disc_mode(struct rio_mport *mport)
 
 	if (mport->enum_host) {
 		__rio_local_write_config_32(mport, RIO_GCCSR,
-                                            RIO_PORT_GEN_HOST |
-                                            RIO_PORT_GEN_MASTER |
-                                            RIO_PORT_GEN_DISCOVERED);
+					    RIO_PORT_GEN_HOST |
+					    RIO_PORT_GEN_MASTER |
+					    RIO_PORT_GEN_DISCOVERED);
 	} else {
 		__rio_local_write_config_32(mport, RIO_GCCSR, 0x00000000);
 		__rio_local_write_config_32(mport, RIO_DID_CSR,
 					    RIO_SET_DID(mport->sys_size,
-							RIO_ANY_DESTID(mport->sys_size)));
+					    RIO_ANY_DESTID(mport->sys_size)));
 	}
 	__rio_local_read_config_32(mport, RIO_GCCSR, &result);
 
@@ -641,7 +675,8 @@ static void rio_init_port_data(struct rio_mport *mport)
 
 #if defined(CONFIG_ACP_RIO_16B_ID)
 	__rio_local_read_config_32(mport, RAB_SRDS_CTRL0, &data);
-	__rio_local_write_config_32(mport, RAB_SRDS_CTRL0, data | RAB_SRDS_CTRL0_16B_ID);
+	__rio_local_write_config_32(mport, RAB_SRDS_CTRL0,
+				    data | RAB_SRDS_CTRL0_16B_ID);
 #endif
 	/* Probe the master port phy type */
 	__rio_local_read_config_32(mport, RIO_CCSR, &ccsr);
@@ -654,7 +689,7 @@ static void rio_init_port_data(struct rio_mport *mport)
 	__rio_local_read_config_32(mport, RIO_PEF_CAR, &data);
 	mport->sys_size = (data & RIO_PEF_CTLS) >> 4;
 	dev_dbg(priv->dev, "RapidIO Common Transport System size: %d\n",
-                 mport->sys_size ? 65536 : 256);
+		mport->sys_size ? 65536 : 256);
 }
 
 /**
@@ -724,9 +759,9 @@ static int rio_start_port(struct rio_mport *mport)
 
 	if (escsr & RIO_ESCSR_PU) {
 
-		dev_err(priv->dev, "Port is not ready/restart ordered. "
-			"Try to restart connection...\n");
-                /* Disable ports */
+		dev_err(priv->dev,
+			"Port is not ready/restart ordered. Try to restart connection...\n");
+		/* Disable ports */
 		ccsr |= RIO_CCSR_PD;
 		__rio_local_write_config_32(mport, RIO_CCSR, ccsr);
 		switch (mport->phy_type) {
@@ -793,9 +828,9 @@ static void rio_rab_ctrl_setup(struct rio_mport *mport)
 static void rio_rab_pio_enable(struct rio_mport *mport)
 {
 	__rio_local_write_config_32(mport, RAB_APIO_CTRL,
-                                    RAB_APIO_MAINT_MAP_EN |
-                                    RAB_APIO_MEM_MAP_EN |
-                                    RAB_APIO_PIO_EN);
+				    RAB_APIO_MAINT_MAP_EN |
+				    RAB_APIO_MEM_MAP_EN |
+				    RAB_APIO_PIO_EN);
 	__rio_local_write_config_32(mport, RAB_RPIO_CTRL, RAB_RPIO_PIO_EN);
 }
 
@@ -823,10 +858,14 @@ int acp3400_rio_static_win_init(struct rio_mport *mport)
 				     &priv->maint_win_id)) < 0)
 		goto err;
 
-	__rio_local_read_config_32(mport, RAB_APIO_AMAP_CTRL(priv->maint_win_id), &ctrl);
+	__rio_local_read_config_32(mport,
+				   RAB_APIO_AMAP_CTRL(priv->maint_win_id),
+				   &ctrl);
 	/* Enable window */
 	ctrl |= ENABLE_AMBA;
-	__rio_local_write_config_32(mport, RAB_APIO_AMAP_CTRL(priv->maint_win_id), ctrl);
+	__rio_local_write_config_32(mport,
+				    RAB_APIO_AMAP_CTRL(priv->maint_win_id),
+				    ctrl);
 
 	return 0;
 err:
@@ -884,16 +923,18 @@ static int rio_parse_dtb(struct platform_device *dev,
 	rc = of_address_to_resource(dev->dev.of_node, 0, regs);
 	if (rc) {
 		dev_err(&dev->dev, "Can't get %s property 'reg'\n",
-                        dev->dev.of_node->full_name);
+			dev->dev.of_node->full_name);
 		return -EFAULT;
 	}
-	dev_dbg(&dev->dev, "Of-device full name %s\n", dev->dev.of_node->full_name);
+	dev_dbg(&dev->dev,
+		"Of-device full name %s\n",
+		 dev->dev.of_node->full_name);
 	dev_dbg(&dev->dev, "Regs: %pR\n", regs);
 
 	dt_range = of_get_property(dev->dev.of_node, "ranges", &rlen);
 	if (!dt_range) {
 		dev_err(&dev->dev, "Can't get %s property 'ranges'\n",
-                        dev->dev.of_node->full_name);
+			dev->dev.of_node->full_name);
 		return -EFAULT;
 	}
 
@@ -916,7 +957,7 @@ static int rio_parse_dtb(struct platform_device *dev,
 	*law_size = of_read_number(dt_range + aw + paw, sw);
 
 	dev_dbg(&dev->dev, "LAW start 0x%016llx, size 0x%016llx.\n",
-                 *law_start, *law_size);
+		*law_start, *law_size);
 
 	*irq = irq_of_parse_and_map(dev->dev.of_node, 0);
 	dev_dbg(&dev->dev, "irq: %d\n", *irq);
@@ -1004,8 +1045,8 @@ static struct rio_mport *rio_mport_dtb_setup(struct platform_device *dev,
 	mport->iores.sibling = NULL;
 
 	if (request_resource(&iomem_resource, &mport->iores) < 0) {
-		dev_err(&dev->dev, "RIO: Error requesting master port region"
-			" 0x%016llx-0x%016llx\n",
+		dev_err(&dev->dev,
+			"RIO: Error requesting master port region 0x%016llx-0x%016llx\n",
 			(u64)mport->iores.start, (u64)mport->iores.end);
 		kfree(mport);
 		return ERR_PTR(-ENOMEM);
@@ -1055,7 +1096,7 @@ static struct rio_priv *rio_priv_dtb_setup(struct platform_device *dev,
 
 	/* mport port driver handle */
 	mport->priv = priv;
-        /* Interrupt handling */
+x/* Interrupt handling */
 	priv->irq_line = irq;
 	acp3400_rio_port_irq_init(mport);
 	/* dev ptr for debug printouts */
@@ -1112,7 +1153,8 @@ int acp3400_rio_start_port(struct rio_mport *mport)
 	/* Check port traning state:
 	 */
 
-	if ((rc = rio_start_port(mport)) < 0) {
+	rc = rio_start_port(mport);
+	if (rc < 0) {
 #ifdef CONFIG_RAPIDIO_HOTPLUG
 		dev_warn(priv->dev, "Link is down - will continue anyway\n");
 #else
@@ -1201,7 +1243,8 @@ static int acp_rio_setup(struct platform_device *dev)
 
 	/* Start port and enable basic memmap access
 	 */
-	if ((rc = acp3400_rio_start_port(mport)) < 0)
+	rc = acp3400_rio_start_port(mport);
+	if (rc < 0)
 		goto err_maint;
 
 	/* Hookup IRQ handlers
@@ -1221,7 +1264,7 @@ static int acp_rio_setup(struct platform_device *dev)
 	}
 	if (mport->host_deviceid >= 0)
 		mport->enum_host = 1;
-        else
+	else
 		mport->enum_host = 0;
 
 	acp3400_rio_set_mport_disc_mode(mport);
@@ -1254,7 +1297,7 @@ err_ops:
 static int __devinit acp_of_rio_rpn_probe(struct platform_device *dev)
 {
 	printk(KERN_INFO "Setting up RapidIO peer-to-peer network %s\n",
-               dev->dev.of_node->full_name);
+	       dev->dev.of_node->full_name);
 
 	return acp_rio_setup(dev);
 };

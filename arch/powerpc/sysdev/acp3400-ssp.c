@@ -130,9 +130,15 @@ int acp3400_ssp_write(void *data, unsigned int len, unsigned int flags)
 	/* CR0 setup */
 	val = SSP_CR0_FRF_SPI | SSP_CR0_DSS_8BIT;
 	switch (flags & 0x03) {
-	case ACP3400_SSP_CLK_50MHZ: val |= SSP_CR0_SCR_50MHZ; break;
-	case ACP3400_SSP_CLK_25MHZ: val |= SSP_CR0_SCR_25MHZ; break;
-	case ACP3400_SSP_CLK_12_5MHZ: val |= SSP_CR0_SCR_12_5MHZ; break;
+	case ACP3400_SSP_CLK_50MHZ:
+		val |= SSP_CR0_SCR_50MHZ;
+		break;
+	case ACP3400_SSP_CLK_25MHZ:
+		val |= SSP_CR0_SCR_25MHZ;
+		break;
+	case ACP3400_SSP_CLK_12_5MHZ:
+		val |= SSP_CR0_SCR_12_5MHZ;
+		break;
 	case ACP3400_SSP_CLK_6_25MHZ:
 	default:
 		val |= SSP_CR0_SCR_6_25MHZ;
@@ -166,7 +172,8 @@ int acp3400_ssp_write(void *data, unsigned int len, unsigned int flags)
 	/* wait for transfer to be finished */
 	tmo_jiffies = jiffies + msecs_to_jiffies(1000); /* 1s timeout */
 	while (le32_to_cpu(ssp->ssp_regs->sr) & SSP_SR_BSY &&
-	       time_before(jiffies, tmo_jiffies)) udelay(1);
+	       time_before(jiffies, tmo_jiffies))
+		udelay(1);
 
 	if (time_after(jiffies, tmo_jiffies)) {
 		ret = -EIO;

@@ -98,26 +98,46 @@ struct acp3400_i2c {
 #ifdef ACP3400_I2C_DEBUG
 static void dump_regs(struct acp3400_i2c *i2c)
 {
-	pr_info("i2c-reg: txconfig    %8.8x\n", in_le32(&i2c->i2c_regs->txconfig));
-	pr_info("i2c-reg: rxconfig    %8.8x\n", in_le32(&i2c->i2c_regs->rxconfig));
-	pr_info("i2c-reg: txstatus    %8.8x\n", in_le32(&i2c->i2c_regs->txstatus));
-	pr_info("i2c-reg: rxstatus    %8.8x\n", in_le32(&i2c->i2c_regs->rxstatus));
-	pr_info("i2c-reg: irqenable   %8.8x\n", in_le32(&i2c->i2c_regs->irqenable));
-	pr_info("i2c-reg: irqclear    %8.8x\n", in_le32(&i2c->i2c_regs->irqclear));
-	pr_info("i2c-reg: irqstatus   %8.8x\n", in_le32(&i2c->i2c_regs->irqstatus));
-	pr_info("i2c-reg: clkconfig   %8.8x\n", in_le32(&i2c->i2c_regs->clkconfig));
-	pr_info("i2c-reg: startsetup  %8.8x\n", in_le32(&i2c->i2c_regs->startsetup));
-	pr_info("i2c-reg: stopsetup   %8.8x\n", in_le32(&i2c->i2c_regs->stopsetup));
-	pr_info("i2c-reg: datasetup   %8.8x\n", in_le32(&i2c->i2c_regs->datasetup));
-	pr_info("i2c-reg: bypassmode  %8.8x\n", in_le32(&i2c->i2c_regs->bypassmode));
-	pr_info("i2c-reg: slaveaddr   %8.8x\n", in_le32(&i2c->i2c_regs->slaveaddr));
-	pr_info("i2c-reg: txdata0     %8.8x\n", in_le32(&i2c->i2c_regs->txdata0));
-	pr_info("i2c-reg: txdata1     %8.8x\n", in_le32(&i2c->i2c_regs->txdata1));
-	pr_info("i2c-reg: rxdata0     %8.8x\n", in_le32(&i2c->i2c_regs->rxdata0));
-	pr_info("i2c-reg: rxdata1     %8.8x\n", in_le32(&i2c->i2c_regs->rxdata1));
-        pr_info("i2c-timer-reg: loadval %8.8x\n", in_le32(&i2c->timer_regs->loadval));
-	pr_info("i2c-timer-reg: val     %8.8x\n", in_le32(&i2c->timer_regs->val));
-	pr_info("i2c-timer-reg: control %8.8x\n", in_le32(&i2c->timer_regs->control));
+	pr_info("i2c-reg: txconfig    %8.8x\n",
+		 in_le32(&i2c->i2c_regs->txconfig));
+	pr_info("i2c-reg: rxconfig    %8.8x\n",
+		 in_le32(&i2c->i2c_regs->rxconfig));
+	pr_info("i2c-reg: txstatus    %8.8x\n",
+		 in_le32(&i2c->i2c_regs->txstatus));
+	pr_info("i2c-reg: rxstatus    %8.8x\n",
+		 in_le32(&i2c->i2c_regs->rxstatus));
+	pr_info("i2c-reg: irqenable   %8.8x\n",
+		 in_le32(&i2c->i2c_regs->irqenable));
+	pr_info("i2c-reg: irqclear    %8.8x\n",
+		 in_le32(&i2c->i2c_regs->irqclear));
+	pr_info("i2c-reg: irqstatus   %8.8x\n",
+		 in_le32(&i2c->i2c_regs->irqstatus));
+	pr_info("i2c-reg: clkconfig   %8.8x\n",
+		 in_le32(&i2c->i2c_regs->clkconfig));
+	pr_info("i2c-reg: startsetup  %8.8x\n",
+		 in_le32(&i2c->i2c_regs->startsetup));
+	pr_info("i2c-reg: stopsetup   %8.8x\n",
+		 in_le32(&i2c->i2c_regs->stopsetup));
+	pr_info("i2c-reg: datasetup   %8.8x\n",
+		 in_le32(&i2c->i2c_regs->datasetup));
+	pr_info("i2c-reg: bypassmode  %8.8x\n",
+		 in_le32(&i2c->i2c_regs->bypassmode));
+	pr_info("i2c-reg: slaveaddr   %8.8x\n",
+		 in_le32(&i2c->i2c_regs->slaveaddr));
+	pr_info("i2c-reg: txdata0     %8.8x\n",
+		 in_le32(&i2c->i2c_regs->txdata0));
+	pr_info("i2c-reg: txdata1     %8.8x\n",
+		 in_le32(&i2c->i2c_regs->txdata1));
+	pr_info("i2c-reg: rxdata0     %8.8x\n",
+		 in_le32(&i2c->i2c_regs->rxdata0));
+	pr_info("i2c-reg: rxdata1     %8.8x\n",
+		 in_le32(&i2c->i2c_regs->rxdata1));
+	pr_info("i2c-timer-reg: loadval %8.8x\n",
+		 in_le32(&i2c->timer_regs->loadval));
+	pr_info("i2c-timer-reg: val     %8.8x\n",
+		 in_le32(&i2c->timer_regs->val));
+	pr_info("i2c-timer-reg: control %8.8x\n",
+		 in_le32(&i2c->timer_regs->control));
 }
 #endif
 /*
@@ -130,9 +150,9 @@ static int acp3400_i2c_write_bytes(struct acp3400_i2c *i2c,
 	unsigned int reg_value, data[2] = {0, 0};
 	int cnt, ret = 0;
 
-	if (msgs->len > (ACPI2C_REG_BSIZE * ACPI2C_DATA_REGS)) {
+	if (msgs->len > (ACPI2C_REG_BSIZE * ACPI2C_DATA_REGS))
 		return -EINVAL;
-	}
+
 	/* Set message */
 	for (cnt = 0; cnt < msgs->len; cnt++) {
 		data[1] <<= 8;
@@ -167,9 +187,8 @@ static int acp3400_i2c_write_bytes(struct acp3400_i2c *i2c,
 		reg_value = in_le32(&i2c->i2c_regs->txstatus);
 	}
 #ifdef ACP3400_I2C_DEBUG
-	if (ACPI2C_XFER_DONE != reg_value) {
+	if (ACPI2C_XFER_DONE != reg_value)
 		dump_regs(i2c);
-	}
 #endif
 	/* Clear registers */
 	out_le32(&i2c->i2c_regs->irqclear, ACPI2C_CLEAR_IRQ);
@@ -196,18 +215,18 @@ static int acp3400_i2c_read_bytes(struct acp3400_i2c *i2c,
 	unsigned int reg_value, data[2];
 	int cnt, ret = 0;
 
-	if (msgs->len > (ACPI2C_REG_BSIZE * ACPI2C_DATA_REGS)) {
+	if (msgs->len > (ACPI2C_REG_BSIZE * ACPI2C_DATA_REGS))
 		return -EINVAL;
-	}
+
 	/* Setup a reception */
 	reg_value = (msgs->len << 1) & 0x1e;
 	if (msgs->flags & I2C_M_TEN) {
-	      reg_value |= ACPI2C_10BIT_ADDR;
-	      /* TODO update slave address accordingly */
+		reg_value |= ACPI2C_10BIT_ADDR;
+		/* TODO update slave address accordingly */
 	}
 	out_le32(&i2c->i2c_regs->rxconfig, reg_value);
 
-        /* set read mode and start clock */
+	/* set read mode and start clock */
 	reg_value |= ACPI2C_XFER_START;
 	out_le32(&i2c->i2c_regs->rxconfig, reg_value);
 
@@ -241,9 +260,8 @@ static int acp3400_i2c_read_bytes(struct acp3400_i2c *i2c,
 				((8 * (cnt - ACPI2C_REG_BSIZE)) & 0xFF);
 	}
 #ifdef ACP3400_I2C_DEBUG
-	if (ACPI2C_XFER_DONE != (reg_value & 0x03)) {
+	if (ACPI2C_XFER_DONE != (reg_value & 0x03))
 		dump_regs(i2c);
-	}
 #endif
 	/* clear registers */
 	out_le32(&i2c->i2c_regs->irqclear, ACPI2C_CLEAR_IRQ);
@@ -291,7 +309,8 @@ static int acp3400_i2c_xfer_bytes(struct acp3400_i2c *i2c,
 	out_le32(&i2c->i2c_regs->txconfig,
 		 ACPI2C_MASTER_OP_CLEAR | ACPI2C_MASTER_MODE);
 
-	out_le32(&i2c->i2c_regs->txconfig, ACPI2C_MASTER_MODE | ACPI2C_STOP_MODE);
+	out_le32(&i2c->i2c_regs->txconfig,
+		 ACPI2C_MASTER_MODE | ACPI2C_STOP_MODE);
 
 	/* I2C clock frequency and duty cycle */
 	out_le32(&i2c->i2c_regs->clkconfig, ACPI2C_CLK_100KHZ);
@@ -321,7 +340,8 @@ static void acp3400_i2c_dummy_xfer(struct acp3400_i2c *i2c)
 	out_le32(&i2c->i2c_regs->txconfig,
 		 ACPI2C_MASTER_OP_CLEAR | ACPI2C_MASTER_MODE);
 
-	out_le32(&i2c->i2c_regs->txconfig, ACPI2C_MASTER_MODE | ACPI2C_STOP_MODE);
+	out_le32(&i2c->i2c_regs->txconfig,
+		 ACPI2C_MASTER_MODE | ACPI2C_STOP_MODE);
 
 	/* I2C clock frequency and duty cycle */
 	out_le32(&i2c->i2c_regs->clkconfig, ACPI2C_CLK_100KHZ);
@@ -338,8 +358,9 @@ static void acp3400_i2c_dummy_xfer(struct acp3400_i2c *i2c)
 	/* Number of bytes 0, clear stop mode */
 	out_le32(&i2c->i2c_regs->txconfig, ACPI2C_MASTER_MODE);
 
-        /* Set Transmit Ready - triggers the transmit transaction */
-	out_le32(&i2c->i2c_regs->txconfig, (ACPI2C_XFER_START | ACPI2C_MASTER_MODE));
+	/* Set Transmit Ready - triggers the transmit transaction */
+	out_le32(&i2c->i2c_regs->txconfig,
+		 (ACPI2C_XFER_START | ACPI2C_MASTER_MODE));
 
 }
 
@@ -377,15 +398,13 @@ static int acp3400_i2c_xfer(struct i2c_adapter *adap,
 			return -EINVAL;
 		if ((msgs[0].addr != msgs[msg_cnt].addr) ||
 		    ((msgs[0].flags & I2C_M_TEN) !=
-		    		(msgs[msg_cnt].flags & I2C_M_TEN)))
+			(msgs[msg_cnt].flags & I2C_M_TEN)))
 			return -EINVAL;
 	}
 
 	/* Do real transfer */
 	for (msg_cnt = 0; msg_cnt < num; msg_cnt++)
-	{
 		ret = acp3400_i2c_xfer_bytes(i2c, &msgs[msg_cnt]);
-	}
 
 	return ret < 0 ? ret : num;
 }

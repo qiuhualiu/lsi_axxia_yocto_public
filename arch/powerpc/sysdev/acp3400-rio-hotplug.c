@@ -69,7 +69,8 @@ static inline void __srds_phy_enable(struct rio_mport *mport)
 	msleep(100);
 #if defined(CONFIG_ACP_RIO_16B_ID)
 	__rio_local_read_config_32(mport, RAB_SRDS_CTRL0, &srds_ctrl);
-	__rio_local_write_config_32(mport, RAB_SRDS_CTRL0, srds_ctrl | RAB_SRDS_CTRL0_16B_ID);
+	__rio_local_write_config_32(mport, RAB_SRDS_CTRL0,
+					 srds_ctrl | RAB_SRDS_CTRL0_16B_ID);
 #endif
 
 }
@@ -86,7 +87,7 @@ static inline void __srds_phy_enable(struct rio_mport *mport)
 static inline void __rio_rab_pio_disable(struct rio_mport *mport)
 {
 	__rio_local_write_config_32(mport, RAB_PIO_RESET,
-                                    (RAB_PIO_RESET_RPIO | RAB_PIO_RESET_APIO));
+				(RAB_PIO_RESET_RPIO | RAB_PIO_RESET_APIO));
 	msleep(1);
 }
 
@@ -106,9 +107,9 @@ static int get_input_status(struct rio_mport *mport, u32 *rsp)
 	__rio_local_read_config_32(mport, RIO_ACK_STS_CSR, &sts_csr);
 
 	dev_dbg(priv->dev, "RIO_ACK_STS_CSR %8.8x, IA %x, OUTA %x, OBA %x\n",
-                sts_csr, (sts_csr & RIO_ACK_STS_IA) >> 24,
-                (sts_csr & RIO_ACK_STS_OUTA) >> 8,
-                (sts_csr) & RIO_ACK_STS_OBA);
+		sts_csr, (sts_csr & RIO_ACK_STS_IA) >> 24,
+		(sts_csr & RIO_ACK_STS_OUTA) >> 8,
+		(sts_csr) & RIO_ACK_STS_OBA);
 
 	/* Read to clear valid bit... */
 	__rio_local_read_config_32(mport, RIO_MNT_RSP_CSR, &rsp_csr);
@@ -147,8 +148,8 @@ static int clr_sync_err(struct rio_mport *mport)
 	__rio_local_read_config_32(mport, RIO_ACK_STS_CSR, &sts_csr);
 	near_ackid = (sts_csr & RIO_ACK_STS_IA) >> 24;
 	dev_dbg(priv->dev,
-                "far_ackID=0x%02x far_linkstat=0x%02x near_ackID=0x%02x\n",
-                far_ackid, far_linkstat, near_ackid);
+		"far_ackID=0x%02x far_linkstat=0x%02x near_ackID=0x%02x\n",
+		far_ackid, far_linkstat, near_ackid);
 
 	if ((far_ackid != ((sts_csr & RIO_ACK_STS_OUTA) >> 8)) ||
 	    (far_ackid != (sts_csr & RIO_ACK_STS_OBA))) {
@@ -159,15 +160,15 @@ static int clr_sync_err(struct rio_mport *mport)
 		 * Should be cleande up after reset though, it may work.
 		 */
 		__rio_local_write_config_32(mport, RIO_ACK_STS_CSR,
-                                            (near_ackid << 24) | (far_ackid << 8) | far_ackid);
+			(near_ackid << 24) | (far_ackid << 8) | far_ackid);
 	}
 	/* Debug: Show current state */
 	__rio_local_read_config_32(mport, RIO_ACK_STS_CSR, &sts_csr);
 
 	dev_dbg(priv->dev, "RIO_ACK_STS_CSR %8.8x, IA %x, OUTA %x, OBA %x\n",
-                sts_csr, (sts_csr & RIO_ACK_STS_IA) >> 24,
-                (sts_csr & RIO_ACK_STS_OUTA) >> 8,
-                (sts_csr) & RIO_ACK_STS_OBA);
+		sts_csr, (sts_csr & RIO_ACK_STS_IA) >> 24,
+		(sts_csr & RIO_ACK_STS_OUTA) >> 8,
+		(sts_csr) & RIO_ACK_STS_OBA);
 
 	__rio_local_read_config_32(mport, RIO_ESCSR, &escsr);
 	return (escsr & (RIO_ESCSR_OES | RIO_ESCSR_IES) ? -EFAULT : 0);
@@ -246,7 +247,8 @@ static void rio_mp_insert(struct rio_mport *mport)
 
 static void acp_rio_hotswap_work(struct work_struct *work)
 {
-	struct acp_rio_work *hotswap_work = container_of(work, struct acp_rio_work, work);
+	struct acp_rio_work *hotswap_work =
+			 container_of(work, struct acp_rio_work, work);
 	struct rio_mport *mport = hotswap_work->mport;
 	struct rio_priv *priv = mport->priv;
 	struct completion *cmp = hotswap_work->cmp;
@@ -315,7 +317,8 @@ int acp3400_rio_hotswap(struct rio_mport *mport, u8 flags)
 	struct rio_priv *priv = mport->priv;
 	struct completion cmp;
 	unsigned long tmo = msecs_to_jiffies(6000);
-	struct acp_rio_work *hotswap_work = kzalloc(sizeof(*hotswap_work), GFP_KERNEL);
+	struct acp_rio_work *hotswap_work =
+		 kzalloc(sizeof(*hotswap_work), GFP_KERNEL);
 	int rc = 0;
 
 	if (!hotswap_work)
@@ -334,7 +337,7 @@ int acp3400_rio_hotswap(struct rio_mport *mport, u8 flags)
 	/* Wait for completion */
 	tmo = wait_for_completion_timeout(&cmp, tmo);
 	if (!tmo) {
-		dev_warn(priv->dev, "%s TimeOut\n",__func__);
+		dev_warn(priv->dev, "%s TimeOut\n", __func__);
 		return -ETIME;
 	}
 	if ((flags & RIO_HOT_SWAP_INSERT) && rio_port_stopped(mport))
@@ -343,7 +346,7 @@ int acp3400_rio_hotswap(struct rio_mport *mport, u8 flags)
 		rc = -EFAULT;
 	if (rc)
 		dev_info(priv->dev, "(%s): Exit %s (%d)\n",
-			 __func__, (rc ? "NOK":"OK"), rc);
+			 __func__, (rc ? "NOK" : "OK"), rc);
 
 	return rc;
 }

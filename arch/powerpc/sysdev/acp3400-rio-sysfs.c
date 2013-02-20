@@ -60,13 +60,19 @@ static const char *irq_str[] = {
 	"Logical/Transport layer errors                       ",
 	"General RapidIO Controller errors                    ",
 	"Unsupported RIO req received                         ",
-	/* Peripheral Bus bridge, RapidIO -> Peripheral bus events - mostly bad! */
+	/*
+	 * Peripheral Bus bridge, RapidIO -> Peripheral
+	 * bus events - mostly bad!
+	 */
 	"RapidIO PIO Transaction completed                    ",
 	"RapidIO PIO Transaction failed                       ",
 	"RapidIO PIO Response error                           ",
 	"RapidIO PIO Invalid address map                      ",
 	"RapidIO PIO engine disabled                          ",
-	/* Peripheral Bus bridge, Peripheral bus -> RapidIO events - mostly bad! */
+	/*
+	 * Peripheral Bus bridge, Peripheral bus ->
+	 * RapidIO events - mostly bad!
+	 */
 	"Axi PIO Transaction completed                        ",
 	"Axi PIO Request format error                         ",
 	"Axi PIO Transaction timouts                          ",
@@ -87,36 +93,36 @@ static const char *irq_str[] = {
 	"Inbound Dorrbell completed                           ",
 	"Inbound Dorrbell spurious                            ",
 	/* Outbound Messaging unit - service irq */
-        "Outbound Message Engine response timeouts            ",
-        "Outbound Message Engine response error               ",
-        "Outbound Message Engine transaction error            ",
-        "Outbound Message Engine descriptor update error      ",
-        "Outbound Message Engine descriptor error             ",
-        "Outbound Message Engine descriptor fetch error       ",
-        "Outbound Message Engine sleeping mode                ",
-        "Outbound Message Engine transaction completed        ",
-        "Outbound Message Engine desc chain transfer completed",
-        "Outbound Message Engine transaction pending          ",
-        "Outbound Message descriptor error response           ",
-        "Outbound Message descriptor Axi error                ",
-        "Outbound Message descriptor timeout error            ",
-        "Outbound Message descriptor transaction completed    ",
+	"Outbound Message Engine response timeouts            ",
+	"Outbound Message Engine response error               ",
+	"Outbound Message Engine transaction error            ",
+	"Outbound Message Engine descriptor update error      ",
+	"Outbound Message Engine descriptor error             ",
+	"Outbound Message Engine descriptor fetch error       ",
+	"Outbound Message Engine sleeping mode                ",
+	"Outbound Message Engine transaction completed        ",
+	"Outbound Message Engine desc chain transfer completed",
+	"Outbound Message Engine transaction pending          ",
+	"Outbound Message descriptor error response           ",
+	"Outbound Message descriptor Axi error                ",
+	"Outbound Message descriptor timeout error            ",
+	"Outbound Message descriptor transaction completed    ",
 	/* Inbound Messaging unit - service irq */
 	"Unexpected Inbound message received                  ",
-        "Inbound Message Engine recv multi-seg timeouts       ",
-        "Inbound Message Engine message checking error        ",
-        "Inbound Message Engine data transaction error        ",
-        "Inbound Message Engine descriptor update error       ",
-        "Inbound Message Engine descriptor error              ",
-        "Inbound Message Engine descriptor fetch error        ",
-        "Inbound Message Engine sleeping mode                 ",
-        "Inbound Message Engine transaction completed         ",
-        "Inbound Message Engine desc chain transfer completed ",
-        "Inbound Message Engine spurious                      ",
-        "Inbound Message descriptor error response            ",
-        "Inbound Message descriptor Axi error                 ",
-        "Inbound Message descriptor timeout error             ",
-        "Inbound Message descriptor transaction completed     ",
+	"Inbound Message Engine recv multi-seg timeouts       ",
+	"Inbound Message Engine message checking error        ",
+	"Inbound Message Engine data transaction error        ",
+	"Inbound Message Engine descriptor update error       ",
+	"Inbound Message Engine descriptor error              ",
+	"Inbound Message Engine descriptor fetch error        ",
+	"Inbound Message Engine sleeping mode                 ",
+	"Inbound Message Engine transaction completed         ",
+	"Inbound Message Engine desc chain transfer completed ",
+	"Inbound Message Engine spurious                      ",
+	"Inbound Message descriptor error response            ",
+	"Inbound Message descriptor Axi error                 ",
+	"Inbound Message descriptor timeout error             ",
+	"Inbound Message descriptor transaction completed     ",
 	"RIO_IRQ_NUM"
 };
 
@@ -154,18 +160,18 @@ static ssize_t acp_rio_stat_show(struct device *dev,
 
 	acp3400_rio_port_get_state(mport, 0);
 	str += sprintf(str, "Master Port state:\n");
-	for (i=0; i<RIO_STATE_NUM; i++) {
+	for (i = 0; i < RIO_STATE_NUM; i++) {
 		if (atomic_read(&priv->state[i]))
 			str += sprintf(str, "%s\n", state_str[i]);
 	}
 	str += sprintf(str, "Master Port event counters:\n");
-	for (i=0; i<RIO_EVENT_NUM; i++) {
+	for (i = 0; i < RIO_EVENT_NUM; i++) {
 		int c = atomic_read(&priv->event[i]);
 		if (c)
 			str += sprintf(str, "%s:\t%d\n", event_str[i], c);
 	}
 	str += sprintf(str, "Master Port interrupt counters:\n");
-	for (i=0; i<RIO_IRQ_NUM; i++) {
+	for (i = 0; i < RIO_IRQ_NUM; i++) {
 		int c = atomic_read(&priv->irq[i]);
 		if (c)
 			str += sprintf(str, "%s:\t%d\n", irq_str[i], c);
@@ -181,15 +187,16 @@ static ssize_t acp_rio_ib_dme_show(struct device *dev,
 	struct rio_mport *mport = dev_get_drvdata(dev);
 	struct rio_priv *priv = mport->priv;
 	char *str = buf;
-	int i,e;
+	int i, e;
 
 	str += sprintf(str, "Inbound Message Engine event counters:\n");
-	for (e=0; e<DME_MAX_IB_ENGINES; e++) {
+	for (e = 0; e < DME_MAX_IB_ENGINES; e++) {
 		str += sprintf(str, "Mailbox %d Letter %d:\n", e/4, e % 4);
-		for (i=0; i<RIO_IB_DME_NUM; i++) {
+		for (i = 0; i < RIO_IB_DME_NUM; i++) {
 			int c = atomic_read(&priv->ib_dme[e][i]);
 			if (c)
-				str += sprintf(str, "%s:\t%d\n", ib_dme_str[i], c);
+				str += sprintf(str, "%s:\t%d\n",
+					       ib_dme_str[i], c);
 		}
 	}
 	return str - buf;
@@ -199,18 +206,18 @@ static ssize_t acp_rio_ib_dme_store(struct device *dev,
 				    const char *buf,
 				    size_t count)
 {
-        struct rio_mport *mport = dev_get_drvdata(dev);
-        struct rio_priv *priv = mport->priv;
-        int i,e;
+	struct rio_mport *mport = dev_get_drvdata(dev);
+	struct rio_priv *priv = mport->priv;
+	int i, e;
 
-        for (e=0; e<DME_MAX_IB_ENGINES; e++) {
-                for (i=0; i<RIO_IB_DME_NUM; i++) {
-                        atomic_set(&priv->ib_dme[e][i], 0);
-                }
-        }
-	return count;
+	for (e = 0; e < DME_MAX_IB_ENGINES; e++) {
+		for (i = 0; i < RIO_IB_DME_NUM; i++)
+			atomic_set(&priv->ib_dme[e][i], 0);
+	}
+	count;
 }
-static DEVICE_ATTR(ib_dme_event, S_IRUGO|S_IWUGO, acp_rio_ib_dme_show, acp_rio_ib_dme_store);
+static DEVICE_ATTR(ib_dme_event, S_IRUGO|S_IWUGO,
+		   acp_rio_ib_dme_show, acp_rio_ib_dme_store);
 
 static ssize_t acp_rio_ob_dme_show(struct device *dev,
 				   struct device_attribute *attr,
@@ -219,15 +226,16 @@ static ssize_t acp_rio_ob_dme_show(struct device *dev,
 	struct rio_mport *mport = dev_get_drvdata(dev);
 	struct rio_priv *priv = mport->priv;
 	char *str = buf;
-	int i,e;
+	int i, e;
 
 	str += sprintf(str, "Outbound Message Engine event counters:\n");
-	for (e=0; e<DME_MAX_OB_ENGINES; e++) {
+	for (e = 0; e < DME_MAX_OB_ENGINES; e++) {
 		str += sprintf(str, "Mailbox %d:\n", e);
-		for (i=0; i<RIO_OB_DME_NUM; i++) {
+		for (i = 0; i < RIO_OB_DME_NUM; i++) {
 			int c = atomic_read(&priv->ob_dme[e][i]);
 			if (c)
-				str += sprintf(str, "%s:\t%d\n", ob_dme_str[i], c);
+				str += sprintf(str, "%s:\t%d\n",
+					       ob_dme_str[i], c);
 		}
 	}
 	return str - buf;
@@ -237,15 +245,14 @@ static ssize_t acp_rio_ob_dme_store(struct device *dev,
 				    const char *buf,
 				    size_t count)
 {
-        struct rio_mport *mport = dev_get_drvdata(dev);
-        struct rio_priv *priv = mport->priv;
-        int i,e;
+	struct rio_mport *mport = dev_get_drvdata(dev);
+	struct rio_priv *priv = mport->priv;
+	int i, e;
 
-        for (e=0; e<DME_MAX_OB_ENGINES; e++) {
-                for (i=0; i<RIO_OB_DME_NUM; i++) {
-                        atomic_set(&priv->ob_dme[e][i], 0);
-                }
-        }
+	for (e = 0; e < DME_MAX_OB_ENGINES; e++) {
+		for (i = 0; i < RIO_OB_DME_NUM; i++)
+			atomic_set(&priv->ob_dme[e][i], 0);
+	}
 	return count;
 }
 static DEVICE_ATTR(ob_dme_event, S_IWUGO|S_IRUGO, acp_rio_ob_dme_show, acp_rio_ob_dme_store);
@@ -306,8 +313,8 @@ static ssize_t acp_rio_ib_dme_time_store(struct device *dev,
 					 const char *buf,
 					 size_t count)
 {
-        struct rio_mport *mport = dev_get_drvdata(dev);
-        struct rio_priv *priv = mport->priv;
+	struct rio_mport *mport = dev_get_drvdata(dev);
+	struct rio_priv *priv = mport->priv;
 	struct rio_rx_mbox *mb;
 	struct rio_msg_dme *me;
 	struct rio_irq_handler *h;
@@ -321,11 +328,11 @@ static ssize_t acp_rio_ib_dme_time_store(struct device *dev,
 
 	h = &priv->ib_dme_irq[mbox];
 	if (!test_bit(RIO_IRQ_ENABLED, &h->state))
-                return -EINVAL;
+		return -EINVAL;
 
 	mb = (struct rio_rx_mbox *)h->data;
-        if (!mb)
-                return -EINVAL;
+	if (!mb)
+		return -EINVAL;
 
 	me = mb->me[letter];
 	if (!me)
@@ -529,7 +536,7 @@ static ssize_t ob_dme_show(struct device *dev,
 	int i;
 	char *str = buf;
 
-	for (i=0; i<3; i++) {
+	for (i = 0; i < 3; i++) {
 		struct ob_dme_stat *stat = &ob_stat[i];
 
 		if (stat->magic != MBOX_MAGIC)
@@ -540,7 +547,8 @@ static ssize_t ob_dme_show(struct device *dev,
 		str += sprintf(str, "desc_done    %d\n", stat->desc_done);
 		str += sprintf(str, "seq_no       %d\n", stat->seq_no);
 		str += sprintf(str, "tx_seq_no    %d\n", stat->tx_seq_no);
-		str += sprintf(str, "out_of_order %d\n", stat->ack_out_of_order);
+		str += sprintf(str, "out_of_order %d\n",
+			       stat->ack_out_of_order);
 	}
 	return str - buf;
 }
@@ -554,7 +562,7 @@ static ssize_t ib_dme_show(struct device *dev,
 	int ready = 0, valid = 0, not_valid = 0;
 	char *str = buf;
 
-	for (i=0; i<8; i++) {
+	for (i = 0; i < 8; i++) {
 		struct ob_dme_stat *stat = &ib_stat[i];
 
 		if (stat->magic != MBOX_MAGIC)
@@ -564,23 +572,29 @@ static ssize_t ib_dme_show(struct device *dev,
 		str += sprintf(str, "desc_error   %d\n", stat->desc_error);
 		str += sprintf(str, "desc_done    %d\n", stat->desc_done);
 	}
-	for (i=0; i<32; i++) {
+	for (i = 0; i < 32; i++) {
 		int dme_no = i;
 		u32 data;
 
-		__rio_local_read_config_32(mport, RAB_IB_DME_STAT(dme_no), &data);
+		__rio_local_read_config_32(mport,
+					   RAB_IB_DME_STAT(dme_no),
+					   &data);
 		if (data) {
 			str += sprintf(str, "dme %d state %8.8x %s %s\n",
 				       dme_no, data,
-				       (data & IB_DME_STAT_ERROR_MASK ? "DME_ERROR":"OK"),
-				       (data & IB_DME_STAT_SLEEPING ? "DME_SLEEP":"OK"));
+					(data & IB_DME_STAT_ERROR_MASK ?
+					"DME_ERROR" : "OK"),
+				       (data & IB_DME_STAT_SLEEPING ?
+					"DME_SLEEP" : "OK"));
 		}
 	}
-	for (i=0; i<1024; i++) {
+	for (i = 0; i < 1024; i++) {
 		int desc_no = i;
 		u32 data;
 
-		__rio_local_read_config_32(mport, DESC_TABLE_W0(desc_no), &data);
+		__rio_local_read_config_32(mport,
+					   DESC_TABLE_W0(desc_no),
+					   &data);
 		if (data & DME_DESC_DW0_READY_MASK)
 			ready++;
 		if (data  & DME_DESC_DW0_VALID)
@@ -595,13 +609,14 @@ static ssize_t ib_dme_show(struct device *dev,
 static DEVICE_ATTR(ib_mbox_stat, S_IRUGO, ib_dme_show, NULL);
 
 static void tx_msg_callback(struct rio_mport *mport, void *dev_id,
-                            int mbox, int rc, void *cookie)
+			    int mbox, int rc, void *cookie)
 {
 	struct ob_dme_stat *stat = dev_id;
 	int seq_no = (int)cookie;
 
 	if (stat != &ob_stat[mbox])
-		pr_err("--- %s --- stat/mbox mismatch, mbox %d\n", __func__, mbox);
+		pr_err("--- %s --- stat/mbox mismatch, mbox %d\n",
+		       __func__, mbox);
 	else {
 		stat->tx_cb++;
 		if (rc)
@@ -614,12 +629,13 @@ static void tx_msg_callback(struct rio_mport *mport, void *dev_id,
 	}
 }
 static void rx_msg_callback(struct rio_mport *mport, void *dev_id,
-                            int mbox, int letter)
+			    int mbox, int letter)
 {
 	struct ob_dme_stat *stat = dev_id;
 
 	if (stat != &ib_stat[mbox])
-		pr_err("--- %s --- stat/mbox mismatch, mbox %d\n", __func__, mbox);
+		pr_err("--- %s --- stat/mbox mismatch, mbox %d\n",
+			__func__, mbox);
 	else {
 		u8 *buf;
 		int sz = 0;
@@ -627,8 +643,9 @@ static void rx_msg_callback(struct rio_mport *mport, void *dev_id,
 		u16 destid = 0;
 		int i = 0;
 		stat->tx_cb++;
-	retry:
-		buf = mport->ops->get_inb_message(mport, mbox, letter, &sz, &seq, &destid);
+retry:
+		buf = mport->ops->get_inb_message(mport,
+			 mbox, letter, &sz, &seq, &destid);
 		if (IS_ERR(buf) || !buf) {
 			if (!buf)
 				return;
@@ -641,13 +658,15 @@ static void rx_msg_callback(struct rio_mport *mport, void *dev_id,
 			}
 		}
 		stat->desc_done++;
-		for (i=0; i<sz; i++) {
+		for (i = 0; i < sz; i++) {
 			if (buf[i] != (i & 0xff)) {
-				pr_err("--- %s --- unexpected data %hhx returned in byte %d\n", __func__, buf[i], i);
+				pr_err("--- %s --- unexpected data %hhx returned in byte %d\n",
+					__func__, buf[i], i);
 				break;
 			}
 		}
-		pr_info("--- %s --- inbound message size %d %d %hx\n", __func__, sz, seq, destid);
+		pr_info("--- %s --- inbound message size %d %d %hx\n",
+			 __func__, sz, seq, destid);
 add_buff:
 		if (mport->ops->add_inb_buffer(mport, mbox, buf)) {
 			pr_err("--- %s --- add inound buffer\n", __func__);
@@ -668,11 +687,11 @@ static ssize_t open_ob_dme(struct device *dev,
 
 	if (rc == 3) {
 		rc = rio_request_outb_mbox(mport,
-                                           &ob_stat[mbox],
-                                           mbox,
-                                           entries,
+					   &ob_stat[mbox],
+					   mbox,
+					   entries,
 					   prio, /* prio */
-                                           tx_msg_callback);
+					   tx_msg_callback);
 		if (!rc) {
 			memset(&ob_stat[mbox], 0, sizeof(struct ob_dme_stat));
 			ob_stat[mbox].magic = MBOX_MAGIC;
@@ -708,8 +727,10 @@ static ssize_t open_ib_dme(struct device *dev,
 			memset(&ib_stat[mbox], 0, sizeof(struct ob_dme_stat));
 			ib_stat[mbox].magic = MBOX_MAGIC;
 			ib_stat[mbox].bufs = bufs;
-			for (i=0; i<(4*entries); i++) {
-				rc = mport->ops->add_inb_buffer(mport, mbox, &bufs[i*bsz]);
+			for (i = 0; i < (4*entries); i++) {
+				rc = mport->ops->add_inb_buffer(mport,
+								mbox,
+								&bufs[i*bsz]);
 				if (rc) {
 					pr_err("--- %s --- add inound buffer rc %d\n", __func__, rc);
 					rio_release_inb_mbox(mport, mbox);
@@ -718,7 +739,7 @@ static ssize_t open_ib_dme(struct device *dev,
 			}
 			return count;
 		}
-	err:
+err:
 		kfree(bufs);
 		return rc;
 	} else
@@ -734,7 +755,9 @@ struct acp_mbox_work {
 };
 static void mbox_work(struct work_struct *work)
 {
-	struct acp_mbox_work *mb_work = container_of(work, struct acp_mbox_work, work);
+	struct acp_mbox_work *mb_work = container_of(work,
+						     struct acp_mbox_work,
+						     work);
 	struct rio_mport *mport = mb_work->mport;
 	int rc = 0;
 
@@ -747,7 +770,8 @@ static void mbox_work(struct work_struct *work)
 		ib_stat[mb_work->mbox].bufs = NULL;
 	}
 	if (rc)
-		pr_err("--- %s --- release mbox %d error %d\n", __func__, mb_work->mbox, rc);
+		pr_err("--- %s --- release mbox %d error %d\n",
+			__func__, mb_work->mbox, rc);
 }
 static ssize_t close_ob_dme(struct device *dev,
 			    struct device_attribute *attr,
@@ -759,7 +783,8 @@ static ssize_t close_ob_dme(struct device *dev,
 	int rc = sscanf(buf, "%d", &mbox);
 
 	if (rc == 1) {
-		struct acp_mbox_work *mb_work = kzalloc(sizeof(*mb_work), GFP_KERNEL);
+		struct acp_mbox_work *mb_work = kzalloc(sizeof(*mb_work),
+							GFP_KERNEL);
 
 		if (!mb_work)
 			return -ENOMEM;
@@ -783,7 +808,8 @@ static ssize_t close_ib_dme(struct device *dev,
 	int rc = sscanf(buf, "%d", &mbox);
 
 	if (rc == 1) {
-		struct acp_mbox_work *mb_work = kzalloc(sizeof(*mb_work), GFP_KERNEL);
+		struct acp_mbox_work *mb_work = kzalloc(sizeof(*mb_work),
+							GFP_KERNEL);
 
 		if (!mb_work)
 			return -ENOMEM;
@@ -825,7 +851,7 @@ static ssize_t ob_dme_send(struct device *dev,
 			pr_info("destid %hu not found\n", dest_id);
 			return -ENODEV;
 		}
-		for (i=0; i<(4*1024); i++)
+		for (i = 0; i < (4*1024); i++)
 			buff[i] = (i & 0xff);
 		cookie = (void *)ob_stat[mbox].tx_seq_no;
 		rc = mport->ops->add_outb_message(mport, rdev, mbox, mbox_dest,

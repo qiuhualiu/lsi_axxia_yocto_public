@@ -69,7 +69,7 @@ ncr_register_read(unsigned *address)
 {
 	unsigned long value;
 
-	value = in_be32((void*) address);
+	value = in_be32((void *) address);
 
 	return value;
 }
@@ -170,6 +170,7 @@ ncr_read(unsigned long region, unsigned long address, int number,
 
 	return 0;
 }
+EXPORT_SYMBOL(ncr_read);
 
 /*
   ----------------------------------------------------------------------
@@ -226,9 +227,8 @@ ncr_write(unsigned long region, unsigned long address, int number,
 	cdr0.raw = 0;
 	cdr0.bits.start_done = 1;
 
-	if (0xff == cdr2.bits.target_id_address_upper) {
+	if (0xff == cdr2.bits.target_id_address_upper)
 		cdr0.bits.local_bit = 1;
-	}
 
 	cdr0.bits.cmd_type = 5;
 	/* TODO: Verify number... */
@@ -247,22 +247,23 @@ ncr_write(unsigned long region, unsigned long address, int number,
 
 	return 0;
 }
+EXPORT_SYMBOL(ncr_write);
 
 /*
   ----------------------------------------------------------------------
  ncr_init
 */
 
-int
-ncr_init( void )
+int ncr_init(void)
 {
-    /* We need this to be a module so that the functions can be exported
-     * as module symbols.
-     */
-    return 0;
+	/*
+	 * We need this to be a module so that the functions can be exported
+	 * as module symbols.
+	 */
+	return 0;
 }
 
-module_init( ncr_init );
+module_init(ncr_init);
 
 /*
   ----------------------------------------------------------------------
@@ -270,14 +271,11 @@ module_init( ncr_init );
 */
 
 void __exit
-ncr_exit( void )
+ncr_exit(void)
 {
 }
 
-module_exit( ncr_exit );
+module_exit(ncr_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Register Ring access for LSI's ACP board");
-
-EXPORT_SYMBOL(ncr_read);
-EXPORT_SYMBOL(ncr_write);

@@ -30,7 +30,7 @@
 #include "acp3400-rio-irq.h"
 
 /* Byte swapping */
-#define BSWAP(x)  __builtin_bswap32(x)       /* Use gcc built-in byte swap code */
+#define BSWAP(x)  __builtin_bswap32(x)     /* Use gcc built-in byte swap code */
 
 #define DESTID_INVALID (u16)(0xff)
 #define RIO_SET_DID(size, x)	(size ? (x & 0xffff) : ((x & 0x000000ff) << 16))
@@ -121,8 +121,9 @@
 #define WIN_SIZE(size)                  (size & 0xfffffc00)
 
 /* register for AXI based address for window */
-#define RAB_APIO_AMAP_ABAR(n)   (RAB_REG_BASE + (0x208 + (n * 0x10)))
-#define AXI_BASE_HIGH(addr)             ((u32)(((u64)(addr) & 0x3f00000000ULL) >> 32) << 22)
+#define RAB_APIO_AMAP_ABAR(n)		(RAB_REG_BASE + (0x208 + (n * 0x10)))
+#define AXI_BASE_HIGH(addr)             ((u32)(((u64)(addr) & 0x3f00000000ULL) \
+					 >> 32) << 22)
 #define AXI_BASE(addr)                  (((u32)(addr) & 0xfffffc00) >> 10)
 
 /* register for RIO base address */
@@ -148,7 +149,8 @@
 #define RPIO_INT_EN             (1 << 1)
 #define APIO_INT_EN             (1)
 
-#define RAB_INTR_ENAB_GNRL_SET  (MISC_INT_EN | RPIO_INT_EN | APIO_INT_EN | OB_DME_INT_EN | IB_DME_INT_EN)
+#define RAB_INTR_ENAB_GNRL_SET  (MISC_INT_EN | RPIO_INT_EN | \
+				 APIO_INT_EN | OB_DME_INT_EN | IB_DME_INT_EN)
 
 #define RAB_INTR_STAT_GNRL      (RAB_REG_BASE + 0x60)
 /* General int status bits */
@@ -221,8 +223,9 @@
 
 #if defined(CONFIG_ACP_RIO_STAT)
 
-#define MISC_ERROR_INDICATION (MISC_FATAL | GRIO_INT | LL_TL_INT | UNEXP_MSG_LOG | \
-			       UNSP_RIO_REQ_INT | RIO_MISC_UNEXP)
+#define MISC_ERROR_INDICATION (MISC_FATAL | GRIO_INT | LL_TL_INT | \
+			       UNEXP_MSG_LOG | UNSP_RIO_REQ_INT | \
+			       RIO_MISC_UNEXP)
 #define MISC_DB_EVENT (OB_DB_DONE_INT | IB_DB_RCV_INT)
 
 #else
@@ -332,9 +335,9 @@
 #define DME_DESC_DW0_NXT_DESC_VALID     (1 << 1)
 #define DME_DESC_DW0_VALID              (1)
 
-#define DESC_STATE_TO_ERRNO(s)	       (s & DME_DESC_DW0_TIMEOUT_ERR ? -ETIME : \
-					(s & (DME_DESC_DW0_RIO_ERR | DME_DESC_DW0_AXI_ERR) ? -EPROTO : \
-					 0))
+#define DESC_STATE_TO_ERRNO(s)		(s & DME_DESC_DW0_TIMEOUT_ERR ? \
+					 -ETIME : (s & (DME_DESC_DW0_RIO_ERR | \
+					 DME_DESC_DW0_AXI_ERR) ? -EPROTO : 0))
 
 #define DME_DESC_DW0_READY_MASK         0x00000F00
 #define DME_DESC_DW0_ERROR_MASK         0x00000E00
@@ -348,7 +351,8 @@
 #define DME_DESC_DW1_SEG_SIZE_256       (0x6 << 18)
 #define DME_DESC_DW1_XMBOX(m)           ((m & 0x3c) << 2)
 #define DME_DESC_DW1_MBOX(m)            ((m & 0x3) << 2)
-#define DME_DESC_DW1_SIZE(s)            ((((s + 7) & ~7) >> 3) << 8) /* Round up and shift to make double word */
+#define DME_DESC_DW1_SIZE(s)            ((((s + 7) & ~7) >> 3) << 8) /* Round
+					 up and shift to make double word */
 #define DME_DESC_DW1_LETTER(l)          (l)
 
 /***********************************/
@@ -389,7 +393,8 @@
 #define  RIO_ESCSR_PE            0x00000004   /*WOCL*/
 #define  RIO_ESCSR_PO            0x00000002   /*R*/
 #define  RIO_ESCSR_PU            0x00000001   /*R*/
-#define  RIO_EXCSR_WOLR          (RIO_ESCSR_OPD | RIO_ESCSR_OFE | RIO_ESCSR_ODE | RIO_ESCSR_ORE | \
+#define  RIO_EXCSR_WOLR          (RIO_ESCSR_OPD | RIO_ESCSR_OFE | \
+				  RIO_ESCSR_ODE | RIO_ESCSR_ORE | \
 				  RIO_ESCSR_OEE | RIO_ESCSR_IEE | RIO_ESCSR_PE)
 
 #define ESCSR_FATAL (RIO_ESCSR_OFE |		\
@@ -403,7 +408,7 @@
 #define  RIO_CCSR_IPW            0x38000000   /*R*/
 #define  RIO_CCSR_PW_MASK        0x7
 #define  RIO_CCSR_PWO_SHIFT      24
-#define  RIO_CCSR_PWO            (RIO_CCSR_PW_MASK << RIO_CCSR_PWO_SHIFT)  /*R/W*/
+#define  RIO_CCSR_PWO            (RIO_CCSR_PW_MASK << RIO_CCSR_PWO_SHIFT)/*R/W*/
 #define  RIO_CCSR_FORCE_LANE0    (2 << RIO_CCSR_PWO_SHIFT)
 #define  RIO_CCSR_PD             0x00800000   /*R/W*/
 #define  RIO_CCSR_OPE            0x00400000   /*R/W*/
