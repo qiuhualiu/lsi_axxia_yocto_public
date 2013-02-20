@@ -180,7 +180,7 @@ static int __iss_blk_write(struct iss_blk *ib, void *buffer,
 		out_be32(&iss_blk_regs->devno, ib->devno);
 		out_be32(&iss_blk_regs->sector, sector);
 		out_be32(&iss_blk_regs->count, lcount);
-		memcpy_toio(&iss_blk_regs->data, buffer, lcount *ib->sectsize);
+		memcpy_toio(&iss_blk_regs->data, buffer, lcount * ib->sectsize);
 		out_8(&iss_blk_regs->cmd, ISS_BD_CMD_WRITE);
 		stat = in_be32(&iss_blk_regs->stat);
 		spin_unlock_irqrestore(&iss_blk_reglock, flags);

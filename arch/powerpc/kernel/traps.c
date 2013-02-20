@@ -29,33 +29,33 @@
 #include <linux/prctl.h>
 #include <linux/delay.h>
 #include <linux/kprobes.h>
-#include <linux/kexec.h>
+#include <asm/kexec.h>
 #include <linux/backlight.h>
 #include <linux/bug.h>
 #include <linux/kdebug.h>
 #include <linux/debugfs.h>
 #include <linux/ratelimit.h>
-#include <linux/uaccess.h>
-#include <linux/io.h>
-#ifdef CONFIG_PMAC_BACKLIGHT
-#include <linux/backlight.h>
-#endif
 
 #include <asm/emulated_ops.h>
 #include <asm/pgtable.h>
+#include <asm/uaccess.h>
+#include <asm/io.h>
 #include <asm/machdep.h>
 #include <asm/rtas.h>
 #include <asm/pmc.h>
 #ifdef CONFIG_PPC32
 #include <asm/reg.h>
 #endif
+#ifdef CONFIG_PMAC_BACKLIGHT
+#include <asm/backlight.h>
+#endif
 #ifdef CONFIG_PPC64
-#include <linux/firmware.h>
+#include <asm/firmware.h>
 #include <asm/processor.h>
 #endif
 #include <linux/kexec.h>
 #include <asm/ppc-opcode.h>
-#include <linux/rio.h>
+#include <asm/rio.h>
 #include <asm/fadump.h>
 #include <asm/switch_to.h>
 #include <asm/debug.h>
@@ -415,8 +415,9 @@ int machine_check_47x(struct pt_regs *regs)
 	u32 mcsr;
 
 	if (reason & ESR_IMCP) {
-		printk(KERN_ERR "Instruction Synchronous Machine Check"
-		printk(KERN_ERR " exception reason %lx\n", reason);
+		printk(KERN_ERR
+		       "Instruction Synchronous Machine Check exception reason %lx\n",
+		       reason);
 		mtspr(SPRN_ESR, reason & ~ESR_IMCP);
 		return 0;
 	}
@@ -614,15 +615,13 @@ int machine_check_e200(struct pt_regs *regs)
 	if (reason & MCSR_CPERR)
 		printk("Cache Parity Error\n");
 	if (reason & MCSR_EXCP_ERR)
-		printk("ISI, ITLB, or Bus Error on first instruction fetch");
-		printk(" for an exception handler\n");
+		printk("ISI, ITLB, or Bus Error on first instruction fetch for an exception handler\n");
 	if (reason & MCSR_BUS_IRERR)
 		printk("Bus - Read Bus Error on instruction fetch\n");
 	if (reason & MCSR_BUS_DRERR)
 		printk("Bus - Read Bus Error on data load\n");
 	if (reason & MCSR_BUS_WRERR)
-		printk("Bus - Write Bus Error on buffered store");
-		printk(" or cache line push\n");
+		printk("Bus - Write Bus Error on buffered store or cache line push\n");
 
 	return 0;
 }
@@ -670,7 +669,8 @@ void machine_check_exception(struct pt_regs *regs)
 
 	__get_cpu_var(irq_stat).mce_exceptions++;
 
-	/* See if any machine dependent calls. In theory, we would want
+	/*
+	 * See if any machine dependent calls. In theory, we would want
 	 * to call the CPU first, and call the ppc_md. one if the CPU
 	 * one returns a positive number. However there is existing code
 	 * that assumes the board gets a first chance, so let's keep it
@@ -685,9 +685,10 @@ void machine_check_exception(struct pt_regs *regs)
 		return;
 
 #if defined(CONFIG_8xx) && defined(CONFIG_PCI)
-	/* the qspan pci read routines can cause machine checks -- Cort
+	/*
+	 * The qspan pci read routines can cause machine checks -- Cort
 	 *
-	 * yuck !!! that totally needs to go away ! There are better ways
+	 * Yuck !!! that totally needs to go away ! There are better ways
 	 * to deal with that than having a wart in the mcheck handler.
 	 * -- BenH
 	 */
@@ -1189,10 +1190,11 @@ void nonrecoverable_exception(struct pt_regs *regs)
 
 void trace_syscall(struct pt_regs *regs)
 {
-	printk("Task: %p(%d), PC: %08lX/%08lX, Syscall: %3ld, Result: %s%ld
-		%s\n", current, task_pid_nr(current), regs->nip, regs->link,
-		regs->gpr[0], regs->ccr&0x10000000?"Error=":"", regs->gpr[3],
-		print_tainted());
+	printk(KERN_ERR
+	       "Task:%p(%d), PC:%08lX/%08lX, Syscall: %3ld, Result: %s%ld %s\n",
+	        current, task_pid_nr(current), regs->nip, regs->link,
+		regs->gpr[0], regs->ccr&0x10000000 ? "Error=" :"",
+	        regs->gpr[3], print_tainted());
 }
 
 void kernel_fp_unavailable_exception(struct pt_regs *regs)

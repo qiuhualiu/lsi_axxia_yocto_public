@@ -1,7 +1,7 @@
 #ifndef _ASM_POWERPC_ASM_COMPAT_H
 #define _ASM_POWERPC_ASM_COMPAT_H
 
-#include <linux/types.h>
+#include <asm/types.h>
 #include <asm/ppc-opcode.h>
 
 #ifdef __ASSEMBLY__
@@ -9,7 +9,7 @@
 #  define ASM_CONST(x)		x
 #else
 /* This version of stringify will deal with commas... */
-#  define __stringify_in_c(...)	(#__VA_ARGS__)
+#  define __stringify_in_c(...)	#__VA_ARGS__
 #  define stringify_in_c(...)	__stringify_in_c(__VA_ARGS__) " "
 #  define __ASM_CONST(x)	x##UL
 #  define ASM_CONST(x)		__ASM_CONST(x)

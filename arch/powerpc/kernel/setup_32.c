@@ -166,7 +166,7 @@ early_param("wdt", early_parse_wdt);
 int __init early_parse_wdt_period(char *p)
 {
 	if (p)
-		booke_wdt_period = kstrtoul(p, NULL, 0);
+		booke_wdt_period = kstrtoul(p, 0, NULL);
 
 	return 0;
 }
@@ -177,7 +177,7 @@ early_param("wdt_period", early_parse_wdt_period);
 int __init ppc_setup_l2cr(char *str)
 {
 	if (cpu_has_feature(CPU_FTR_L2CR)) {
-		unsigned long val = kstrtoul(str, NULL, 0);
+		unsigned long val = kstrtoul(str, 0, NULL);
 		printk(KERN_INFO "l2cr set to %lx\n", val);
 		_set_L2CR(0);		/* force invalidate by disable cache */
 		_set_L2CR(val);		/* and enable it */
@@ -190,7 +190,7 @@ __setup("l2cr=", ppc_setup_l2cr);
 int __init ppc_setup_l3cr(char *str)
 {
 	if (cpu_has_feature(CPU_FTR_L3CR)) {
-		unsigned long val = kstrtoul(str, NULL, 0);
+		unsigned long val = kstrtoul(str, 0, NULL);
 		printk(KERN_INFO "l3cr set to %lx\n", val);
 		_set_L3CR(val);		/* and enable it */
 	}
