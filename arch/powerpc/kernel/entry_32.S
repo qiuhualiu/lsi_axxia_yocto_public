@@ -735,9 +735,8 @@ END_FTR_SECTION_IFSET(CPU_FTR_SPE)
 fast_exception_return:
 #if !(defined(CONFIG_4xx) || defined(CONFIG_BOOKE))
 	andi.	r10,r9,MSR_RI		/* check for recoverable interrupt */
-	beq	1f			/* if not, we've got problems */
+	beq	try_recov_exception	/* if not, we've got problems */
 #endif
-
 2:	REST_4GPRS(3, r11)
 	lwz	r10,_CCR(r11)
 	REST_GPR(1, r11)
@@ -755,7 +754,8 @@ fast_exception_return:
 
 #if !(defined(CONFIG_4xx) || defined(CONFIG_BOOKE))
 /* check if the exception happened in a restartable section */
-1:	lis	r3,exc_exit_restart_end@ha
+try_recov_exception:
+	lis	r3,exc_exit_restart_end@ha
 	addi	r3,r3,exc_exit_restart_end@l
 	cmplw	r12,r3
 	bge	3f

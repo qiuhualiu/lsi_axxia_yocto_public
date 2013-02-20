@@ -411,6 +411,10 @@ config BLK_DEV_XIP
 	  will prevent RAM block device backing store memory from being
 	  allocated from highmem (only a problem for highmem systems).
 
+config BLK_DEV_ISS
+       bool "Support ISS Simulator Block Device"
+       default n
+
 config CDROM_PKTCDVD
 	tristate "Packet writing on CD/DVD media"
 	depends on !UML

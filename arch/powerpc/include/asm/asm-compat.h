@@ -71,6 +71,11 @@
 #define PPC405_ERR77(ra,rb)
 #define PPC405_ERR77_SYNC
 #endif
+
+#ifdef CONFIG_PPC_47x
+#define PPC476_ERR_DCBx()
+#endif /* CONFIG_PPC_47x */
+
 #endif
 
 #endif /* _ASM_POWERPC_ASM_COMPAT_H */

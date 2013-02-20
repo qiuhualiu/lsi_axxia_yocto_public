@@ -198,6 +198,17 @@ EXPORT_SYMBOL(local_flush_tlb_page);
  */
 #ifdef CONFIG_SMP
 
+static int amp;
+
+#ifdef CONFIG_44x
+void __init early_init_mmu_44x(void)
+{
+	unsigned long root = of_get_flat_dt_root();
+	if (of_flat_dt_is_compatible(root, "ibm,47x-AMP"))
+		amp = 1;
+}
+#endif /* CONFIG_44x */
+
 static DEFINE_RAW_SPINLOCK(tlbivax_lock);
 
 static int mm_is_core_local(struct mm_struct *mm)
@@ -277,7 +288,7 @@ void __flush_tlb_page(struct mm_struct *mm, unsigned long vmaddr,
 	cpu_mask = mm_cpumask(mm);
 	if (!mm_is_core_local(mm)) {
 		/* If broadcast tlbivax is supported, use it */
-		if (mmu_has_feature(MMU_FTR_USE_TLBIVAX_BCAST)) {
+		if (!amp && mmu_has_feature(MMU_FTR_USE_TLBIVAX_BCAST)) {
 			int lock = mmu_has_feature(MMU_FTR_LOCK_BCAST_INVAL);
 			if (lock)
 				raw_spin_lock(&tlbivax_lock);

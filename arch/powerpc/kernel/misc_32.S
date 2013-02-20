@@ -394,7 +394,9 @@ _GLOBAL(flush_dcache_range)
 	beqlr
 	mtctr	r4
 
-1:	dcbf	0,r3
+1:	PPC476_ERR_DCBx()
+	dcbf	0,r3
+	PPC476_ERR_DCBx()
 	addi	r3,r3,L1_CACHE_BYTES
 	bdnz	1b
 	sync				/* wait for dcbst's to get to ram */
@@ -508,7 +510,9 @@ _GLOBAL(clear_pages)
 	li	r0,PAGE_SIZE/L1_CACHE_BYTES
 	slw	r0,r0,r4
 	mtctr	r0
-1:	dcbz	0,r3
+1:	PPC476_ERR_DCBx()
+	dcbz	0,r3
+	PPC476_ERR_DCBx()
 	addi	r3,r3,L1_CACHE_BYTES
 	bdnz	1b
 	blr
@@ -552,7 +556,9 @@ _GLOBAL(copy_page)
 	mtctr	r0
 1:
 	dcbt	r11,r4
+	PPC476_ERR_DCBx()
 	dcbz	r5,r3
+	PPC476_ERR_DCBx()
 	COPY_16_BYTES
 #if L1_CACHE_BYTES >= 32
 	COPY_16_BYTES
@@ -1010,3 +1016,52 @@ relocate_new_kernel_end:
 relocate_new_kernel_size:
 	.long relocate_new_kernel_end - relocate_new_kernel
 #endif
+
+#ifdef CONFIG_PPC_47x
+#define ICBT(CT,RA,RB)							\
+	.long	0x7c00002c | ((CT) << 21) | ((RA) << 16) | ((RB) << 11)
+
+_GLOBAL(__icbi)
+	mflr	r5
+1:	icbi	0,r3
+	bl 2f
+2:	mflr	r3
+	li	r4,32
+	ICBT(0,r3,r4)
+	add	r3,r3,r4
+	ICBT(0,r3,r4)
+	add	r3,r3,r4
+	ICBT(0,r3,r4)
+	sync
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	mtlr	r5
+	li	r3, 0
+	blr
+_GLOBAL(__dcbf)
+	lwsync
+1:	dcbf	0,r3
+	lwsync
+	li	r3,0
+	blr
+_GLOBAL(__dcbz)
+	lwsync
+2:	dcbz	0,r3
+	lwsync
+	li	r3,0
+	blr
+3:	li	r3,-EFAULT
+	blr
+	.section __ex_table,"a"
+	.align	2
+	.long	1b,3b
+	.long	2b,3b
+	.text
+#endif /* CONFIG_PPC_47x */
