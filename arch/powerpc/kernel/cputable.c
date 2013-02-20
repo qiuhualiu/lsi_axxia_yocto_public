@@ -22,7 +22,7 @@
 #include <asm/mmu.h>
 #include <asm/setup.h>
 
-struct cpu_spec* cur_cpu_spec = NULL;
+struct cpu_spec *cur_cpu_spec;
 EXPORT_SYMBOL(cur_cpu_spec);
 
 /* The platform string corresponding to the real PVR */
@@ -36,42 +36,42 @@ const char *powerpc_base_platform;
  * and ppc64
  */
 #ifdef CONFIG_PPC32
-extern void __setup_cpu_e200(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_e500v1(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_e500v2(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_e500mc(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_440ep(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_440epx(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_440gx(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_440grx(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_440spe(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_440x5(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_460ex(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_460gt(unsigned long offset, struct cpu_spec* spec);
+extern void __setup_cpu_e200(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_e500v1(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_e500v2(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_e500mc(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_440ep(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_440epx(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_440gx(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_440grx(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_440spe(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_440x5(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_460ex(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_460gt(unsigned long offset, struct cpu_spec *spec);
 extern void __setup_cpu_460sx(unsigned long offset, struct cpu_spec *spec);
 extern void __setup_cpu_apm821xx(unsigned long offset, struct cpu_spec *spec);
-extern void __setup_cpu_603(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_604(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_750(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_750cx(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_750fx(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_7400(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_7410(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_745x(unsigned long offset, struct cpu_spec* spec);
+extern void __setup_cpu_603(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_604(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_750(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_750cx(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_750fx(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_7400(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_7410(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_745x(unsigned long offset, struct cpu_spec *spec);
 #endif /* CONFIG_PPC32 */
 #ifdef CONFIG_PPC64
-extern void __setup_cpu_ppc970(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_ppc970MP(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_pa6t(unsigned long offset, struct cpu_spec* spec);
-extern void __setup_cpu_a2(unsigned long offset, struct cpu_spec* spec);
+extern void __setup_cpu_ppc970(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_ppc970MP(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_pa6t(unsigned long offset, struct cpu_spec *spec);
+extern void __setup_cpu_a2(unsigned long offset, struct cpu_spec *spec);
 extern void __restore_cpu_pa6t(void);
 extern void __restore_cpu_ppc970(void);
-extern void __setup_cpu_power7(unsigned long offset, struct cpu_spec* spec);
+extern void __setup_cpu_power7(unsigned long offset, struct cpu_spec *spec);
 extern void __restore_cpu_power7(void);
 extern void __restore_cpu_a2(void);
 #endif /* CONFIG_PPC64 */
 #if defined(CONFIG_E500)
-extern void __setup_cpu_e5500(unsigned long offset, struct cpu_spec* spec);
+extern void __setup_cpu_e5500(unsigned long offset, struct cpu_spec *spec);
 extern void __restore_cpu_e5500(void);
 #endif /* CONFIG_E500 */
 
@@ -1188,7 +1188,7 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_name		= "403GCX",
 		.cpu_features		= CPU_FTRS_40X,
 		.cpu_user_features	= PPC_FEATURE_32 |
-		 	PPC_FEATURE_HAS_MMU | PPC_FEATURE_NO_TB,
+			PPC_FEATURE_HAS_MMU | PPC_FEATURE_NO_TB,
 		.mmu_features		= MMU_FTR_TYPE_40x,
 		.icache_bsize		= 16,
 		.dcache_bsize		= 16,
@@ -1844,7 +1844,7 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.machine_check		= machine_check_47x,
 		.num_pmcs		= 8,
 		.oprofile_cpu_type      = "ppc/476",
-                .oprofile_type          = PPC_OPROFILE_ACP_PMU,
+		.oprofile_type          = PPC_OPROFILE_ACP_PMU,
 		.platform		= "ppc470",
 	},
 	{ /* 476fpe */
@@ -2178,7 +2178,7 @@ struct cpu_spec * __init identify_cpu(unsigned long offset, unsigned int pvr)
 
 	s = PTRRELOC(s);
 
-	for (i = 0; i < ARRAY_SIZE(cpu_specs); i++,s++) {
+	for (i = 0; i < ARRAY_SIZE(cpu_specs); i++, s++) {
 		if ((pvr & s->pvr_mask) == s->pvr_value)
 			return setup_cpu_spec(offset, s);
 	}

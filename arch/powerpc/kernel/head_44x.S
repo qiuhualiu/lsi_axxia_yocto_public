@@ -152,7 +152,8 @@ _ENTRY(_start);
 	 *	(kernstart_addr & 0xfffffff) = (stext.run & 0xfffffff)
 	 *
 	 * hence:
-	 *  virt_phys_offset = (KERNELBASE & ~0xfffffff) - (kernstart_addr & ~0xfffffff)
+	 *  virt_phys_offset = (KERNELBASE & ~0xfffffff) -
+	 *                     (kernstart_addr & ~0xfffffff)
 	 *
 	 */
 
@@ -302,13 +303,13 @@ interrupt_base:
 
 	/* Data TLB Error Interrupt */
 	START_EXCEPTION(DataTLBError44x)
-	mtspr	SPRN_SPRG_WSCRATCH0, r10		/* Save some working registers */
+	mtspr	SPRN_SPRG_WSCRATCH0, r10  /* Save some working registers */
 	mtspr	SPRN_SPRG_WSCRATCH1, r11
 	mtspr	SPRN_SPRG_WSCRATCH2, r12
 	mtspr	SPRN_SPRG_WSCRATCH3, r13
 	mfcr	r11
 	mtspr	SPRN_SPRG_WSCRATCH4, r11
-	mfspr	r10, SPRN_DEAR		/* Get faulting address */
+	mfspr	r10, SPRN_DEAR		  /* Get faulting address */
 
 	/* If we are faulting a kernel address, we have to use the
 	 * kernel page tables.

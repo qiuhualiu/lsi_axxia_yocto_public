@@ -91,7 +91,7 @@ static void acp_pmu_disable(struct pmu *pmu)
 	local_irq_save(flags);
 	cpuhw = &__get_cpu_var(cpu_hw_events);
 
-	pr_debug("--- %s --- \n", __func__);
+	pr_debug("--- %s ---\n", __func__);
 
 	if (!cpuhw->disabled) {
 		cpuhw->disabled = 1;
@@ -137,7 +137,7 @@ static void acp_pmu_enable(struct pmu *pmu)
 	struct cpu_hw_events *cpuhw;
 	unsigned long flags;
 
-	pr_debug("--- %s --- \n", __func__);
+	pr_debug("--- %s ---\n", __func__);
 	local_irq_save(flags);
 	cpuhw = &__get_cpu_var(cpu_hw_events);
 	if (!cpuhw->disabled)
@@ -153,9 +153,8 @@ static void acp_pmu_enable(struct pmu *pmu)
 		int num_counters = ppmu->n_counter;
 
 		for (i = 0; i < num_counters; i++) {
-			if (cpuhw->event[i]) {
+			if (cpuhw->event[i])
 				pmuie0 |= PMUIE_IE(i);
-			}
 		}
 		mtdcrx(PMUDCRAI(core), PMRN_PMUIE0);
 		mtdcrx(PMUDCRDI(core), pmuie0);
@@ -218,7 +217,7 @@ static int acp_pmu_add(struct perf_event *event, int flags)
 	 * Allocate counters from top-down, so that restricted-capable
 	 * counters are kept free as long as possible.
 	 */
-//	for (i = num_counters - 1; i >= 0; i--) {
+/*	for (i = num_counters - 1; i >= 0; i--) { */
 	for (i = 0; i < num_counters; i++) {
 		if (cpuhw->event[i])
 			continue;
@@ -233,7 +232,8 @@ static int acp_pmu_add(struct perf_event *event, int flags)
 	cpuhw->event[i] = event;
 	++cpuhw->n_events;
 
-	pr_debug("--- %s --- cnt id %d config_base %lx\n", __func__, event->hw.idx, event->hw.config_base);
+	pr_debug("--- %s --- cnt id %d config_base %lx\n", __func__,
+			 event->hw.idx, event->hw.config_base);
 
 	val = 0;
 	if (event->hw.sample_period) {
@@ -359,7 +359,7 @@ static void acp_pmu_stop(struct perf_event *event, int ef_flags)
  */
 static void hw_perf_event_destroy(struct perf_event *event)
 {
-	pr_debug("--- %s --- \n", __func__);
+	pr_debug("--- %s ---\n", __func__);
 
 	if (!atomic_add_unless(&num_events, -1, 1)) {
 		mutex_lock(&pmc_reserve_mutex);
@@ -450,7 +450,7 @@ static int acp_pmu_event_init(struct perf_event *event)
 	n = 0;
 	if (event->group_leader != event) {
 		n = collect_events(event->group_leader,
-		                   ppmu->n_counter - 1, events);
+					ppmu->n_counter - 1, events);
 		if (n < 0)
 			return -EINVAL;
 		pr_debug("--- %s --- Add new event to group\n",
@@ -459,7 +459,7 @@ static int acp_pmu_event_init(struct perf_event *event)
 	event->hw.idx = -1;
 
 	event->hw.config_base = PMLCA_CE | PMLCA_FCM1 |
-	                        (u32)((ev) & PMLCA_EVENT_MASK);
+				(u32)((ev) & PMLCA_EVENT_MASK);
 
 	if (event->attr.exclude_user)
 		event->hw.config_base |= PMLCA_FCU;
@@ -513,7 +513,9 @@ static struct pmu acp_pmu = {
  * things if requested.  Note that interrupts are hard-disabled
  * here so there is no possibility of being interrupted.
  */
-static void record_and_restart(int core, struct perf_event *event, unsigned long val,
+static void record_and_restart(int core,
+			       struct perf_event *event,
+			       unsigned long val,
 			       struct pt_regs *regs)
 {
 	u64 period = event->hw.sample_period;
