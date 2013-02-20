@@ -136,11 +136,6 @@ ncr_read(unsigned long region, unsigned long address, int number,
 	*/
 
 	/* TODO: Handle failure cases. */
-#if 0
-	while (0x80000000 ==
-	       (ncr_register_read((unsigned *) (NCA + 0xf0)) & 0x80000000))
-		;
-#else
 	{
 		volatile unsigned long value;
 
@@ -148,7 +143,6 @@ ncr_read(unsigned long region, unsigned long address, int number,
 			value = ncr_register_read((unsigned *) (NCA + 0xf0));
 		} while (0x80000000 == (value & 0x80000000));
 	}
-#endif
 
 	/*
 	  Copy data words to the buffer.

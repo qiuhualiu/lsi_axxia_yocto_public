@@ -65,13 +65,8 @@ struct acp3400_i2c_timer_regs {
 
 /* I2C register values */
 #define ACPI2C_CLK_100KHZ	(1000 | (1000 << 16))
-#if 0 /* Should give us crap hold times on bus */
-#define ACPI2C_MSTSHC		(250 | (220 << 16))
-#define ACPI2C_MSPSHC		(127 | (0 << 16))
-#else /* Should give acceptable hold times on bus */
 #define ACPI2C_MSTSHC		(940 | (800 << 16))
 #define ACPI2C_MSPSHC		(800 | (0 << 16))
-#endif
 #define ACPI2C_MDSHC		(255 | (127 << 16))
 
 #define ACPI2C_XFER_START		0x00000001
