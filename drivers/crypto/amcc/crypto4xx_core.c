@@ -19,6 +19,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/interrupt.h>
 #include <linux/spinlock_types.h>
 #include <linux/random.h>
@@ -1294,7 +1295,7 @@ static struct platform_driver crypto4xx_driver = {
 
 module_platform_driver(crypto4xx_driver);
 
+MODULE_DESCRIPTION("Driver for AMCC PPC4xx crypto accelerator");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("James Hsiao <jhsiao@amcc.com>");
-MODULE_DESCRIPTION("Driver for AMCC PPC4xx crypto accelerator");
 

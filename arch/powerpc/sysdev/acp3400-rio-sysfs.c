@@ -839,9 +839,9 @@ static ssize_t ob_dme_send(struct device *dev,
 
 	if (rc == 6) {
 		struct rio_dev *rdev = NULL;
-		u8 buff[4*1024];
 		void *cookie = NULL;
 		int i;
+		u8 *buff = kzalloc(4*1024, GFP_KERNEL);
 
 		while ((rdev = rio_get_device(0xffff, 0xffff, rdev)) != NULL) {
 			if (rdev->destid == dest_id)
@@ -858,6 +858,7 @@ static ssize_t ob_dme_send(struct device *dev,
 						  letter, flags, buff, size,
 						  cookie);
 		ob_stat[mbox].tx_seq_no++;
+		kfree(buff);
 		if (!rc)
 			return count;
 		return rc;
