@@ -244,11 +244,11 @@
                         	compatible = "gp-dma,acp-dma", "gp-dma,acp-gpdma";
                         	reg = <0x004e0000 0x4
 				       0x0040C000 0x4>;
-				      
+
                         	ranges = <0x0 0x004e0000 0x200>;
                         	cell-index = <0>;
                         	dma-channel@0 {
-                                	compatible = "gp-dma,acp-dma", 
+					compatible = "gp-dma,acp-dma",
 						   "gp-dma,acp-gpdma";
                                 	reg = <0x0 0x40>;
 					cell-index = <0>;
@@ -256,7 +256,7 @@
                                 	interrupts = <35 2>;
                         	};
                         	dma-channel@40 {
-					compatible = "gp-dma,acp-dma", 
+					compatible = "gp-dma,acp-dma",
 						   "gp-dma,acp-gpdma";
                                 	reg = <0x40 0x40>;
                                 	cell-index = <1>;
@@ -264,7 +264,7 @@
                                 	interrupts = <36 2>;
                         	};
                         	dma-channel@80 {
-                                	compatible = "gp-dma,acp-dma", 
+					compatible = "gp-dma,acp-dma",
 						   "gp-dma,acp-gpdma";
                                 	reg = <0x80 0x40>;
                                 	cell-index = <2>;
@@ -272,7 +272,7 @@
                                 	interrupts = <37 2>;
                         	};
                         	dma-channel@C0 {
-					compatible = "gp-dma,acp-dma", 
+					compatible = "gp-dma,acp-dma",
 						   "gp-dma,acp-gpdma";
                                        	reg = <0xC0 0x40>;
                                 	cell-index = <3>;
@@ -289,7 +289,6 @@
                         	cell-index = <0>;
 				interrupt-parent = <&MPIC>;
                                	interrupts = <40 2>;
-				
 			};
 
 		};
