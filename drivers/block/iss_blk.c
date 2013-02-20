@@ -180,7 +180,7 @@ static int __iss_blk_write(struct iss_blk *ib, void *buffer,
 		out_be32(&iss_blk_regs->devno, ib->devno);
 		out_be32(&iss_blk_regs->sector, sector);
 		out_be32(&iss_blk_regs->count, lcount);
-		memcpy_toio(&iss_blk_regs->data, buffer, lcount * ib->sectsize);
+		memcpy_toio(&iss_blk_regs->data, buffer, lcount *ib->sectsize);
 		out_8(&iss_blk_regs->cmd, ISS_BD_CMD_WRITE);
 		stat = in_be32(&iss_blk_regs->stat);
 		spin_unlock_irqrestore(&iss_blk_reglock, flags);
@@ -291,11 +291,11 @@ static int iss_blk_open(struct block_device *bdev, fmode_t mode)
 }
 
 static struct block_device_operations iss_blk_fops = {
-      .owner		= THIS_MODULE,
-      .open		= iss_blk_open,
-      .release		= iss_blk_release,
-      .media_changed	= iss_blk_media_changed,
-      .revalidate_disk	= iss_blk_revalidate,
+	.owner		  = THIS_MODULE,
+	.open		  = iss_blk_open,
+	.release	  = iss_blk_release,
+	.media_changed	  = iss_blk_media_changed,
+	.revalidate_disk  = iss_blk_revalidate,
 };
 
 static int __init iss_blk_init(void)
