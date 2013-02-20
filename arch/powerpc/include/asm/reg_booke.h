@@ -299,14 +299,14 @@
 #define DBSR_BT		0x40000000	/* Branch taken */
 #define DBSR_IRPT	0x20000000	/* Exception Debug Event */
 #define DBSR_TIE	0x10000000	/* Trap Instruction debug Event */
-#define DBSR_IAC1	0x04000000	/* Instr Address Compare 1 Event*/
-#define DBSR_IAC2	0x02000000	/* Instr Address Compare 2 Event*/
-#define DBSR_IAC3	0x00080000	/* Instr Address Compare 3 Event*/
-#define DBSR_IAC4	0x00040000	/* Instr Address Compare 4 Event*/
-#define DBSR_DAC1R	0x01000000	/* Data Address Compare 1 Read Event */
-#define DBSR_DAC1W	0x00800000	/* Data Address Compare 1 Write Event */
-#define DBSR_DAC2R	0x00400000	/* Data Address Compare 2 Read Event */
-#define DBSR_DAC2W	0x00200000	/* Data Address Compare 2 Write Event */
+#define DBSR_IAC1	0x04000000	/* Instr Addr Compare 1 Event*/
+#define DBSR_IAC2	0x02000000	/* Instr Addr Compare 2 Event*/
+#define DBSR_IAC3	0x00080000	/* Instr Addr Compare 3 Event*/
+#define DBSR_IAC4	0x00040000	/* Instr Addr Compare 4 Event*/
+#define DBSR_DAC1R	0x01000000	/* Data Addr Compare 1 Read Event */
+#define DBSR_DAC1W	0x00800000	/* Data Addr Compare 1 Write Event */
+#define DBSR_DAC2R	0x00400000	/* Data Addr Compare 2 Read Event */
+#define DBSR_DAC2W	0x00200000	/* Data Addr Compare 2 Write Event */
 #endif
 
 /* Bit definitions related to the ESR. */
@@ -592,12 +592,13 @@
 						 * directed to guest state */
 #define SPRN_EPCR_DUVD		0x04000000	/* Disable Hypervisor Debug */
 #define SPRN_EPCR_ICM		0x02000000	/* Interrupt computation mode
-						 * (copied to MSR:CM on intr) */
-#define SPRN_EPCR_GICM		0x01000000	/* Guest Interrupt Comp. mode */
+						 * copied to MSR:CM on intr */
+#define SPRN_EPCR_GICM		0x01000000	/* Guest Interrupt Computation
+						 * mode */
 #define SPRN_EPCR_DGTMI		0x00800000	/* Disable TLB Guest Management
 						 * instructions */
-#define SPRN_EPCR_DMIUH		0x00400000	/* Disable MAS Interrupt updates
-						 * for hypervisor */
+#define SPRN_EPCR_DMIUH		0x00400000	/* Disable MAS Interrupt
+						 * updates for hypervisor */
 
 
 /*

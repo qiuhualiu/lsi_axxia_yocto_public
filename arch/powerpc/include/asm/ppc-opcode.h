@@ -182,18 +182,23 @@
 					__PPC_RA(a) | __PPC_RB(b))
 
 #define PPC_ERATWE(s, a, w)	stringify_in_c(.long PPC_INST_ERATWE | \
-					__PPC_RS(s) | __PPC_RA(a) | __PPC_WS(w))
+					__PPC_RS(s) | __PPC_RA(a) | \
+					__PPC_WS(w))
 #define PPC_ERATRE(s, a, w)	stringify_in_c(.long PPC_INST_ERATRE | \
-					__PPC_RS(s) | __PPC_RA(a) | __PPC_WS(w))
+					__PPC_RS(s) | __PPC_RA(a) | \
+					__PPC_WS(w))
 #define PPC_ERATILX(t, a, b)	stringify_in_c(.long PPC_INST_ERATILX | \
 					__PPC_T_TLB(t) | __PPC_RA(a) | \
 					__PPC_RB(b))
 #define PPC_ERATIVAX(s, a, b)	stringify_in_c(.long PPC_INST_ERATIVAX | \
-					__PPC_RS(s) | __PPC_RA(a) | __PPC_RB(b))
+					__PPC_RS(s) | __PPC_RA(a) | \
+					__PPC_RB(b))
 #define PPC_ERATSX(t, a, w)	stringify_in_c(.long PPC_INST_ERATSX | \
-					__PPC_RS(t) | __PPC_RA(a) | __PPC_RB(b))
+					__PPC_RS(t) | __PPC_RA(a) | \
+					__PPC_RB(b))
 #define PPC_ERATSX_DOT(t, a, w)	stringify_in_c(.long PPC_INST_ERATSX_DOT | \
-					__PPC_RS(t) | __PPC_RA(a) | __PPC_RB(b))
+					__PPC_RS(t) | __PPC_RA(a) | \
+					__PPC_RB(b))
 #define PPC_SLBFEE_DOT(t, b)	stringify_in_c(.long PPC_INST_SLBFEE | \
 					__PPC_RT(t) | __PPC_RB(b))
 
