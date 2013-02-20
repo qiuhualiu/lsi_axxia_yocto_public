@@ -171,7 +171,7 @@ struct gpdma_engine {
 	struct gpdma_desc               desc;
 	struct list_head                job;
 	struct list_head                pending;
-        struct tasklet_struct           job_task;
+	struct tasklet_struct           job_task;
 	int                             prio;
 	spinlock_t			lock;
 	void __iomem			*base;
@@ -185,27 +185,31 @@ struct gpdma_engine {
 static __inline__ void __raw_out_le32(volatile u32 *addr, const u32 val)
 {
 	__asm__ __volatile__ ("stwbrx %1,0,%2" \
-			      : "=m" (*addr) : "r" (val), "r" (addr) : "memory");
+			      : "=m" (*addr) : "r" (val), \
+			      "r" (addr) : "memory");
 }
 static __inline__ u32 __raw_in_le32(const volatile u32 *addr)
 {
 	u32 val;
 
 	__asm__ __volatile__ ("lwbrx %0,0,%1" \
-			      : "=r" (val) : "r" (addr), "m" (*addr) : "memory");
+			      : "=r" (val) : "r" (addr), \
+			      "m" (*addr) : "memory");
 	return val;
 }
 static __inline__ void __raw_out_le16(volatile u16 *addr, const u32 val)
 {
 	__asm__ __volatile__ ("sthbrx %1,0,%2" \
-			      : "=m" (*addr) : "r" (val), "r" (addr) : "memory");
+			      : "=m" (*addr) : "r" (val), \
+			      "r" (addr) : "memory");
 }
 static __inline__ u32 __raw_in_le16(const volatile u16 *addr)
 {
 	u32 val;
 
 	__asm__ __volatile__ ("lhbrx %0,0,%1" \
-			      : "=r" (val) : "r" (addr), "m" (*addr) : "memory");
+			      : "=r" (val) : "r" (addr), \
+			      "m" (*addr) : "memory");
 	return val;
 }
 

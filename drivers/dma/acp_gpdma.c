@@ -47,7 +47,7 @@ static void gpdma_dump(struct gpdma_engine *e)
 	dev_dbg(e->dev,
 		"DMA Engine register dump (mmapped src = %p)\n",
 		e->base);
-	for (i = 0; i < 0x40 * MAX_GPDMA_CHANNELS / sizeof(u32); i ++ ) {
+	for (i = 0; i < 0x40 * MAX_GPDMA_CHANNELS / sizeof(u32); i++) {
 		dev_dbg(e->dev,
 			"%p == %08X ",
 			(void *)(e->base + i * sizeof(u32)),
@@ -62,7 +62,7 @@ static void gpdma_dump_channel(struct gpdma_channel *dmac)
 	dev_dbg(dmac->engine->dev,
 		"DMA Engine register dump channel %d\n",
 		dmac->channel);
-	for (i = 0; i < 0x40/sizeof(u32); i++ ) {
+	for (i = 0; i < 0x40/sizeof(u32); i++) {
 		dev_dbg(dmac->engine->dev,
 			"%p == %08X ",
 			(void *)(base + i * sizeof(u32)),
@@ -77,7 +77,7 @@ static void reset_channel(struct gpdma_engine *gpdma, int ch)
 	dev_dbg(gpdma->dev, "%s\n", __func__);
 
 	__raw_out_le32((base + DMA_CHANNEL_CONFIG), 0);
-	while(__raw_in_le32(base + DMA_CHANNEL_CONFIG)) {
+	while (__raw_in_le32(base + DMA_CHANNEL_CONFIG)) {
 		wait++;
 		if (wait >= 1000) {
 			dev_warn(gpdma->dev, "%s - clear channel %d FIFO when channel not idle\n",
@@ -87,7 +87,7 @@ static void reset_channel(struct gpdma_engine *gpdma, int ch)
 	}
 	wait = 0;
 	__raw_out_le32((base + DMA_CHANNEL_CONFIG), DMA_CONFIG_CLEAR_FIFO);
-	while(__raw_in_le32(base + DMA_CHANNEL_CONFIG)) {
+	while (__raw_in_le32(base + DMA_CHANNEL_CONFIG)) {
 		wait++;
 		if (wait >= 1000) {
 			dev_warn(gpdma->dev, "%s - clear channel %d FIFO fails\n",
@@ -120,7 +120,7 @@ static void soft_reset(struct gpdma_engine *gpdma)
 	/**
 	 * Clear all channels
 	 */
-	for (i=0; i<MAX_GPDMA_CHANNELS; i++)
+	for (i = 0; i < MAX_GPDMA_CHANNELS; i++)
 		reset_channel(gpdma, i);
 }
 
@@ -140,7 +140,8 @@ done:
 	spin_unlock_irqrestore(&e->lock, flags);
 	return d;
 }
-static inline void free_descriptor(struct gpdma_desc *desc, struct descriptor *d)
+static inline void free_descriptor(struct gpdma_desc *desc,
+				   struct descriptor *d)
 {
 	unsigned long flags;
 	struct gpdma_engine *e = desc_to_engine(desc);
@@ -168,7 +169,7 @@ static int alloc_desc_table(struct gpdma_desc *desc)
 	desc->order = order;
 	d = (struct descriptor *)desc->va;
 
-	for (i=0; i<GPDMA_MAX_DESCRIPTORS; i++) {
+	for (i = 0; i < GPDMA_MAX_DESCRIPTORS; i++) {
 		desc->stack[i] = d++;
 		dev_dbg(e->dev,
 			"desc[%d] == %p phys %lx\n",
@@ -184,7 +185,8 @@ static void free_desc_table(struct gpdma_desc *desc)
 		free_pages((unsigned long)desc->va, desc->order);
 }
 
-static inline void __kick_channel(struct gpdma_engine *engine, struct gpdma_chan_job *job)
+static inline void __kick_channel(struct gpdma_engine *engine,
+				  struct gpdma_chan_job *job)
 {
 	struct descriptor *d = job->d;
 	struct gpdma_channel *dmac = job_to_gchan(job);
@@ -198,20 +200,26 @@ static inline void __kick_channel(struct gpdma_engine *engine, struct gpdma_chan
 		__raw_out_le32(base + DMA_STATUS, DMA_STATUS_CLEAR);
 
 		if (dmac->direction == DMA_TO_DEVICE) {
-			__raw_out_le32(base + DMA_NXT_DESCR, ((u32)d & 0xfffff));
+			__raw_out_le32(base + DMA_NXT_DESCR,
+				       ((u32)d & 0xfffff));
 		} else {
 			/**
-			 * Oh No! Can't use descriptors when reading from device?
+			 * Oh No! Can't use descriptors when
+			 * reading from device?
 			 */
 			reg = __raw_in_le16(&d->src_x_ctr);
 			__raw_out_le32(base + DMA_X_SRC_COUNT, reg);
 			reg = __raw_in_le16(&d->src_y_ctr);
 			__raw_out_le32(base + DMA_Y_SRC_COUNT, reg);
 
-			*(volatile u32 *)(base + DMA_X_MODIF_SRC) = d->src_x_mod;
-			*(volatile u32 *)(base + DMA_Y_MODIF_SRC) = d->src_y_mod;
-			*(volatile u32 *)(base + DMA_SRC_CUR_ADDR) = d->src_addr;
-			*(volatile u32 *)(base + DMA_SRC_MASK) = d->src_data_mask;
+			*(volatile u32 *)(base + DMA_X_MODIF_SRC) =
+				d->src_x_mod;
+			*(volatile u32 *)(base + DMA_Y_MODIF_SRC) =
+				d->src_y_mod;
+			*(volatile u32 *)(base + DMA_SRC_CUR_ADDR) =
+				d->src_addr;
+			*(volatile u32 *)(base + DMA_SRC_MASK) =
+				d->src_data_mask;
 
 			reg = __raw_in_le16(&d->src_access);
 			__raw_out_le32(base + DMA_SRC_ACCESS, reg);
@@ -225,25 +233,33 @@ static inline void __kick_channel(struct gpdma_engine *engine, struct gpdma_chan
 			reg = __raw_in_le16(&d->dst_y_ctr);
 			__raw_out_le32(base + DMA_Y_DST_COUNT, reg);
 
-			*(volatile u32 *)(base + DMA_X_MODIF_DST) = d->dst_x_mod;
-			*(volatile u32 *)(base + DMA_Y_MODIF_DST) = d->dst_y_mod;
-			*(volatile u32 *)(base + DMA_DST_CUR_ADDR) = d->dst_addr;
+			*(volatile u32 *)(base + DMA_X_MODIF_DST) =
+				d->dst_x_mod;
+			*(volatile u32 *)(base + DMA_Y_MODIF_DST) =
+				d->dst_y_mod;
+			*(volatile u32 *)(base + DMA_DST_CUR_ADDR) =
+				d->dst_addr;
 		}
 		__asm__ __volatile__(PPC_MBAR);
 		set_bit(GPDMA_CH_KICKED, &dmac->job.state);
 		gpdma_dump_channel(dmac);
 
 		if (dmac->direction == DMA_TO_DEVICE) {
-			__raw_out_le32(base + DMA_CHANNEL_CONFIG, DMA_CONFIG_DSC_LOAD);
+			__raw_out_le32(base + DMA_CHANNEL_CONFIG,
+				       DMA_CONFIG_DSC_LOAD);
 		} else
-			*(volatile u32 *)(base + DMA_CHANNEL_CONFIG) = d->ch_config;
+			*(volatile u32 *)(base + DMA_CHANNEL_CONFIG) =
+				d->ch_config;
 
 		spin_unlock_irqrestore(&dmac->lock, flags);
 	} else
-		dev_warn(dmac->engine->dev, "%s when ch not queued\n", __func__);
+		dev_warn(dmac->engine->dev,
+			 "%s when ch not queued\n",
+			 __func__);
 }
 
-static inline void gpdma_handle(struct gpdma_channel *dmac, enum dma_status status, int tmo)
+static inline void gpdma_handle(struct gpdma_channel *dmac,
+				enum dma_status status, int tmo)
 {
 	unsigned long flags;
 
@@ -254,9 +270,9 @@ static inline void gpdma_handle(struct gpdma_channel *dmac, enum dma_status stat
 	dmac->direction = DMA_BIDIRECTIONAL;
 	spin_unlock_irqrestore(&dmac->lock, flags);
 
-	if (dmac->desc.callback && !tmo) {
+	if (dmac->desc.callback && !tmo)
 		dmac->desc.callback(dmac->desc.callback_param);
-	}
+
 	dev_dbg(dmac->engine->dev,
 		"%s done cookie %d status %d\n",
 		__func__, dmac->last_completed, status);
@@ -288,7 +304,7 @@ static void flush_all_jobs(struct gpdma_engine *engine)
 {
 	int i;
 
-	for (i=0; i < MAX_GPDMA_CHANNELS; i++) {
+	for (i = 0; i < MAX_GPDMA_CHANNELS; i++) {
 		struct gpdma_channel *dmac = &engine->channel[i];
 
 		flush_channel_job(dmac, 0);
@@ -305,7 +321,7 @@ static void __job_tasklet(unsigned long data)
 	int i, maxloop = 10, loop = 0;
 
 purge_job_queue:
-	for (i=0; i < MAX_GPDMA_CHANNELS; i++) {
+	for (i = 0; i < MAX_GPDMA_CHANNELS; i++) {
 		struct gpdma_channel *dmac = &engine->channel[i];
 
 		if (test_and_clear_bit(GPDMA_CH_TX_SUBMIT, &dmac->job.state)) {
@@ -328,7 +344,8 @@ purge_job_queue:
 	if (list_empty(&engine->job))
 		return;
 	/* Give jobs bypassed earlier a break */
-	if ((engine->prio > MAX_GPDMA_CHANNELS) && !list_empty(&engine->pending))
+	if ((engine->prio > MAX_GPDMA_CHANNELS) &&
+		!list_empty(&engine->pending))
 		return;
 	if (loop > maxloop || !(test_bit(GPDMA_INIT, &engine->state)))
 		return;
@@ -361,7 +378,9 @@ purge_job_queue:
 		__raw_out_le32(engine->gpreg, job->gpreg);
 		list_del_init(&job->node);
 		list_add_tail(&job->node, &engine->pending);
-		dev_dbg(engine->dev, "%s: Move job from job to pending queue\n", __func__);
+		dev_dbg(engine->dev,
+			"%s: Move job from job to pending queue\n",
+			__func__);
 		__kick_channel(engine, job);
 		break;
 	}
@@ -401,7 +420,8 @@ static irqreturn_t gpdma_isr(int _irq, void *_dmac)
 			break;
 	}
 	if (i > 2000)
-		dev_warn(dmac->engine->dev, "%s: DMA ch state not cleared after %d loops\n",
+		dev_warn(dmac->engine->dev,
+			 "%s: DMA ch state not cleared after %d loops\n",
 			 __func__, i);
 
 	__raw_out_le32(base + DMA_CHANNEL_CONFIG, 0);
@@ -516,7 +536,9 @@ static struct dma_async_tx_descriptor *gpdma_prep_memcpy(struct dma_chan *chan,
 	u16 rot_len, x_count, src_size, src_access = 5, dst_access = 5;
 
 	if (!d) {
-		dev_dbg(dmac->engine->dev, "--- %s --- : No descriptor\n", __func__);
+		dev_dbg(dmac->engine->dev,
+			"--- %s --- : No descriptor\n",
+			__func__);
 		return NULL;
 	}
 	if (likely(test_and_clear_bit(GPDMA_CH_IDLE, &dmac->job.state))) {
@@ -564,13 +586,16 @@ static struct dma_async_tx_descriptor *gpdma_prep_memcpy(struct dma_chan *chan,
 		dmac->job.src = src;
 		dmac->job.dst = dst;
 		dmac->job.prio = 0;
-		dmac->job.gpreg = (u64)(((src >> 32) & 0x3F) | (((dst >> 32) & 0x3F) << 8));
+		dmac->job.gpreg = (u64)(((src >> 32) & 0x3F) |
+				  (((dst >> 32) & 0x3F) << 8));
 		dmac->job.size = size;
 		set_bit(GPDMA_CH_JOB_INIT, &dmac->job.state);
 
 		return &dmac->desc;
 	} else
-		dev_warn(dmac->engine->dev, "%s when Chan not idle\n", __func__);
+		dev_warn(dmac->engine->dev,
+			 "%s when Chan not idle\n",
+			 __func__);
 
 	free_descriptor(&dmac->engine->desc, d);
 	return NULL;
@@ -584,7 +609,7 @@ static void reset_engine(struct gpdma_engine *engine)
 	/**
 	 * wait till all channels are out of chritical regions
 	 */
-	for (i=0; i<MAX_GPDMA_CHANNELS; i++)
+	for (i = 0; i < MAX_GPDMA_CHANNELS; i++)
 		free_irq(engine->channel[i].irq, &engine->channel[i]);
 
 	tasklet_disable(&engine->job_task);
@@ -595,8 +620,8 @@ static void reset_engine(struct gpdma_engine *engine)
 	/**
 	 * flush queues before accepting new jobs
 	 */
-//	flush_all_jobs(engine);
-	for (i=0; i<MAX_GPDMA_CHANNELS; i++) {
+	/* flush_all_jobs(engine); */
+	for (i = 0; i < MAX_GPDMA_CHANNELS; i++) {
 		if (request_irq(engine->channel[i].irq, gpdma_isr,
 				IRQF_SHARED, "lsi-dma", &engine->channel[i]))
 			dev_err(engine->dev, "failed to request_irq\n");
@@ -645,7 +670,9 @@ static int gpdma_device_control(struct dma_chan *dchan,
 }
 static void gpdma_engine_release(struct kref *kref)
 {
-	struct gpdma_engine *engine = container_of(kref, struct gpdma_engine, kref);
+	struct gpdma_engine *engine = container_of(kref,
+						   struct gpdma_engine,
+						   kref);
 
 	kfree(engine);
 }
@@ -677,7 +704,7 @@ static int gpdma_of_remove(struct platform_device *op)
 	spin_unlock(&acp_gpdma_glob_lock);
 
 	if (test_bit(GPDMA_INIT, &engine->state))
-	        dma_async_device_unregister(&engine->dma_device);
+		dma_async_device_unregister(&engine->dma_device);
 
 	tasklet_disable(&engine->job_task);
 	tasklet_kill(&engine->job_task);
@@ -696,7 +723,7 @@ static int gpdma_of_remove(struct platform_device *op)
 	gpdma_engine_put(engine);
 	dev_set_drvdata(&op->dev, NULL);
 
-        return 0;
+	return 0;
 }
 
 static int __devinit gpdma_of_probe(struct platform_device *op)
@@ -716,11 +743,13 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 
 	dev_set_drvdata(&op->dev, engine);
 
-        dma_cap_zero(engine->dma_device.cap_mask);
-        dma_cap_set(DMA_MEMCPY, engine->dma_device.cap_mask);
+	dma_cap_zero(engine->dma_device.cap_mask);
+	dma_cap_set(DMA_MEMCPY, engine->dma_device.cap_mask);
 
-	engine->dma_device.device_alloc_chan_resources = gpdma_alloc_chan_resources;
-	engine->dma_device.device_free_chan_resources = gpdma_free_chan_resources;
+	engine->dma_device.device_alloc_chan_resources =
+		gpdma_alloc_chan_resources;
+	engine->dma_device.device_free_chan_resources =
+		gpdma_free_chan_resources;
 	engine->dma_device.device_tx_status = gpdma_tx_status;
 	engine->dma_device.device_issue_pending = gpdma_issue_pending;
 	engine->dma_device.device_prep_dma_memcpy = gpdma_prep_memcpy;
@@ -737,9 +766,18 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 	engine->gbase = ioremap(0x20004e0400ull, 0xc);
 	engine->gpreg = ioremap(0x200040c000ull, 0x4);
 
-	dev_dbg(&op->dev, "mapped base\t%llx at %p\n", 0x20004e0000ull, engine->base);
-	dev_dbg(&op->dev, "mapped gbase\t%llx at %p\n", 0x20004e0400ull, engine->gbase);
-	dev_dbg(&op->dev, "mapped gpreg\t%llx at %p\n", 0x200040c000ull, engine->gpreg);
+	dev_dbg(&op->dev,
+		"mapped base\t%llx at %p\n",
+		0x20004e0000ull,
+		engine->base);
+	dev_dbg(&op->dev,
+		"mapped gbase\t%llx at %p\n",
+		0x20004e0400ull,
+		engine->gbase);
+	dev_dbg(&op->dev,
+		"mapped gpreg\t%llx at %p\n",
+		0x200040c000ull,
+		engine->gpreg);
 
 	if (!engine->base || !engine->gbase || !engine->gpreg)
 		goto err_init;
@@ -751,7 +789,7 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 
 	/* Setup channels */
 	for_each_child_of_node(op->dev.of_node, child) {
-                if (of_device_is_compatible(child, "gp-dma,acp-dma")) {
+		if (of_device_is_compatible(child, "gp-dma,acp-dma")) {
 			struct resource chan_res;
 			struct gpdma_channel *dmac;
 			int id;
@@ -770,19 +808,24 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 			INIT_LIST_HEAD(&dmac->job.node);
 			set_bit(GPDMA_CH_IDLE, &dmac->job.state);
 			dmac->chan.device = &engine->dma_device;
-			/* find the IRQ line, if it exists in the device tree */
+			/* find the IRQ line, if it exists in the dev tree */
 			dmac->irq = irq_of_parse_and_map(child, 0);
-			dev_dbg(engine->dev, "channel %d, irq %d\n", id, dmac->irq);
+			dev_dbg(engine->dev,
+				"channel %d, irq %d\n",
+				id, dmac->irq);
 			rc = request_irq(dmac->irq, gpdma_isr,
 					 IRQF_SHARED, "lsi-dma", dmac);
 			if (rc) {
-				dev_err(engine->dev, "failed to request_irq, error = %d\n", rc);
+				dev_err(engine->dev,
+					"failed to request_irq,
+					error = %d\n", rc);
 				goto err_init;
 			}
 			/* Add the channel to the DMAC list */
-			list_add_tail(&dmac->chan.device_node, &engine->dma_device.channels);
-                }
-        }
+			list_add_tail(&dmac->chan.device_node,
+				      &engine->dma_device.channels);
+		}
+	}
 	gpdma_dump(engine);
 
 	rc = dma_async_device_register(&engine->dma_device);
@@ -804,19 +847,19 @@ err_init:
 	return rc;
 }
 static const struct of_device_id gpdma_of_ids[] = {
-        { .compatible = "gp-dma,acp-dma", },
-        { .compatible = "gp-dma,acp-gpdma", },
-        {}
+	{ .compatible = "gp-dma,acp-dma", },
+	{ .compatible = "gp-dma,acp-gpdma", },
+	{}
 };
 
 static struct platform_driver gpdma_of_driver = {
-        .driver = {
-                .name = "acp-gpdma",
-                .owner = THIS_MODULE,
-                .of_match_table = gpdma_of_ids,
-        },
-        .probe = gpdma_of_probe,
-        .remove = gpdma_of_remove,
+	.driver = {
+		.name = "acp-gpdma",
+		.owner = THIS_MODULE,
+		.of_match_table = gpdma_of_ids,
+	},
+	.probe = gpdma_of_probe,
+	.remove = gpdma_of_remove,
 };
 /**
  * acp_gpdma_reset_engine
@@ -853,13 +896,13 @@ EXPORT_SYMBOL_GPL(acp_gpdma_reset_engine);
 
 static __init int gpdma_init(void)
 {
-        pr_info("ACP GP-DMA driver\n");
-        return platform_driver_register(&gpdma_of_driver);
+	pr_info("ACP GP-DMA driver\n");
+	return platform_driver_register(&gpdma_of_driver);
 }
 
 static void __exit gpdma_exit(void)
 {
-        platform_driver_unregister(&gpdma_of_driver);
+	platform_driver_unregister(&gpdma_of_driver);
 }
 
 subsys_initcall(gpdma_init);
