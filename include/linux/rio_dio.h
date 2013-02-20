@@ -42,14 +42,20 @@ void rio_dio_method_put(void *dio_channel);
 /*
   Access methods
 */
-int rio_dio_read_8(struct rio_dio_win *io_win, u32 offset, u32 mflags, u8 *value);
-int rio_dio_read_16(struct rio_dio_win *io_win, u32 offset, u32 mflags, u16 *value);
-int rio_dio_read_32(struct rio_dio_win *io_win, u32 offset, u32 mflags, u32 *value);
+int rio_dio_read_8(struct rio_dio_win *io_win, u32 offset,
+		   u32 mflags, u8 *value);
+int rio_dio_read_16(struct rio_dio_win *io_win, u32 offset,
+		    u32 mflags, u16 *value);
+int rio_dio_read_32(struct rio_dio_win *io_win, u32 offset,
+		    u32 mflags, u32 *value);
 int rio_dio_read_buff(struct rio_dio_win *io_win, u32 offset,
 		      u8 *dst, u32 mflags, u32 len);
-int rio_dio_write_8(struct rio_dio_win *io_win, u32 offset, u32 mflags, u8 *src);
-int rio_dio_write_16(struct rio_dio_win *io_win, u32 offset, u32 mflags, u16 *src);
-int rio_dio_write_32(struct rio_dio_win *io_win, u32 offset, u32 mflags, u32 *src);
+int rio_dio_write_8(struct rio_dio_win *io_win,
+		    u32 offset, u32 mflags, u8 *src);
+int rio_dio_write_16(struct rio_dio_win *io_win,
+		     u32 offset, u32 mflags, u16 *src);
+int rio_dio_write_32(struct rio_dio_win *io_win, u32 offset,
+		     u32 mflags, u32 *src);
 int rio_dio_write_buff(struct rio_dio_win *io_win, u32 offset,
 		       u8 *src, u32 mflags, u32 len);
 
