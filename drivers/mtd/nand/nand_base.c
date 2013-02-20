@@ -77,7 +77,7 @@
 #define NAND_CONFIG_REG       0x00008054
 #define NAND_PECC_REG         0x00008058
 
-extern lsi_nand_set_config(struct mtd_inf *, struct nand_chip *);
+extern int lsi_nand_set_config(struct mtd_info *, struct nand_chip *);
 #endif /* CONFIG_MTD_NAND_EP501X */
 
 /* Define default oob placement schemes for large and small page devices */
@@ -2592,7 +2592,8 @@ static int nand_erase(struct mtd_info *mtd, struct erase_info *instr)
 int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 		    int allowbbt)
 {
-	int page, status, pages_per_block, ret, chipnr;
+	int page, pages_per_block, ret, chipnr;
+	int status = 0;
 	struct nand_chip *chip = mtd->priv;
 	loff_t rewrite_bbt[NAND_MAX_CHIPS] = {0};
 	unsigned int bbt_masked_page = 0xffffffff;
@@ -2687,7 +2688,7 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 		if (bbt_masked_page != 0xffffffff &&
 			(page & BBT_PAGE_MASK) == bbt_masked_page)
 			rewrite_bbt[chipnr] =
-				(loff_t)page << chip->page_shift);
+				((loff_t)page << chip->page_shift);
 
 		/* Increment page address and decrement length */
 		len -= (1 << chip->phys_erase_shift);
@@ -2973,7 +2974,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 						  int *maf_id, int *dev_id,
 						  struct nand_flash_dev *type)
 {
-	int i, maf_idx;
+	int maf_idx;
 	u8 id_data[8];
 	int ret;
 

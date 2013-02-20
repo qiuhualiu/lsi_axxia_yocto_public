@@ -803,8 +803,8 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 					 IRQF_SHARED, "lsi-dma", dmac);
 			if (rc) {
 				dev_err(engine->dev,
-					"failed to request_irq,
-					error = %d\n", rc);
+					"failed to request_irq, error = %d\n",
+					rc);
 				goto err_init;
 			}
 			/* Add the channel to the DMAC list */

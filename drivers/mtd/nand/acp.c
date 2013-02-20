@@ -3381,7 +3381,7 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 			break;
 		case 1024:
 			config |= 4;
-`			break;
+			break;
 		case 2048:
 			config |= 5;
 			break;

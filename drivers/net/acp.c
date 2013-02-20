@@ -51,7 +51,7 @@ extern int acp_mdio_read(unsigned long,
 			 unsigned long,
 			 unsigned short *);
 extern int acp_mdio_write(unsigned long,
-`			  unsigned long,
+			  unsigned long,
 			  unsigned short);
 
 /* Base Addresses of the RX, TX, and DMA Registers. */
@@ -78,7 +78,7 @@ unsigned long lsinet_counts[] = {
 };
 EXPORT_SYMBOL(lsinet_counts);
 
-#define LSINET_COUNTS_INC(index) (++lsinet_counts[(index)];)
+#define LSINET_COUNTS_INC(index) {++lsinet_counts[(index)];}
 
 #else  /* LSINET_DEBUG_COUNTS */
 
@@ -151,7 +151,7 @@ unsigned long long recv_t3_tot_ = 0;
 unsigned long total_rx_packets_sent_up_ = 1;
 
 #define app3xx_profile_time_calc(_beg_t_, _end_t_,			 \
-				 _min_t_, _max_t_, _tot_t_) (		 \
+				 _min_t_, _max_t_, _tot_t_) 		 \
 	do {								 \
 		unsigned long _this_t_;					 \
 		if (_end_t_ > _beg_t_)					 \
@@ -163,7 +163,7 @@ unsigned long total_rx_packets_sent_up_ = 1;
 			_max_t_ = _this_t_; }				 \
 		if (_this_t_ < _min_t_)					 \
 			_min_t_ = _this_t_; }				 \
-	} while (0);)
+	} while (0);
 
 #define profile_time_fmt(t, d)		((1000*t)/d)
 #define profile_avg_fmt(t, c, d)	((1000*(t/c))/d)
@@ -196,11 +196,11 @@ unsigned long total_rx_packets_sent_up_ = 1;
 #undef DEBUG
 /*#define DEBUG*/
 #if defined(DEBUG)
-#define DEBUG_PRINT(format, args...) (					\
+#define DEBUG_PRINT(format, args...) 					\
 	do {								\
 		printk(KERN_DEBUG "appnic:%d - DEBUG - ", __LINE__);	\
 		printk(KERN_DEBUG format, ##args);			\
-	} while (0);)
+	} while (0);
 #else
 #define DEBUG_PRINT(format, args...)
 #endif
@@ -208,11 +208,11 @@ unsigned long total_rx_packets_sent_up_ = 1;
 #undef PHY_DEBUG
 /*#define PHY_DEBUG*/
 #if defined(PHY_DEBUG)
-#define PHY_DEBUG_PRINT(format, args...) (				\
+#define PHY_DEBUG_PRINT(format, args...) 				\
 	do {								\
 		printk(KERN_DEBUG "net:%d - PHY_DEBUG - ", __LINE__);	\
 		printk(KERN_DEBUG format, ##args);			\
-	} while (0);)
+	} while (0);
 #else
 #define PHY_DEBUG_PRINT(format, args...)
 #endif
@@ -222,23 +222,23 @@ unsigned long total_rx_packets_sent_up_ = 1;
 #undef WARN
 #define WARN
 #if defined(WARN)
-#define WARN_PRINT(format, args...) (					\
+#define WARN_PRINT(format, args...) 					\
 	do {								\
 		printk(KERN_DEBUG "appnic:%d - WARN - ", __LINE__);	\
 		printk(KERN_DEBUG format, ##args);			\
-	} while (0);)
+	} while (0);
 #else
 #define WARN_PRINT(format, args...)
 #endif
 
 /* -- ERROR --------------------------------------------------------- */
 
-#define ERROR_PRINT(format, args...) (					\
+#define ERROR_PRINT(format, args...) 					\
 	do {								\
 		printk(KERN_ERR "%s:%s:%d - ERROR - ",			\
 		       __FILE__, __func__, __LINE__);			\
 		printk(format, ##args);					\
-} while (0);)
+} while (0);
 
 /*
   ======================================================================
@@ -841,11 +841,11 @@ typedef struct {
 #define APPNIC_TX_CONF_PAD_ENABLE	0x0002
 #define APPNIC_TX_CONF_ENABLE		0x0001
 
-#define TX_CONF_SET_IFG(tx_configuration_, ifg_) (		\
+#define TX_CONF_SET_IFG(tx_configuration_, ifg_) 		\
 	do {							\
 		(tx_configuration_) &= ~APPNIC_TX_CONF_IFG;	\
 		(tx_configuration_) |= ((ifg_ & 0x1f) << 4);	\
-	} while (0);)
+	} while (0);
 
 /* Transmit Time Value Configuration -------------------------------- */
 
@@ -1918,7 +1918,7 @@ lsinet_rx_packet(struct net_device *device)
 	sk_buff_ = dev_alloc_skb(1600);
 
 
-	if ((struct sk_buff *) 0 == sk_buff) {
+	if ((struct sk_buff *) 0 == sk_buff_) {
 		ERROR_PRINT("dev_alloc_skb() failed! Dropping packet.\n");
 		TRACE_ENDING();
 		spin_unlock(&adapter->extra_lock);
@@ -1984,8 +1984,8 @@ lsinet_rx_packet(struct net_device *device)
 		if (0 == error_) {
 			struct ethhdr *ethhdr_ =
 				(struct ethhdr *) sk_buff_->data;
-			unsigned char broadcast_[] = { 0
-				xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+			unsigned char broadcast_[] =
+				{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 			unsigned char multicast_[] = { 0x01, 0x00 };
 
 			LSINET_COUNTS_INC(LSINET_COUNTS_RX_GOOD);
@@ -2433,7 +2433,7 @@ int appnic_open(struct net_device *device)
 	/* install the interrupt handlers */
 	return_code_ = request_irq(device->irq, appnic_isr_, IRQF_DISABLED,
 				   APPNIC_NAME, device);
-	if (0 != return_code) {
+	if (0 != return_code_) {
 		ERROR_PRINT("request_irq() failed, returned 0x%x/%d\n",
 			    return_code_, return_code_);
 		return return_code_;
@@ -2658,7 +2658,7 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 			writedescriptor(((unsigned long) adapter->tx_desc +
 				adapter->tx_head.bits.offset), &descriptor);
 			queue_increment_(&adapter->tx_head,
-`					 adapter->tx_num_desc);
+					 adapter->tx_num_desc);
 			readdescriptor(((unsigned long) adapter->tx_desc +
 				adapter->tx_head.bits.offset), &descriptor);
 			descriptor.start_of_packet = 0;
@@ -3052,7 +3052,7 @@ appnic_init(struct net_device *device)
 			dma_alloc_coherent(&device->dev,
 					   adapter->dma_alloc_size,
 					   &adapter->dma_alloc_dma,
-					   GFP_KERNEL)))
+					   GFP_KERNEL);
 
 		if ((void *) 0 == adapter->dma_alloc) {
 			ERROR_PRINT("Could not allocate %d bytes of DMA-able memory!\n",
@@ -3066,8 +3066,7 @@ appnic_init(struct net_device *device)
 		adapter->dma_alloc_offset = (int) adapter->dma_alloc -
 			(int) adapter->dma_alloc_dma;
 		dma_offset_ = adapter->dma_alloc;
-		DEBUG_PRINT("Allocated %d bytes at 0x%08lx(0x%08lx),
-			    offset=0x%x.\n",
+		DEBUG_PRINT("Allocated %d bytes at 0x%08lx(0x%08lx), offset=0x%x.\n",
 			    adapter->dma_alloc_size,
 			    (unsigned long) adapter->dma_alloc,
 			    (unsigned long) adapter->dma_alloc_dma,
@@ -3133,8 +3132,7 @@ appnic_init(struct net_device *device)
 
 		DEBUG_PRINT("rx_tail=0x%08lx\n",
 			    (unsigned long) adapter->rx_tail);
-		DEBUG_PRINT("Initializing the RX buffer pointers,
-			    dma_offset=0x%lx/0x%lx\n",
+		DEBUG_PRINT("Initializing the RX buffer pointers, dma_offset=0x%lx/0x%lx\n",
 			    (unsigned long) dma_offset_,
 			    (unsigned long) ALIGN64B(dma_offset_));
 		adapter->rx_buf = (void *) ALIGN64B(dma_offset_);
@@ -3148,8 +3146,7 @@ appnic_init(struct net_device *device)
 
 		DEBUG_PRINT("rx_tail=0x%08lx\n",
 			    (unsigned long) adapter->rx_tail);
-		DEBUG_PRINT("Initializing the TX buffer pointers,
-			    dma_offset=0x%lx/0x%lx\n",
+		DEBUG_PRINT("Initializing the TX buffer pointers, dma_offset=0x%lx/0x%lx\n",
 			    (unsigned long) dma_offset_,
 			    (unsigned long) ALIGN64B(dma_offset_));
 		adapter->tx_buf = (void *) ALIGN64B(dma_offset_);
@@ -3488,11 +3485,11 @@ appnic_read_proc_(char *page, char **start, off_t offset,
 	tx_tpa_virt_ = appnic_device_->tx_tail->raw;
 
 	length_ = sprintf(page,
-			  "GKM TEMP DEBUG Build 5\n" \
+			  " GKM TEMP DEBUG Build 5\n" \
 			  " RX: head=0x%lx tail=0x%lx tail_copy=0x%lx\n" \
 			  " TX: head=0x%lx tail=0x%lx tail_copy=0x%lx\n" \
-			  " DMA: IE=0x%x IS=0x%x\n" \
-			  " VIC: status=0x%x raw=0x%x enable=0x%x\n" \
+			  "DMA: IE=0x%x IS=0x%x\n" \
+			  "VIC: status=0x%x raw=0x%x enable=0x%x\n" \
 			  " TX: tpa_config=0x%x tpa_real_=0x%lx " \
 			  "*tpa_virt_=0x%x\n",
 			  appnic_device_->rx_head.raw,
@@ -3509,125 +3506,6 @@ appnic_read_proc_(char *page, char **start, off_t offset,
 			  read_mac_(APPNIC_DMA_TX_TAIL_POINTER_ADDRESS),
 			  tx_tpa_real_,
 			  *((unsigned int *) tx_tpa_virt_));
-#else
-	length_ = sprintf(page,
-#ifdef LSINET_NAPI
-			  "-- appnic.c\n" \
-			  "-- rx_num_desc = %d\n" \
-			  "-- rx_buf_sz = %d\n" \
-			  "-- rx_buf_per_desc = %d\n" \
-			  "-- tx_num_desc = %d\n" \
-			  "-- tx_buf_sz = %d\n" \
-			  "-- tx_buf_per_desc = %d\n" \
-			  "-- dropped_by_stack_ = %lu\n" \
-			  "-- transmit_interrupts_ = %lu\n" \
-			  "-- receive_interrupts_ = %lu\n" \
-			  "-- total_polls_ = %lu\n" \
-			  "-- jiffies_changed_ = %lu\n" \
-			  "-- out_of_tx_descriptors_ = %lu\n" \
-			  "-- divisor_ = %lu\n" \
-			  "-- RX(ns): min=%lu max=%lu avg/pkt=%llu "
-			  "avg/poll=%llu\n" \
-			  "-- Max RX Packets Handled/poll: %lu\n" \
-			  "-- RX Size: min=%lu max=%lu total=%lu "
-			  "average=%lu\n" \
-			  "-- TX(ns): min=%lu max=%lu avg/pkt=%llu\n" \
-			  "-- total_tx_packets_: %lu\n" \
-			  "-- recv t1: min=%lu max=%lu, avg=%llu\n" \
-			  "-- recv t2: min=%lu max=%lu, avg=%llu\n" \
-			  "-- recv t3: min=%lu max=%lu, avg=%llu\n",
-#else
-			  "-- appnic.c\n" \
-			  "-- rx_num_desc = %d\n" \
-			  "-- rx_buf_sz = %d\n" \
-			  "-- rx_buf_per_desc = %d\n" \
-			  "-- tx_num_desc = %d\n" \
-			  "-- tx_buf_sz = %d\n" \
-			  "-- tx_buf_per_desc = %d\n" \
-			  "-- dropped_by_stack_ = %lu\n" \
-			  "-- transmit_interrupts_ = %lu\n" \
-			  "-- total_rx_interrupts_ = %lu\n" \
-			  "-- jiffies_changed_ = %lu\n" \
-			  "-- out_of_tx_descriptors_ = %lu\n" \
-			  "-- divisor_ = %lu\n" \
-			  "-- RX(ns): min=%lu max=%lu avg/pkt=%llu "
-			  "avg/irq=%llu\n" \
-			  "-- Max RX Packets Handled/Interrupt: %lu\n" \
-			  "-- RX Size: min=%lu max=%lu total=%lu "
-			  "average=%lu\n" \
-			  "-- TX(ns): min=%lu max=%lu avg/pkt=%llu\n" \
-			  "-- total_tx_packets_: %lu\n" \
-			  "-- recv t1: min=%lu max=%lu, avg=%llu\n" \
-			  "-- recv t2: min=%lu max=%lu, avg=%llu\n" \
-			  "-- recv t3: min=%lu max=%lu, avg=%llu\n",
-#endif
-			appnic_device_->rx_num_desc,
-			appnic_device_->rx_buf_sz,
-			appnic_device_->rx_buf_per_desc,
-			appnic_device_->tx_num_desc,
-			appnic_device_->tx_buf_sz,
-			appnic_device_->tx_buf_per_desc,
-			dropped_by_stack_,
-			transmit_interrupts_,
-#ifdef LSINET_NAPI
-			receive_interrupts_,
-			total_polls_,
-#else
-			total_rx_interrupts_,
-#endif
-			jiffies_changed_,
-			out_of_tx_descriptors_,
-			divisor_,
-			profile_time_fmt(time_in_rx_min_, divisor_),
-			profile_time_fmt(time_in_rx_max_, divisor_),
-			total_rx_packets_handled_ ?
-			(profile_avg_fmt(total_rx_time_,
-					total_rx_packets_handled_,
-					divisor_)) : 0,
-#ifdef LSINET_NAPI
-			total_polls_ ?
-			(profile_avg_fmt(total_rx_time_,
-					total_polls_,
-					divisor_)) : 0,
-#else
-			total_rx_interrupts_ ?
-			(profile_avg_fmt(total_rx_time_,
-					total_rx_interrupts_,
-					divisor_)) : 0,
-#endif
-			max_rx_packets_handled_,
-			rx_packet_size_min_, rx_packet_size_max_,
-			total_rx_bytes_,
-			total_rx_packets_handled_ ?
-			(total_rx_bytes_ / total_rx_packets_handled_) :
-			0,
-			profile_time_fmt(time_in_tx_min_, divisor_),
-			profile_time_fmt(time_in_tx_max_, divisor_),
-			total_tx_packets_ ?
-			(profile_avg_fmt(total_tx_time_,
-					total_tx_packets_,
-					divisor_)) : 0,
-			total_tx_packets_,
-			profile_time_fmt(recv_t1_min_, divisor_),
-			profile_time_fmt(recv_t1_max_, divisor_),
-			total_rx_packets_handled_ ?
-			(total_rx_packets_sent_up_ ?
-			(profile_avg_fmt(recv_t1_tot_,
-					 total_rx_packets_handled_,
-					 divisor_)) : 0) : 0,
-			profile_time_fmt(recv_t2_min_, divisor_),
-			profile_time_fmt(recv_t2_max_, divisor_),
-			total_rx_packets_sent_up_ ?
-			(profile_avg_fmt(recv_t2_tot_,
-					total_rx_packets_sent_up_,
-					divisor_)) : 0,
-			profile_time_fmt(recv_t3_min_, divisor_),
-			profile_time_fmt(recv_t3_max_, divisor_),
-			total_rx_packets_sent_up_ ?
-				 (profile_avg_fmt(recv_t3_tot_,
-						  total_rx_packets_sent_up_,
-						  divisor_)) : 0);
-#endif
 
 	time_in_rx_max_ = 0;
 	time_in_rx_min_ = 0xffffffff;
@@ -3666,7 +3544,7 @@ appnic_read_proc_(char *page, char **start, off_t offset,
 
 	length_ = sprintf(page, "-- appnic.c -- Profiling is disabled\n");
 
-#endif
+#endif /* __APPNIC_C_PROFILE__ */
 
 	/* that's all */
 	return length_;
@@ -3690,7 +3568,7 @@ lsinet_init(void)
 
 	/* Allocate space for the device. */
 
-	device = alloc_etherdev(sizeof(appnic_device_t);
+	device = alloc_etherdev(sizeof(appnic_device_t));
 	if ((struct net_device *)0 == device) {
 		ERROR_PRINT("Couldn't allocate net device.");
 		rc = -ENOMEM;

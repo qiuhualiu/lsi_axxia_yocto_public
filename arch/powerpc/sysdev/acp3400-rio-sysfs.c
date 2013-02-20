@@ -214,7 +214,7 @@ static ssize_t acp_rio_ib_dme_store(struct device *dev,
 		for (i = 0; i < RIO_IB_DME_NUM; i++)
 			atomic_set(&priv->ib_dme[e][i], 0);
 	}
-	count;
+	return count;
 }
 static DEVICE_ATTR(ib_dme_event, S_IRUGO|S_IWUGO,
 		   acp_rio_ib_dme_show, acp_rio_ib_dme_store);

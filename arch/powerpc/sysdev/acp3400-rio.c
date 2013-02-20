@@ -182,7 +182,7 @@ static int acp_local_config_write(struct rio_mport *mport,
 	return __acp_local_config_write(priv, offset, data);
 }
 
-#define __acp_read_rio_config(x, addr, err, op)	(		\
+#define __acp_read_rio_config(x, addr, err, op)			\
 	__asm__ __volatile__(					\
 		PPC_MSYNC "\n"					\
 		"0:	"op" %1,0(%2)\n"			\
@@ -201,7 +201,7 @@ static int acp_local_config_write(struct rio_mport *mport,
 		PPC_LONG "2b,4b\n"				\
 		".previous"					\
 		: "=r" (err), "=r" (x)				\
-		: "b" (addr), "i" (-EFAULT), "0" (err)))
+		: "b" (addr), "i" (-EFAULT), "0" (err))
 
 
 int acp_rio_mcheck_exception(struct pt_regs *regs)
@@ -1096,7 +1096,7 @@ static struct rio_priv *rio_priv_dtb_setup(struct platform_device *dev,
 
 	/* mport port driver handle */
 	mport->priv = priv;
-x/* Interrupt handling */
+	/* Interrupt handling */
 	priv->irq_line = irq;
 	acp3400_rio_port_irq_init(mport);
 	/* dev ptr for debug printouts */

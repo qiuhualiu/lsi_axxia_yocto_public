@@ -13,7 +13,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/dmaengine.h>
 #include <linux/rio_dio.h>
-#include <linux/rio.h>
+#include <asm/rio.h>
 
 static LIST_HEAD(io_wins);
 static LIST_HEAD(dio_channels);
