@@ -13,7 +13,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/dmaengine.h>
 #include <linux/rio_dio.h>
-#include <asm/rio.h>
+#include <linux/rio.h>
 
 static LIST_HEAD(io_wins);
 static LIST_HEAD(dio_channels);
@@ -123,7 +123,7 @@ static inline struct rio_dio_dma *__dma_get(struct rio_dio_dma *dio_dma)
  * Returns: On success - @dio_channel
  *          On failure - NULL
  */
- static void *__rio_dio_method_get(void *dio_channel)
+static void *__rio_dio_method_get(void *dio_channel)
 {
 	struct rio_dio_dma *dio_dma = (struct rio_dio_dma *)dio_channel;
 
@@ -168,9 +168,8 @@ static void __rio_dio_method_put(void *dio_channel)
 {
 	struct rio_dio_dma *dio_dma = (struct rio_dio_dma *)dio_channel;
 
-	if (dio_dma) {
+	if (dio_dma)
 		kref_put(&dio_dma->kref, __dma_release);
-	}
 }
 
 /**
@@ -242,7 +241,7 @@ static int __dma_cpy(struct rio_dio_dma *dio_dma,
 		config.src_maxburst = 16;
 		dma_src = (dma_addr_t)phys;
 		dma_map = dma_dst = dma_map_single(dio_dma->txdmadev->dev,
-					 	   buf, len, dir);
+						   buf, len, dir);
 		eflag = DMA_COMPL_SKIP_SRC_UNMAP;
 	}
 	dmaengine_slave_config(dio_dma->txdmachan, &config);
@@ -286,7 +285,7 @@ out_err:
 out:
 	__rio_dio_method_put(dio_dma);
 	if (status != DMA_SUCCESS)
-		return (status == -ETIME ? status : -EFAULT);
+		return status == -ETIME ? status : -EFAULT;
 	return 0;
 
 }
@@ -393,10 +392,12 @@ static inline int __rio_dio(void *dio_channel,
 				rc = rio_in_8(dst, (u8 __iomem *)src);
 				break;
 			case 2:
-				rc = rio_in_be16((u16 *)dst, (u16 __iomem *)src);
+				rc = rio_in_be16((u16 *)dst,
+						 (u16 __iomem *)src);
 				break;
 			case 4:
-				rc = rio_in_be32((u32 *)dst, (u32 __iomem *)src);
+				rc = rio_in_be32((u32 *)dst,
+						 (u32 __iomem *)src);
 				break;
 			default:
 				pr_warn("(%s): illegal read tsize %d\n",
@@ -458,7 +459,8 @@ static void __rio_dio_release_region(struct kref *kref)
  *          On failure - NULL
  */
 
-static inline struct rio_dio_win *__rio_dio_region_get(struct rio_dio_win *io_win)
+static inline
+struct rio_dio_win *__rio_dio_region_get(struct rio_dio_win *io_win)
 {
 	struct rio_dio_win *entry, *next, *ret = NULL;
 	unsigned long flags;
@@ -607,7 +609,7 @@ out:
  * are serialized.
  *
  */
-#define RIO_DIO_READ(size,type,len)					\
+#define RIO_DIO_READ(size, type, len)					\
 	int rio_dio_read_##size						\
 	(struct rio_dio_win *io_win, u32 offset, u32 mflags, type *value) \
 	{								\
@@ -640,7 +642,7 @@ out:
  * are serialized.
  *
  */
-#define RIO_DIO_WRITE(size,type,len)					\
+#define RIO_DIO_WRITE(size, type, len)					\
 	int rio_dio_write_##size					\
 	(struct rio_dio_win *io_win, u32 offset, u32 mflags, type *src)	\
 	{								\
@@ -654,17 +656,16 @@ out:
 	}
 
 RIO_DIO_READ(8, u8, 1)
-RIO_DIO_READ(16, u16, 2)
-RIO_DIO_READ(32, u32, 4)
-RIO_DIO_WRITE(8, u8, 1)
-RIO_DIO_WRITE(16, u16, 2)
-RIO_DIO_WRITE(32, u32, 4)
-
 EXPORT_SYMBOL_GPL(rio_dio_read_8);
+RIO_DIO_READ(16, u16, 2)
 EXPORT_SYMBOL_GPL(rio_dio_read_16);
+RIO_DIO_READ(32, u32, 4)
 EXPORT_SYMBOL_GPL(rio_dio_read_32);
+RIO_DIO_WRITE(8, u8, 1)
 EXPORT_SYMBOL_GPL(rio_dio_write_8);
+RIO_DIO_WRITE(16, u16, 2)
 EXPORT_SYMBOL_GPL(rio_dio_write_16);
+RIO_DIO_WRITE(32, u32, 4)
 EXPORT_SYMBOL_GPL(rio_dio_write_32);
 
 /**
@@ -787,7 +788,7 @@ struct rio_dio_win *rio_dio_req_region(void *dio_channel,
 	 */
 	if (rio_req_outb_region(rdev->hport, size, rdev->dev.init_name,
 				transaction_type, &io_win->outb_win)) {
-	        message = "Mapping outbound ATMU window failed";
+		message = "Mapping outbound ATMU window failed";
 		goto out_map;
 	}
 	kref_init(&io_win->kref);
@@ -800,7 +801,7 @@ struct rio_dio_win *rio_dio_req_region(void *dio_channel,
 out_map:
 	__rio_dio_method_put(dio_channel);
 	kfree(io_win);
-        io_win = NULL;
+	io_win = NULL;
 out_err:
 	pr_warn("RIO: %s\n", message);
 out:
@@ -819,9 +820,8 @@ EXPORT_SYMBOL_GPL(rio_dio_req_region);
 
 void rio_dio_region_put(struct rio_dio_win *io_win)
 {
-	if (io_win) {
+	if (io_win)
 		kref_put(&io_win->kref, __rio_dio_release_region);
-	}
 }
 EXPORT_SYMBOL_GPL(rio_dio_region_put);
 

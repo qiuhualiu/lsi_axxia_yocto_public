@@ -23,8 +23,8 @@ struct rio_job {
 	struct rio_mport *mport;
 	struct rio_dev *rdev;
 	int port;
-        int event;
-        u32 flags;
+	int event;
+	u32 flags;
 	int srio_down;
 };
 

@@ -32,17 +32,20 @@
 #define RIO_SWITCH 3
 
 /* Functions internal to the RIO core code */
-extern struct rio_dev **rio_get_tagged_devices(struct rio_mport *mport, int tag, int *n);
+extern struct rio_dev **rio_get_tagged_devices(struct rio_mport *mport,
+					       int tag, int *n);
 
 extern int rio_type_of_next(struct rio_dev *sw_curr, struct rio_dev *sw_next);
 extern int rio_is_switch(struct rio_dev *rdev);
-extern int rio_get_err_and_status(struct rio_dev *rdev, int portnum, u32 *err_status);
-extern int rio_mport_get_feature(struct rio_mport * port, int local, u16 destid,
-                                 u8 hopcount, int ftr, u32 *feature);
+extern int rio_get_err_and_status(struct rio_dev *rdev,
+				  int portnum, u32 *err_status);
+extern int rio_mport_get_feature(struct rio_mport *port,
+				 int local, u16 destid,
+				 u8 hopcount, int ftr, u32 *feature);
 extern int rio_mport_get_physefb(struct rio_mport *port, int local,
-                                 u16 destid, u8 hopcount, u32 *physefb);
+				 u16 destid, u8 hopcount, u32 *physefb);
 extern int rio_mport_get_efb(struct rio_mport *port, int local, u16 destid,
-                             u8 hopcount, u32 from, u32 *ext_ftr_ptr);
+			     u8 hopcount, u32 from, u32 *ext_ftr_ptr);
 extern int rio_mport_chk_dev_access(struct rio_mport *mport, u16 destid,
 				    u8 hopcount);
 extern int rio_create_sysfs_dev_files(struct rio_dev *rdev);
@@ -57,9 +60,10 @@ extern int rio_std_route_get_entry(struct rio_mport *mport, u16 destid,
 extern int rio_std_route_clr_table(struct rio_mport *mport, u16 destid,
 				   u8 hopcount, u16 table);
 extern struct rio_dev *rio_get_comptag(struct rio_mport *mport, u32 comp_tag);
-extern int rio_clr_err_stopped(struct rio_dev *rdev, u32 pnum, u32 err_status, int *success);
+extern int rio_clr_err_stopped(struct rio_dev *rdev, u32 pnum,
+			       u32 err_status, int *success);
 extern struct rio_net *rio_get_mport_net(struct rio_mport *port);
-//extern int rio_setup_event(struct rio_dev *rdev, int portnum, int event);
+/* extern int rio_setup_event(struct rio_dev *rdev, int portnum, int event);*/
 
 /* Structures internal to the RIO core code */
 extern struct list_head rio_switches;
@@ -97,5 +101,7 @@ extern struct rio_dev_fixup __end_rio_dev_fixup_enable[];
 	DECLARE_RIO_SWITCH_SECTION(.rio_switch_ops, vid##did, \
 			vid, did, init_hook)
 
-#define RIO_GET_DID(size, x)	(size ? (x & 0xffff) : ((x & 0x00ff0000) >> 16))
-#define RIO_SET_DID(size, x)	(size ? (x & 0xffff) : ((x & 0x000000ff) << 16))
+#define RIO_GET_DID(size, x)	(size ? (x & 0xffff) : \
+					((x & 0x00ff0000) >> 16))
+#define RIO_SET_DID(size, x)	(size ? (x & 0xffff) : \
+					((x & 0x000000ff) << 16))

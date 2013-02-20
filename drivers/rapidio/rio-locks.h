@@ -36,26 +36,31 @@ static inline void rio_tree_write_lock(void)
 static inline void rio_tree_write_unlock(void)
 {
 #if defined(RIO_LOCK_DEBUG)
-	pr_debug("RIO: PID %u release the rio_tree_write_lock\n", current->pid);
+	pr_debug("RIO: PID %u release the rio_tree_write_lock\n",
+		 current->pid);
 #endif
 	up_write(&rio_tree_sem);
 }
-//extern struct rio_dev *lookup_rdev(struct rio_mport *mport, u16 destid);
 extern struct rio_dev *lookup_rdev_next(struct rio_dev *rdev, int port_num);
 extern struct rio_dev *rio_get_by_ptr(struct rio_dev *rdev);
-//extern struct rio_dev *rio_get_root_node(struct rio_mport *mport);
-extern int rio_get_host_lock(struct rio_mport *port, u16 destid, u8 hopcount, u16 *result);
-extern int rio_clear_host_lock(struct rio_mport *port, u16 destid, u8 hopcount, u16 lockid);
+extern int rio_get_host_lock(struct rio_mport *port, u16 destid, u8 hopcount,
+			     u16 *result);
+extern int rio_clear_host_lock(struct rio_mport *port, u16 destid,
+			       u8 hopcount, u16 lockid);
 extern int rio_hw_unlock(struct rio_mport *port, u16 destid, u8 hopcount);
 extern void rio_job_hw_unlock_devices(struct rio_job *job);
-extern int rio_hw_lock_busy_wait(struct rio_mport *port, u16 destid, u8 hopcount, int wait_ms);
-extern int rio_job_hw_lock_wait(struct rio_job *job, struct rio_dev *from, struct rio_dev *to,
+extern int rio_hw_lock_busy_wait(struct rio_mport *port, u16 destid,
+				 u8 hopcount, int wait_ms);
+extern int rio_job_hw_lock_wait(struct rio_job *job, struct rio_dev *from,
+				struct rio_dev *to,
 				u16 destid, u8 hopcount, int tmo);
 extern int rio_job_hw_lock_wait_cond(struct rio_job *job, u16 destid,
 				     u8 hopcount, int tmo, int lock,
-				     int (*unlock)(struct rio_mport *, u16, u8));
+				     int (*unlock)(struct rio_mport *,
+						   u16, u8));
 
-extern int rio_hw_lock_wait(struct rio_mport *mport, u16 destid, u8 hopcount, int tmo);
+extern int rio_hw_lock_wait(struct rio_mport *mport, u16 destid,
+			    u8 hopcount, int tmo);
 extern int rio_job_hw_wait_cond(struct rio_job *job, u16 destid,
 				u8 hopcount, int tmo,
 				int (*cond)(struct rio_mport *, u16, u8));

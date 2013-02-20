@@ -80,7 +80,8 @@ int rio_create_removeid_file(struct rio_driver *drv)
 {
 	int error = 0;
 	if (drv->probe != NULL)
-		error = driver_create_file(&drv->driver,&driver_attr_remove_id);
+		error = driver_create_file(&drv->driver,
+					   &driver_attr_remove_id);
 	return error;
 }
 
@@ -124,7 +125,8 @@ int rio_init_device(struct rio_dev *rdev)
 	u16 destid = rdev->destid;
 
 	if (rio_has_destid(rdev->src_ops, rdev->dst_ops)) {
-		rio_assign_destid(rdev, port, rdev->destid, rdev->hopcount, &rdev->destid);
+		rio_assign_destid(rdev, port, rdev->destid, rdev->hopcount,
+				  &rdev->destid);
 	}
 	rio_fixup_dev(rio_fixup_early, rdev, destid, hopcount);
 	/* Assign component tag to device */

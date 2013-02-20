@@ -21,7 +21,7 @@
 
 static int
 idtg2_route_add_entry(struct rio_mport *mport, u16 destid, u8 hopcount,
-                      u16 table, u16 route_destid, u8 route_port)
+		      u16 table, u16 route_destid, u8 route_port)
 {
 	/*
 	 * Select routing table to update
@@ -54,7 +54,7 @@ idtg2_route_add_entry(struct rio_mport *mport, u16 destid, u8 hopcount,
 
 static int
 idtg2_route_get_entry(struct rio_mport *mport, u16 destid, u8 hopcount,
-                      u16 table, u16 route_destid, u8 *route_port)
+		      u16 table, u16 route_destid, u8 *route_port)
 {
 	u32 result;
 
@@ -86,7 +86,7 @@ idtg2_route_get_entry(struct rio_mport *mport, u16 destid, u8 hopcount,
 
 static int
 idtg2_route_clr_table(struct rio_mport *mport, u16 destid, u8 hopcount,
-                      u16 table)
+		      u16 table)
 {
 	u32 i;
 
@@ -104,11 +104,13 @@ idtg2_route_clr_table(struct rio_mport *mport, u16 destid, u8 hopcount,
 	for (i = RIO_STD_RTE_CONF_EXTCFGEN;
 	     i <= (RIO_STD_RTE_CONF_EXTCFGEN | 0xff);) {
 		rio_mport_write_config_32(mport, destid, hopcount,
-                                          RIO_STD_RTE_CONF_DESTID_SEL_CSR, i);
+					  RIO_STD_RTE_CONF_DESTID_SEL_CSR, i);
 		rio_mport_write_config_32(mport, destid, hopcount,
-                                          RIO_STD_RTE_CONF_PORT_SEL_CSR,
-                                          (IDT_DEFAULT_ROUTE << 24) | (IDT_DEFAULT_ROUTE << 16) |
-                                          (IDT_DEFAULT_ROUTE << 8) | IDT_DEFAULT_ROUTE);
+					  RIO_STD_RTE_CONF_PORT_SEL_CSR,
+					  (IDT_DEFAULT_ROUTE << 24) |
+					  (IDT_DEFAULT_ROUTE << 16) |
+					  (IDT_DEFAULT_ROUTE << 8) |
+					  IDT_DEFAULT_ROUTE);
 		i += 4;
 	}
 
@@ -117,7 +119,7 @@ idtg2_route_clr_table(struct rio_mport *mport, u16 destid, u8 hopcount,
 
 static int
 idtg2_set_domain(struct rio_mport *mport, u16 destid, u8 hopcount,
-                 u8 sw_domain)
+		 u8 sw_domain)
 {
 	/*
 	 * Switch domain configuration operates only at global level
@@ -129,7 +131,7 @@ idtg2_set_domain(struct rio_mport *mport, u16 destid, u8 hopcount,
 
 static int
 idtg2_get_domain(struct rio_mport *mport, u16 destid, u8 hopcount,
-                 u8 *sw_domain)
+		 u8 *sw_domain)
 {
 	u32 regval;
 
@@ -137,7 +139,7 @@ idtg2_get_domain(struct rio_mport *mport, u16 destid, u8 hopcount,
 	 * Switch domain configuration operates only at global level
 	 */
 	rio_mport_read_config_32(mport, destid, hopcount,
-                                 IDT_RIO_DOMAIN, &regval);
+				 IDT_RIO_DOMAIN, &regval);
 
 	*sw_domain = (u8)(regval & 0xff);
 
@@ -166,15 +168,16 @@ idtg2_em_init(struct rio_dev *rdev)
 
 	/* Enable standard (RIO.p8) error reporting */
 	rio_write_config_32(rdev, IDT_LT_ERR_REPORT_EN,
-                            REM_LTL_ERR_ILLTRAN | REM_LTL_ERR_UNSOLR |
-                            REM_LTL_ERR_UNSUPTR);
+			    REM_LTL_ERR_ILLTRAN | REM_LTL_ERR_UNSOLR |
+			    REM_LTL_ERR_UNSUPTR);
 
 	/* Use Port-Writes for LT layer error reporting.
 	 * Enable per-port reset
 	 */
 	rio_read_config_32(rdev, IDT_DEV_CTRL_1, &regval);
 	rio_write_config_32(rdev, IDT_DEV_CTRL_1,
-                            regval | IDT_DEV_CTRL_1_GENPW | IDT_DEV_CTRL_1_PRSTBEH);
+			    regval | IDT_DEV_CTRL_1_GENPW |
+			    IDT_DEV_CTRL_1_PRSTBEH);
 
 	/*
 	 * Configure PORT error reporting.
@@ -192,12 +195,17 @@ idtg2_em_init(struct rio_dev *rdev)
 	for (i = 0; i < tmp; i++) {
 		rio_read_config_32(rdev, IDT_PORT_OPS(i), &regval);
 		rio_write_config_32(rdev,
-                                    IDT_PORT_OPS(i), regval | IDT_PORT_OPS_GENPW |
-                                    IDT_PORT_OPS_PL_ELOG |
-                                    IDT_PORT_OPS_LL_ELOG |
-                                    IDT_PORT_OPS_LT_ELOG);
-		rio_read_config_32(rdev, rdev->phys_efptr + RIO_PORT_N_CTL_CSR(i), &regval);
-		rio_write_config_32(rdev, rdev->phys_efptr + RIO_PORT_N_CTL_CSR(i), regval | RIO_PORT_N_CTL_EN_TX_SER | RIO_PORT_N_CTL_EN_RX_SER);
+				    IDT_PORT_OPS(i), regval |
+				    IDT_PORT_OPS_GENPW |
+				    IDT_PORT_OPS_PL_ELOG |
+				    IDT_PORT_OPS_LL_ELOG |
+				    IDT_PORT_OPS_LT_ELOG);
+		rio_read_config_32(rdev, rdev->phys_efptr +
+				   RIO_PORT_N_CTL_CSR(i), &regval);
+		rio_write_config_32(rdev, rdev->phys_efptr +
+				    RIO_PORT_N_CTL_CSR(i), regval |
+				    RIO_PORT_N_CTL_EN_TX_SER |
+				    RIO_PORT_N_CTL_EN_RX_SER);
 	}
 	/* Overwrite error log if full */
 	rio_write_config_32(rdev, IDT_ERR_CAP, IDT_ERR_CAP_LOG_OVERWR);
@@ -234,7 +242,8 @@ idtg2_em_init(struct rio_dev *rdev)
 
 	/* Disable Port-Write notification from I2C */
 	rio_read_config_32(rdev, IDT_I2C_MCTRL, &regval);
-	rio_write_config_32(rdev, IDT_I2C_MCTRL, regval & ~IDT_I2C_MCTRL_GENPW);
+	rio_write_config_32(rdev, IDT_I2C_MCTRL, regval &
+			    ~IDT_I2C_MCTRL_GENPW);
 
 	/*
 	 * Configure CFG_BLK error reporting.
@@ -250,7 +259,8 @@ idtg2_em_init(struct rio_dev *rdev)
 
 	/* set TVAL = ~50us */
 	rio_write_config_32(rdev,
-                            rdev->phys_efptr + RIO_PORT_LINKTO_CTL_CSR, 0x8e << 8);
+			    rdev->phys_efptr +
+			    RIO_PORT_LINKTO_CTL_CSR, 0x8e << 8);
 
 	return 0;
 }
@@ -261,14 +271,15 @@ idtg2_em_handler(struct rio_dev *rdev, u8 portnum)
 	u32 regval, em_perrdet, em_ltlerrdet;
 
 	rio_read_config_32(rdev,
-                           rdev->em_efptr + RIO_EM_LTL_ERR_DETECT, &em_ltlerrdet);
+			   rdev->em_efptr +
+			   RIO_EM_LTL_ERR_DETECT, &em_ltlerrdet);
 	if (em_ltlerrdet) {
 		pr_debug("RIO: RIO_EM_LTL_ERR_DETECT 0x%x\n", em_ltlerrdet);
 		/* Service Logical/Transport Layer Error(s) */
 		if (em_ltlerrdet & REM_LTL_ERR_IMPSPEC) {
 			/* Implementation specific error reported */
 			rio_read_config_32(rdev,
-                                           IDT_ISLTL_ADDRESS_CAP, &regval);
+					   IDT_ISLTL_ADDRESS_CAP, &regval);
 
 			pr_debug("RIO: %s Implementation Specific LTL errors" \
 				 " 0x%x @(0x%x)\n",
@@ -281,7 +292,8 @@ idtg2_em_handler(struct rio_dev *rdev, u8 portnum)
 	}
 
 	rio_read_config_32(rdev,
-                           rdev->em_efptr + RIO_EM_PN_ERR_DETECT(portnum), &em_perrdet);
+			   rdev->em_efptr +
+			   RIO_EM_PN_ERR_DETECT(portnum), &em_perrdet);
 	if (em_perrdet) {
 		pr_debug("RIO: RIO_EM_PN_ERR_DETECT 0x%x\n", em_perrdet);
 		/* Service Port-Level Error(s) */
@@ -290,14 +302,15 @@ idtg2_em_handler(struct rio_dev *rdev, u8 portnum)
 
 			/* Get IS errors reported */
 			rio_read_config_32(rdev,
-                                           IDT_PORT_ISERR_DET(portnum), &regval);
+					   IDT_PORT_ISERR_DET(portnum),
+					   &regval);
 
 			pr_debug("RIO: %s Implementation Specific Port" \
 				 " errors 0x%x\n", rio_name(rdev), regval);
 
 			/* Clear all implementation specific events */
 			rio_write_config_32(rdev,
-                                            IDT_PORT_ISERR_DET(portnum), 0);
+					    IDT_PORT_ISERR_DET(portnum), 0);
 		}
 	}
 
@@ -315,7 +328,7 @@ idtg2_show_errlog(struct device *dev, struct device_attribute *attr, char *buf)
 		if (!regval)    /* 0 = end of log */
 			break;
 		len += snprintf(buf + len, PAGE_SIZE - len,
-                                "%08x\n", regval);
+				"%08x\n", regval);
 		if (len >= (PAGE_SIZE - 10))
 			break;
 	}

@@ -17,8 +17,8 @@
  * These interrupt-safe spinlocks protect all accesses to RIO
  * configuration space and doorbell access.
  */
-//static DEFINE_SPINLOCK(rio_config_lock);
-//static DEFINE_SPINLOCK(rio_doorbell_lock);
+/* static DEFINE_SPINLOCK(rio_config_lock); */
+/* static DEFINE_SPINLOCK(rio_doorbell_lock); */
 
 static DEFINE_RAW_SPINLOCK(rio_config_lock);
 static DEFINE_RAW_SPINLOCK(rio_doorbell_lock);
@@ -41,14 +41,15 @@ static DEFINE_RAW_SPINLOCK(rio_doorbell_lock);
  * Generates rio_local_read_config_* functions used to access
  * configuration space registers on the local device.
  */
-#define RIO_LOP_READ(size,type,len) \
-int __rio_local_read_config_##size \
+#define RIO_LOP_READ(size, type, len)					\
+int __rio_local_read_config_##size					\
 	(struct rio_mport *mport, u32 offset, type *value)		\
 {									\
 	int res;							\
 	unsigned long flags;						\
 	u32 data = 0;							\
-	if (RIO_##size##_BAD) return RIO_BAD_SIZE;			\
+	if (RIO_##size##_BAD)						\
+		return RIO_BAD_SIZE;					\
 	raw_spin_lock_irqsave(&rio_config_lock, flags);			\
 	res = mport->ops->lcread(mport, mport->id, offset, len, &data);	\
 	*value = (type)data;						\
@@ -65,13 +66,14 @@ int __rio_local_read_config_##size \
  * Generates rio_local_write_config_* functions used to access
  * configuration space registers on the local device.
  */
-#define RIO_LOP_WRITE(size,type,len) \
-int __rio_local_write_config_##size \
+#define RIO_LOP_WRITE(size, type, len)					\
+int __rio_local_write_config_##size					\
 	(struct rio_mport *mport, u32 offset, type value)		\
 {									\
 	int res;							\
 	unsigned long flags;						\
-	if (RIO_##size##_BAD) return RIO_BAD_SIZE;			\
+	if (RIO_##size##_BAD)						\
+		return RIO_BAD_SIZE;					\
 	raw_spin_lock_irqsave(&rio_config_lock, flags);			\
 	res = mport->ops->lcwrite(mport, mport->id, offset, len, value);\
 	raw_spin_unlock_irqrestore(&rio_config_lock, flags);		\
@@ -101,16 +103,19 @@ EXPORT_SYMBOL_GPL(__rio_local_write_config_32);
  * Generates rio_mport_read_config_* functions used to access
  * configuration space registers on the local device.
  */
-#define RIO_OP_READ(size,type,len) \
-int rio_mport_read_config_##size \
-	(struct rio_mport *mport, u16 destid, u8 hopcount, u32 offset, type *value)	\
+#define RIO_OP_READ(size, type, len)					\
+int rio_mport_read_config_##size					\
+	(struct rio_mport *mport, u16 destid, u8 hopcount,		\
+		u32 offset, type *value)				\
 {									\
 	int res;							\
 	unsigned long flags;						\
 	u32 data = 0;							\
-	if (RIO_##size##_BAD) return RIO_BAD_SIZE;			\
+	if (RIO_##size##_BAD)						\
+		return RIO_BAD_SIZE;					\
 	raw_spin_lock_irqsave(&rio_config_lock, flags);			\
-	res = mport->ops->cread(mport, mport->id, destid, hopcount, offset, len, &data); \
+	res = mport->ops->cread(mport, mport->id, destid,		\
+				hopcount, offset, len, &data);		\
 	*value = (type)data;						\
 	raw_spin_unlock_irqrestore(&rio_config_lock, flags);		\
 	return res;							\
@@ -125,15 +130,18 @@ int rio_mport_read_config_##size \
  * Generates rio_mport_write_config_* functions used to access
  * configuration space registers on the local device.
  */
-#define RIO_OP_WRITE(size,type,len) \
-int rio_mport_write_config_##size \
-	(struct rio_mport *mport, u16 destid, u8 hopcount, u32 offset, type value)	\
+#define RIO_OP_WRITE(size, type, len)					\
+int rio_mport_write_config_##size					\
+	(struct rio_mport *mport, u16 destid, u8 hopcount,		\
+		 u32 offset, type value)				\
 {									\
 	int res;							\
 	unsigned long flags;						\
-	if (RIO_##size##_BAD) return RIO_BAD_SIZE;			\
+	if (RIO_##size##_BAD)						\
+		return RIO_BAD_SIZE;					\
 	raw_spin_lock_irqsave(&rio_config_lock, flags);			\
-	res = mport->ops->cwrite(mport, mport->id, destid, hopcount, offset, len, value); \
+	res = mport->ops->cwrite(mport, mport->id, destid, hopcount,	\
+				 offset, len, value);			\
 	raw_spin_unlock_irqrestore(&rio_config_lock, flags);		\
 	return res;							\
 }

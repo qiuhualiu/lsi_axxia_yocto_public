@@ -42,13 +42,13 @@
  * on failure.
  */
 int rio_route_add(struct rio_dev *rdev, u16 table, u16 route_destid,
-                  u8 route_port, int lock)
+u8 route_port, int lock)
 {
 	int err = 0;
 	int rc = 0;
 
-        if (!(rdev->rswitch->update_lut))
-                return rc;
+	if (!(rdev->rswitch->update_lut))
+		return rc;
 
 	if (lock && rdev->use_hw_lock) {
 		rc = rio_hw_lock_wait(rdev->hport, rdev->destid,
@@ -58,19 +58,19 @@ int rio_route_add(struct rio_dev *rdev, u16 table, u16 route_destid,
 	}
 
 	err = rdev->rswitch->add_entry(rdev->hport, rdev->destid,
-                                       rdev->hopcount, table,
-                                       route_destid, route_port);
+				       rdev->hopcount, table,
+				       route_destid, route_port);
 
 	if (lock && rdev->use_hw_lock)
 		rc = rio_hw_unlock(rdev->hport, rdev->destid,
-                                   rdev->hopcount);
+				   rdev->hopcount);
 
-	return (err ? err : rc);
+	return err ? err : rc;
 }
 
 int rio_route_get_port(struct rio_dev *rdev, u16 destid, u8 *port, int lock)
 {
-        int rc = 0;
+	int rc = 0;
 
 	if (lock && rdev->use_hw_lock) {
 		rc = rio_hw_lock_wait(rdev->hport, rdev->destid,
@@ -79,18 +79,19 @@ int rio_route_get_port(struct rio_dev *rdev, u16 destid, u8 *port, int lock)
 			return rc;
 	}
 
-        rdev->rswitch->get_entry(rdev->hport, rdev->destid,
-                                 rdev->hopcount, RIO_GLOBAL_TABLE,
-                                 destid, port);
+	rdev->rswitch->get_entry(rdev->hport, rdev->destid,
+				 rdev->hopcount, RIO_GLOBAL_TABLE,
+				 destid, port);
 
 	if (lock && rdev->use_hw_lock)
 		rc = rio_hw_unlock(rdev->hport, rdev->destid,
-                                   rdev->hopcount);
+				   rdev->hopcount);
 
-        return rc;
+	return rc;
 }
 
-int rio_add_route_for_destid(struct rio_mport *mport, u16 parent_dest, u8 port_num,
+int rio_add_route_for_destid(struct rio_mport *mport,
+			     u16 parent_dest, u8 port_num,
 			     u16 destid, int lock)
 {
 	struct rio_dev *curr;
@@ -112,9 +113,10 @@ int rio_add_route_for_destid(struct rio_mport *mport, u16 parent_dest, u8 port_n
 			pr_debug("RIO: add route for %hhu in %s at port %d\n",
 				 destid, rio_name(curr), sport);
 
-			if ((rc = rio_route_add(curr, RIO_GLOBAL_TABLE,
-						destid,
-						sport, lock)) < 0) {
+			rc = rio_route_add(curr, RIO_GLOBAL_TABLE,
+					   destid,
+					   sport, lock);
+			if (rc < 0) {
 				rio_dev_put(curr);
 				break;
 			}
@@ -123,14 +125,16 @@ int rio_add_route_for_destid(struct rio_mport *mport, u16 parent_dest, u8 port_n
 		sport = curr->prev_port;
 		rio_dev_put(curr);
 
-	} while(curr_dest != RIO_INVALID_DESTID);
+	} while (curr_dest != RIO_INVALID_DESTID);
 
 	return rc;
 }
 int rio_remove_route_for_destid(struct rio_mport *mport, u16 destid, int lock)
 {
 	int i, num = 0, rc = 0;
-	struct rio_dev **dptr = rio_get_tagged_devices(mport, RIO_DEV_IS_SWITCH, &num);
+	struct rio_dev **dptr = rio_get_tagged_devices(mport,
+						       RIO_DEV_IS_SWITCH,
+						       &num);
 
 	if (!dptr)
 		return 0;
@@ -150,9 +154,8 @@ int rio_remove_route_for_destid(struct rio_mport *mport, u16 destid, int lock)
 
 		rc = rio_route_add(tmp, RIO_GLOBAL_TABLE,
 				   destid, RIO_INVALID_ROUTE, lock);
-		if (rc) {
+		if (rc)
 			tmp->rswitch->update_lut = 0;
-		}
 		rio_dev_put(tmp);
 	}
 	if (dptr)
@@ -163,7 +166,9 @@ int rio_remove_route_for_destid(struct rio_mport *mport, u16 destid, int lock)
 int rio_update_routes(struct rio_mport *mport, struct rio_dev **rptr, int rnum)
 {
 	int d, i, num = 0, rio_fault = 0, rc = 0;
-	struct rio_dev **dptr = rio_get_tagged_devices(mport, RIO_DEV_IS_SWITCH, &num);
+	struct rio_dev **dptr = rio_get_tagged_devices(mport,
+						       RIO_DEV_IS_SWITCH,
+						       &num);
 
 	if (!dptr)
 		return 0;
@@ -185,23 +190,28 @@ int rio_update_routes(struct rio_mport *mport, struct rio_dev **rptr, int rnum)
 
 			if (!tmp)
 				continue;
-			if ( tmp->destid == destid ||
+			if (tmp->destid == destid ||
 			    !tmp->local_domain ||
 			    !tmp->rswitch->update_lut)
 				continue;
 
 			rcu_read_lock();
-			disabled = radix_tree_tag_get(&mport->net.dev_tree, tmp->destid,
+			disabled = radix_tree_tag_get(&mport->net.dev_tree,
+						      tmp->destid,
 						      RIO_DEV_DISABLED);
 			rcu_read_unlock();
 
-			if ((rc = rio_route_get_port(tmp, destid, &port, (disabled ? 0 : 1)))) {
-				if (++rio_fault > CONFIG_RAPIDIO_ACCESS_ERR_LIMIT)
+			rc = rio_route_get_port(tmp, destid, &port,
+						(disabled ? 0 : 1));
+			if (rc) {
+				if (++rio_fault >
+					CONFIG_RAPIDIO_ACCESS_ERR_LIMIT)
 					break;
 				continue;
 			}
 #ifdef CONFIG_RAPIDIO_STATIC_DESTID
-			rio_lookup_static_route(rptr[d], tmp->destid, &static_port);
+			rio_lookup_static_route(rptr[d], tmp->destid,
+						&static_port);
 #endif
 			pr_debug("RIO: Check route for destid %hx in %s static port %hhu\n",
 				 destid, rio_name(tmp), static_port);
@@ -214,17 +224,22 @@ int rio_update_routes(struct rio_mport *mport, struct rio_dev **rptr, int rnum)
 					sw_port = static_port;
 				pr_debug("RIO: Add route for destid %hx at port %d in %s\n",
 					 destid, sw_port, rio_name(tmp));
-				if ((rc = rio_route_add(tmp, RIO_GLOBAL_TABLE,
-							destid, sw_port, (disabled ? 0 : 1)))) {
-					if (++rio_fault > CONFIG_RAPIDIO_ACCESS_ERR_LIMIT)
+				rc = rio_route_add(tmp, RIO_GLOBAL_TABLE,
+						   destid, sw_port,
+						   (disabled ? 0 : 1));
+				if (rc) {
+					if (++rio_fault >
+					    CONFIG_RAPIDIO_ACCESS_ERR_LIMIT)
 						break;
 				}
 			}
 		}
 		/* verify dev access after route update */
-		if ((rc = rio_read_config_32(rptr[d],
-					     rptr[d]->phys_efptr + RIO_PORT_GEN_CTL_CSR,
-					     &result)) != 0) {
+		rc = rio_read_config_32(rptr[d],
+					rptr[d]->phys_efptr +
+					RIO_PORT_GEN_CTL_CSR,
+					&result);
+		if (rc != 0) {
 			if (++rio_fault > CONFIG_RAPIDIO_ACCESS_ERR_LIMIT)
 				break;
 		}
@@ -262,7 +277,8 @@ int rio_init_lut(struct rio_dev *rdev, int lock)
 			continue;
 		}
 		pr_debug("RIO:%s add %hhu to %s at port %d\n",
-			 __func__, tmp->destid, rio_name(rdev), rdev->return_port);
+			 __func__, tmp->destid, rio_name(rdev),
+			 rdev->return_port);
 		rc = rio_route_add(rdev, RIO_GLOBAL_TABLE,
 				   tmp->destid, rdev->return_port, lock);
 		rio_dev_put(tmp);

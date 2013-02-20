@@ -68,7 +68,7 @@
 
 #define IDT_QUAD_CONFIG		0xf20200
 
-#define IDT_DEV_RESET_CTRL     	0xf20300
+#define IDT_DEV_RESET_CTRL	0xf20300
 
 #define IDT_LANE_CTRL(n)	(0xff8000 + (n)*0x100)
 #define IDT_LANE_CTRL_BC	0xffff00
@@ -97,9 +97,9 @@
 #define IDT_MAX_NUM_LANES	(48) /* Valid for cps 1848 */
 #define IDT_MAX_PORT_WIDTH	(0x4)
 
-extern int idtg2_set_enum_boundry(struct rio_mport *mport, u16 destid, u8 hopcount,
-                                  u8 port, int enable);
-extern int idt2_set_port_speed(struct rio_mport *mport, u16 destid, u8 hopcount,
-                               u8 port, int speed /* Mb/s */);
+extern int idtg2_set_enum_boundry(struct rio_mport *mport, u16 destid,
+				  u8 hopcount, u8 port, int enable);
+extern int idt2_set_port_speed(struct rio_mport *mport, u16 destid,
+			       u8 hopcount, u8 port, int speed /* Mb/s */);
 
 #endif

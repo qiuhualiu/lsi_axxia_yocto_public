@@ -50,9 +50,8 @@ struct rio_dev *lookup_rdev(struct rio_mport *mport, u16 destid)
 
 	rcu_read_lock();
 	rdev = radix_tree_lookup(&mport->net.dev_tree, destid);
-	if (rdev) {
+	if (rdev)
 		rdev = rio_dev_get(rdev);
-        }
 	rcu_read_unlock();
 	return rdev;
 }
@@ -64,11 +63,12 @@ struct rio_dev *lookup_rdev_next(struct rio_dev *rdev, int port_num)
 	int rc;
 	u16 device_destid;
 
-	if ((rc = rio_lookup_next_destid(mport, rdev->destid,
-					 port_num, rdev->hopcount + 1,
-					 &device_destid))) {
+	rc = rio_lookup_next_destid(mport, rdev->destid,
+				    port_num, rdev->hopcount + 1,
+				    &device_destid);
+	if (rc)
 		return ERR_PTR(rc);
-        }
+
 	next = lookup_rdev(mport, device_destid);
 	if (!next)
 		return ERR_PTR(-ENODEV);
@@ -100,7 +100,7 @@ static int rio_set_host_lock(struct rio_mport *port, u16 destid, u8 hopcount)
 	if (rc)
 		pr_debug("RIO:(%s) destid %hu hopcount %d - Write error\n",
 			 __func__, destid, hopcount);
-        return rc;
+	return rc;
 }
 
 /**
@@ -126,10 +126,10 @@ static int rio_hw_lock(struct rio_mport *port, u16 destid, u8 hopcount)
 	if (lock == port->host_deviceid)
 		goto lock_err;
 	/* Attempt to acquire device lock */
-        rc = rio_set_host_lock(port, destid, hopcount);
+	rc = rio_set_host_lock(port, destid, hopcount);
 	if (rc)
 		goto done;
-        rc = rio_get_host_lock(port, destid, hopcount, &lock);
+	rc = rio_get_host_lock(port, destid, hopcount, &lock);
 	if (rc)
 		goto done;
 
@@ -161,7 +161,7 @@ lock_err:
 static int __rio_clear_locks(struct rio_dev *from, struct rio_dev *to)
 {
 	struct rio_dev *prev, *curr;
-        int rc = 0;
+	int rc = 0;
 
 	if (!from)
 		return 0;
@@ -169,33 +169,39 @@ static int __rio_clear_locks(struct rio_dev *from, struct rio_dev *to)
 	if (!to)
 		return 0;
 
-	if (to->use_hw_lock)
-		if ((rc = rio_hw_unlock(to->hport, to->destid, to->hopcount)))
+	if (to->use_hw_lock) {
+		rc = rio_hw_unlock(to->hport, to->destid, to->hopcount);
+		if (rc)
 			goto done;
+	}
 
-        pr_debug("RIO: Unlocked %s\n", rio_name(to));
+	pr_debug("RIO: Unlocked %s\n", rio_name(to));
 
 	curr = to;
 
 	rcu_read_lock();
 	while (curr) {
-		prev = radix_tree_lookup(&curr->hport->net.dev_tree, curr->prev_destid);
+		prev = radix_tree_lookup(&curr->hport->net.dev_tree,
+					 curr->prev_destid);
 		if (prev) {
-                        if (prev->use_hw_lock)
-                            if ((rc = rio_hw_unlock(prev->hport, prev->destid,
-						    prev->hopcount))) {
-				    pr_debug("RIO: Failed to unlock %s\n", rio_name(prev));
-				    rcu_read_unlock();
-				    goto done;
-			    }
+			if (prev->use_hw_lock) {
+				rc = rio_hw_unlock(prev->hport, prev->destid,
+						   prev->hopcount);
+				if (rc) {
+					pr_debug("RIO: Failed to unlock %s\n",
+						 rio_name(prev));
+					rcu_read_unlock();
+					goto done;
+				}
+			}
 			pr_debug("RIO: Unlocked %s\n", rio_name(prev));
-                        if (prev == from) {
+			if (prev == from) {
 				rcu_read_unlock();
-                                goto done;
+				goto done;
 			}
 		}
 		curr = prev;
-        }
+	}
 	rcu_read_unlock();
 
 done:
@@ -204,39 +210,43 @@ done:
 static int __rio_take_locks(struct rio_dev *from, struct rio_dev *to)
 {
 	struct rio_dev *prev, *curr;
-        int rc = 0;
+	int rc = 0;
 
 	if (!from)
 		return 0;
 	if (!to)
 		return 0;
 
-	if (to->use_hw_lock)
-		if ((rc = rio_hw_lock(to->hport, to->destid, to->hopcount)))
+	if (to->use_hw_lock) {
+		rc = rio_hw_lock(to->hport, to->destid, to->hopcount);
+		if (rc)
 			goto done;
+	}
 
-        pr_debug("RIO: Add lock to %s\n", rio_name(to));
+	pr_debug("RIO: Add lock to %s\n", rio_name(to));
 
 	curr = to;
 
 	rcu_read_lock();
 	while (curr) {
-		prev = radix_tree_lookup(&curr->hport->net.dev_tree, curr->prev_destid);
+		prev = radix_tree_lookup(&curr->hport->net.dev_tree,
+					 curr->prev_destid);
 		if (prev) {
 			if (prev->use_hw_lock)
-				if ((rc = rio_hw_lock(prev->hport, prev->destid,
-						      prev->hopcount))) {
+				rc = rio_hw_lock(prev->hport, prev->destid,
+						 prev->hopcount);
+				if (rc) {
 					rcu_read_unlock();
 					goto unlock;
 				}
 			pr_debug("RIO: Add lock to %s\n", rio_name(prev));
-                        if (prev == from) {
+			if (prev == from) {
 				rcu_read_unlock();
-                                goto done;
+				goto done;
 			}
 		}
 		curr = prev;
-        }
+	}
 	rcu_read_unlock();
 done:
 	return rc;
@@ -258,15 +268,16 @@ static void rio_timeout(unsigned long data)
 }
 
 /**
- * rio_job_hw_lock_wait - Tries to take the @host_device_lock on a RIO device or
- *                        a group of RIO devices in a RIO network. A number of
- *                        attempts will be made to take the lock/locks. Before
- *                        each attempt, RIO job status GO is verified and after
- *                        each unsuccessful attempt the rio_hw_lock() return status
- *                        and timeout status is checked. As long as the @tmo is not
- *                        up and the rio_hw_lock() return status indicates that
- *                        someone else owns the lock, the caller will be put to sleep
- *                        for a period of 10 ms.
+ * rio_job_hw_lock_wait - Tries to take the @host_device_lock on a RIO device
+ *			  or a group of RIO devices in a RIO network. A number
+ *			  of attempts will be made to take the lock/locks.
+ *			  Before each attempt, RIO job status GO is verified
+ *			  and after each unsuccessful attempt the
+ *			  rio_hw_lock() return status and timeout status is
+ *			  checked. As long as the @tmo is not up and the
+ *			  rio_hw_lock() return status indicates that
+ *                        someone else owns the lock, the caller will be put
+ *			  to sleep for a period of 10 ms.
  *
  * @job: RIO Job description
  * @from: Root Device to start locking from - set to @NULL if not applicable
@@ -280,9 +291,11 @@ static void rio_timeout(unsigned long data)
  *
  * Returns 0 at success and != 0 at failure
  *
- * In any case, the @from reference count is always consumed - if @from was defined.
+ * In any case, the @from reference count is always consumed
+ * if @from was defined.
  */
-int rio_job_hw_lock_wait(struct rio_job *job, struct rio_dev *from, struct rio_dev *to,
+int rio_job_hw_lock_wait(struct rio_job *job, struct rio_dev *from,
+			 struct rio_dev *to,
 			 u16 destid, u8 hopcount, int tmo)
 {
 	int rc = 0;
@@ -312,18 +325,22 @@ done:
 }
 
 /**
- * rio_job_hw_lock_wait_cond - Tries to take the @host_device_lock on a RIO device.
- *                             A number of attempts will be made to take the lock.
- *                             Before each attempt, RIO job status GO is verified and after
- *                             each unsuccessful attempt the rio_hw_lock() return status
- *                             and timeout status is checked. As long as the @tmo is not
- *                             up and the rio_hw_lock() return status indicates that
- *                             someone else owns the lock, the caller will be put to sleep
- *                             for a period of 50 ms.
- *                             When the @host_device_lock is set a user defined function
- *                             is invoked. A != 0 return value from this function will
- *                             terminate rio_job_hw_lock_wait_cond() otherwise the
- *                             @host_device_lock is relead and the wait loop continues.
+ * rio_job_hw_lock_wait_cond - Tries to take the @host_device_lock on a
+ *			       RIO device. A number of attempts will be made
+ *			       to take the lock. Before each attempt, RIO job
+ *			       status GO is verified and after each
+ *			       unsuccessful attempt the rio_hw_lock() return
+ *			       status and timeout status is checked. As long
+ *			       as the @tmo is not up and the rio_hw_lock()
+ *			       return status indicates that someone else owns
+ *			       the lock, the caller will be put to sleep
+ *                             for a period of 50 ms. When the
+ *			       @host_device_lock is set a user defined function
+ *                             is invoked. A != 0 return value from this
+ *			       function will terminate
+*			       rio_job_hw_lock_wait_cond() otherwise the
+ *                             @host_device_lock is relead and the wait
+ *			       loop continues.
  *
  * @job: RIO Job description
  * @destid: Destination ID of device
@@ -346,9 +363,10 @@ int rio_job_hw_lock_wait_cond(struct rio_job *job, u16 destid,
 	add_timer(&rio_timer);
 
 	do {
-		if ((!lock) ||
-                    ((rc = rio_hw_lock(job->mport, destid, hopcount)) == 0)) {
-			if ((rc = cond(job->mport, destid, hopcount)) == 0)
+		rc = rio_hw_lock(job->mport, destid, hopcount);
+		if ((!lock) || (rc == 0)) {
+			rc = cond(job->mport, destid, hopcount);
+			if (rc == 0)
 				goto done;
 			rio_hw_unlock(job->mport, destid, hopcount);
 		}
@@ -378,9 +396,9 @@ int rio_job_hw_wait_cond(struct rio_job *job, u16 destid,
 	add_timer(&rio_timer);
 
 	do {
-		if ((rc = cond(job->mport, destid, hopcount)) == 1) {
+		rc = cond(job->mport, destid, hopcount);
+		if (rc == 1)
 			goto done;
-		}
 		if (timeout_flag)
 			break;
 		msleep(100);
@@ -394,11 +412,12 @@ done:
 /**
  * rio_hw_busy_lock_wait - Tries to take the @host_device_lock on a RIO device.
  *                         A number of attempts will be made to take the lock.
- *                         After each unsuccessful attempt the rio_hw_lock() return status
- *                         and timeout status is checked. As long as the @wait_ms is not
- *                         up and the rio_hw_lock() return status indicates that
- *                         someone else owns the lock, the caller will be delayed in a
- *                         busy loop for a period of 1 ms.
+ *                         After each unsuccessful attempt the rio_hw_lock()
+ *			   return status and timeout status is checked. As
+			   long as the @wait_ms is not up and the
+			   rio_hw_lock() return status indicates that
+ *                         someone else owns the lock, the caller will be
+ *			   delayed in a busy loop for a period of 1 ms.
  *
  * @mport: Master port to send transaction
  * @destid: Destination ID of device
@@ -407,7 +426,8 @@ done:
  *
  * Returns 0 at success and != 0 at failure
  */
-int rio_hw_lock_busy_wait(struct rio_mport *mport, u16 destid, u8 hopcount, int wait_ms)
+int rio_hw_lock_busy_wait(struct rio_mport *mport, u16 destid,
+			  u8 hopcount, int wait_ms)
 {
 	int tcnt = 0;
 	int rc = rio_hw_lock(mport, destid, hopcount);
@@ -425,11 +445,11 @@ int rio_hw_lock_busy_wait(struct rio_mport *mport, u16 destid, u8 hopcount, int 
 /**
  * rio_hw_lock_wait - Tries to take the @host_device_lock on a RIO device.
  *                    A number of attempts will be made to take the lock.
- *                    After each unsuccessful attempt the rio_hw_lock() return status
- *                    and timeout status is checked. As long as the @tmo is not
- *                    up and the rio_hw_lock() return status indicates that
- *                    someone else owns the lock, the caller will be put to sleep
- *                    for a period of 10 ms.
+ *                    After each unsuccessful attempt the rio_hw_lock() return
+ *		      status and timeout status is checked. As long as the
+ *		      @tmo is not up and the rio_hw_lock() return status
+ *		      indicates that someone else owns the lock, the caller
+ *		      will be put to sleep for a period of 10 ms.
  *
  * @mport: Master port to send transaction
  * @destid: Destination ID of device
@@ -483,9 +503,8 @@ struct rio_dev *rio_get_by_ptr(struct rio_dev *rdev)
 		return NULL;
 
 	while ((tmp = rio_get_device(RIO_ANY_ID, RIO_ANY_ID, tmp)) != NULL) {
-		if (tmp == rdev) {
+		if (tmp == rdev)
 			return tmp;
-		}
 	}
 	return NULL;
 }
@@ -511,8 +530,9 @@ struct rio_dev *rio_get_root_node(struct rio_mport *mport)
 
 	BUG_ON(!mport);
 
-	if ((rc = rio_lookup_next_destid(mport, mport->host_deviceid,
-					 -1, 0, &device_destid)))
+	rc = rio_lookup_next_destid(mport, mport->host_deviceid,
+				    -1, 0, &device_destid);
+	if (rc)
 		return ERR_PTR(rc);
 
 	rdev = lookup_rdev(mport, device_destid);
@@ -531,22 +551,24 @@ struct rio_dev *rio_get_root_node(struct rio_mport *mport)
  *
  * Returns the RIO device access status.
  */
-int rio_get_host_lock(struct rio_mport *port, u16 destid, u8 hopcount, u16 *result)
+int rio_get_host_lock(struct rio_mport *port, u16 destid,
+		      u8 hopcount, u16 *result)
 {
-        u32 regval;
-        int rc;
+	u32 regval;
+	int rc;
 
 	if (destid == port->host_deviceid)
-		rc = rio_local_read_config_32(port, RIO_HOST_DID_LOCK_CSR, &regval);
+		rc = rio_local_read_config_32(port,
+					      RIO_HOST_DID_LOCK_CSR, &regval);
 	else
 		rc = rio_mport_read_config_32(port, destid, hopcount,
 					      RIO_HOST_DID_LOCK_CSR, &regval);
-        *result = regval & 0xffff;
+	*result = regval & 0xffff;
 
 	if (rc)
 		pr_debug("RIO:(%s) destid %hx hopcount %d - Read error\n",
 			 __func__, destid, hopcount);
-        return rc;
+	return rc;
 }
 
 /**
@@ -564,7 +586,8 @@ int rio_get_host_lock(struct rio_mport *port, u16 destid, u8 hopcount, u16 *resu
  * - If the device was not unlocked
  */
 
-int rio_clear_host_lock(struct rio_mport *port, u16 destid, u8 hopcount, u16 lockid)
+int rio_clear_host_lock(struct rio_mport *port, u16 destid,
+			u8 hopcount, u16 lockid)
 {
 	int rc;
 	u16 result;
@@ -602,7 +625,7 @@ int rio_clear_host_lock(struct rio_mport *port, u16 destid, u8 hopcount, u16 loc
 	}
 done:
 	spin_unlock(&rio_lock_lock);
-        return rc;
+	return rc;
 
 }
 
@@ -627,16 +650,19 @@ int rio_hw_unlock(struct rio_mport *port, u16 destid, u8 hopcount)
 
 	spin_lock(&rio_lock_lock);
 	/* Release device lock */
-        if ((rc = rio_get_host_lock(port, destid, hopcount, &lock)))
+	rc = rio_get_host_lock(port, destid, hopcount, &lock);
+	if (rc)
 		goto done;
 
 	if (lock != port->host_deviceid)
 		goto lock_err;
 
-        if ((rc = rio_set_host_lock(port, destid, hopcount)))
+	rc = rio_set_host_lock(port, destid, hopcount);
+	if (rc)
 		goto done;
 
-        if ((rc = rio_get_host_lock(port, destid, hopcount, &lock)))
+	rc = rio_get_host_lock(port, destid, hopcount, &lock);
+	if (rc)
 		goto done;
 
 	if (lock != 0xffff)
@@ -661,12 +687,13 @@ unlock_err:
 }
 
 /**
- * rio_job_hw_unlock_devices - Releases @host_device_lock for a group
- *                             of RIO devices. If the job description defines @rdev,
- *                             locks are released on all devices between and including
- *                             the switch connected to local master port and
- *                             the job @rdev. The master port device ID Lock is
- *                             always released.
+ * rio_job_hw_unlock_devices -	Releases @host_device_lock for a group
+ *				of RIO devices. If the job description defines
+ *				@rdev, locks are released on all devices
+ *				between and including the switch connected
+ *				to local master port and the job @rdev.
+ *				The master port device ID Lock is
+ *				always released.
  * @job: RIO Job description
  *
  */
@@ -675,9 +702,8 @@ void rio_job_hw_unlock_devices(struct rio_job *job)
 	struct rio_dev *from = NULL;
 	struct rio_dev *to = job->rdev;
 
-	if (job->rdev) {
+	if (job->rdev)
 		from = rio_get_root_node(job->mport);
-	}
 	if (from && !IS_ERR(from)) {
 		pr_debug("RIO: clear locks from %s to %s\n",
 			 rio_name(from), rio_name(to));

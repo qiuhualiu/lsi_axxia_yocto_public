@@ -15,12 +15,17 @@
 
 extern int rio_route_add(struct rio_dev *rdev, u16 table, u16 route_destid,
 			 u8 route_port, int lock);
-extern int rio_route_get_port(struct rio_dev *rdev, u16 destid, u8 *port, int lock);
-extern int rio_add_route_for_destid(struct rio_mport *mport, u16 parent_dest, u8 port_num,
+extern int rio_route_get_port(struct rio_dev *rdev,
+			      u16 destid, u8 *port, int lock);
+extern int rio_add_route_for_destid(struct rio_mport *mport,
+				    u16 parent_dest, u8 port_num,
 				    u16 destid, int lock);
-extern int rio_remove_route_for_destid(struct rio_mport *mport, u16 destid, int lock);
-extern int rio_update_route_for_destid(struct rio_mport *mport, u16 destid, int lock);
+extern int rio_remove_route_for_destid(struct rio_mport *mport,
+				       u16 destid, int lock);
+extern int rio_update_route_for_destid(struct rio_mport *mport,
+				       u16 destid, int lock);
 extern int rio_init_lut(struct rio_dev *rdev, int lock);
-extern int rio_update_routes(struct rio_mport *mport, struct rio_dev **rptr, int rnum);
+extern int rio_update_routes(struct rio_mport *mport,
+			     struct rio_dev **rptr, int rnum);
 
 #endif
