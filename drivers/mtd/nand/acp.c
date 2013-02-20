@@ -75,8 +75,8 @@ _WRITEL(const char *file, int line, unsigned long value, unsigned long address)
 	writel(value, address);
 
 	if (0 != enable_logio)
-		printk( "%s:%d - Wrote 0x%08lx to 0x%08lx\n",
-			file, line, value, address);
+		printk(KERN_ERR "%s:%d - Wrote 0x%08lx to 0x%08lx\n",
+		       file, line, value, address);
 
 	return;
 }
@@ -416,18 +416,18 @@ typedef union {
 
 	struct {
 #ifdef CONFIG_ACP
-		unsigned long      : 8;
-		unsigned long trhw : 8;
-		unsigned long twhr : 8;
-		unsigned long tccs : 8;
+		unsigned long:8;
+		unsigned long trhw:8;
+		unsigned long twhr:8;
+		unsigned long tccs:8;
 #else
-		unsigned long tccs : 8;
-		unsigned long twhr : 8;
-		unsigned long trhw : 8;
-		unsigned long      : 8;
+		unsigned long tccs:8;
+		unsigned long twhr:8;
+		unsigned long trhw:8;
+		unsigned long:8;
 #endif
-	} __attribute__ ( ( packed ) ) bits;
-} __attribute__ ( ( packed ) ) nand_timing_control_register_2_t;
+	} __attribute__ ((packed)) bits;
+} __attribute__ ((packed)) nand_timing_control_register_2_t;
 
 typedef enum {
 	LSI_NAND_NONE, LSI_NAND_EP501, LSI_NAND_EP501G1, LSI_NAND_EP501G3
@@ -436,15 +436,15 @@ typedef enum {
 static lsi_nand_type_t lsi_nand_type;
 
 typedef struct page_wise_ecc_status_st {
-	unsigned err_bit :  3;
-	unsigned column  :  9;
-	unsigned status  :  2;
-	unsigned rsvd    : 18;
+	unsigned err_bit:3;
+	unsigned column:9;
+	unsigned status:2;
+	unsigned rsvd:18;
 } page_wise_ecc_status_t;
 
 /*
-  ===============================================================================
-  ===============================================================================
+  =============================================================================
+  =============================================================================
   Concerning ECC
 
   The EP501 only supports 1 bit ECC mode.  The EP501G1 supports both 1
@@ -473,25 +473,27 @@ typedef struct page_wise_ecc_status_st {
 
   This driver has been tested with 2K and 4K page sizes using 1 bit
   and 4 bit ECC.
-  ===============================================================================
-  ===============================================================================
+  =============================================================================
+  =============================================================================
 */
 
 static struct nand_ecclayout lsi_2k_1bit_ecclayout = {
 	.eccbytes = 12,
-	.eccpos = {	       
-		52, 53, 54, 55, 56, 57, 
+	.eccpos = {
+		52, 53, 54, 55, 56, 57,
+		58, 59, 60, 61, 62, 63},
+	.oobfree = {{2, 50} }
+};
+
+/*
+static struct nand_ecclayout lsi_4k_1bit_ecclayout = {
+	.eccbytes = 24,
+	.eccpos = {
+		52, 53, 54, 55, 56, 57,
 		58, 59, 60, 61, 62, 63},
 	.oobfree = {{2, 50}}
 };
-
-//static struct nand_ecclayout lsi_4k_1bit_ecclayout = {
-//	.eccbytes = 24,
-//	.eccpos = {	       
-//		52, 53, 54, 55, 56, 57, 
-//		58, 59, 60, 61, 62, 63},
-//	.oobfree = {{2, 50}}
-//};
+*/
 
 static struct nand_ecclayout lsi_2k_4bit_ecclayout = {
 	.eccbytes = 32,
@@ -499,8 +501,8 @@ static struct nand_ecclayout lsi_2k_4bit_ecclayout = {
 		32, 33, 34, 35, 36, 37, 38, 39,
 		40, 41, 42, 43, 44, 45, 46, 47,
 		48, 49, 50, 51, 52, 53, 54, 55,
-		56, 57, 58, 59, 60, 61, 62, 63},
-	.oobfree = {{2, 30}}
+		56, 57, 58, 59, 60, 61, 62, 63 },
+	.oobfree = {{2, 30} }
 };
 
 static struct nand_ecclayout lsi_4k_4bit_ecclayout = {
@@ -515,10 +517,10 @@ static struct nand_ecclayout lsi_4k_4bit_ecclayout = {
 		112, 113, 114, 115, 116, 117, 118, 119,
 		120, 121, 122, 123, 124, 125, 126, 127
 	},
-	.oobfree = {{2, 63}}
+	.oobfree = {{2, 63} }
 };
 
-#if 0
+#ifdef NOT_USED
 
 static struct nand_ecclayout lsi_8k_4bit_ecclayout = {
 	.eccbytes = 128,
@@ -540,7 +542,7 @@ static struct nand_ecclayout lsi_8k_4bit_ecclayout = {
 		240, 241, 242, 243, 244, 245, 246, 247,
 		248, 249, 250, 251, 252, 253, 254, 255
 	},
-	.oobfree = {{2, 126}}
+	.oobfree = {{2, 126} }
 };
 
 #endif
@@ -550,7 +552,7 @@ static struct mtd_partition *partition_info;
 
 
 /*
-  -------------------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   lsi_nand_hwcontrol
 */
 
@@ -559,9 +561,8 @@ lsi_nand_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 {
 	struct nand_chip *chip = mtd->priv;
 
-	if (cmd != NAND_CMD_NONE) {
-		WRITEL (cmd, (chip->IO_ADDR_W + NAND_CMD_REG));
-	}
+	if (cmd != NAND_CMD_NONE)
+		WRITEL(cmd, (chip->IO_ADDR_W + NAND_CMD_REG));
 
 	return;
 }
@@ -681,11 +682,13 @@ lsi_nand_command(struct mtd_info *mtd, unsigned int command,
 					break;
 				case 2048:
 					index |= (page_addr & 0xfffff) << 12;
-					extended_index |= (page_addr & 0xfff00000);
+					extended_index |=
+						(page_addr & 0xfff00000);
 					break;
 				case 4096:
 					index |= (page_addr & 0x7ffff) << 13;
-					extended_index |= (page_addr & 0xfff80000);
+					extended_index |=
+						(page_addr & 0xfff80000);
 					break;
 				default:
 					break;
@@ -734,17 +737,16 @@ lsi_nand_command(struct mtd_info *mtd, unsigned int command,
 static void lsi_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
 {
 	int i = 0;
-	struct nand_chip * chip = (struct nand_chip *) mtd->priv;
-	uint32_t * p = (uint32_t *)buf;
+	struct nand_chip *chip = (struct nand_chip *) mtd->priv;
+	uint32_t *p = (uint32_t *)buf;
 
 #if defined(LOGIO)
 	if (0 != enable_logio)
-		printk("Reading NAND Buffer (len=%d)...\n", len);
+		printk("KERN_NOTICE Reading NAND Buffer (len=%d)...\n", len);
 #endif
 
-	for (i = 0; i < (len >> 2); i++) {
+	for (i = 0; i < (len >> 2); i++)
 		p[i] = readl(chip->IO_ADDR_R);
-	}
 
 	return;
 }
@@ -766,12 +768,11 @@ lsi_nand_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 
 #if defined(LOGIO)
 	if (0 != enable_logio)
-		printk("Writing NAND Buffer (len=%d)...\n", len);
+		printk(KERN_NOTICE "Writing NAND Buffer (len=%d)...\n", len);
 #endif
 
-	for (i = 0; i < (len >> 2); i++) {
+	for (i = 0; i < (len >> 2); i++)
 		writel(p[i], chip->IO_ADDR_W);
-	}
 
 	return;
 }
@@ -784,7 +785,8 @@ lsi_nand_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
  *
  * Default verify function for 8bit buswith
  */
-static int lsi_nand_verify_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
+static int lsi_nand_verify_buf(struct mtd_info *mtd,
+			       const uint8_t *buf, int len)
 {
 	int i;
 	struct nand_chip *chip = mtd->priv;
@@ -792,9 +794,8 @@ static int lsi_nand_verify_buf(struct mtd_info *mtd, const uint8_t *buf, int len
 
 	for (i = 0; i < (len >> 2); i++) {
 		udelay(chip->chip_delay);
-		if (p[i] != readl((uint32_t *)chip->IO_ADDR_R)) {
+		if (p[i] != readl((uint32_t *)chip->IO_ADDR_R))
 			return -EFAULT;
-		}
 	}
 
 	return 0;
@@ -828,7 +829,7 @@ static int lsi_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 	  When reading or writing, wait for the
 	  controller's PECC_BUSY signal to clear.
 	*/
-#if 0
+#ifdef NOT_USED
 	if (FL_READING == chip->state || FL_WRITING == chip->state) {
 		for (;;) {
 			status = READL((void *)LSI_NAND_PECC_BUSY_REGISTER);
@@ -912,11 +913,10 @@ lsi_nand_ecc_calculate(struct mtd_info *mtd, const uint8_t *dat,
 	struct nand_chip *chip = mtd->priv;
 
 	/* start ECC calculation */
-	if (chip->state == FL_READING) {
+	if (chip->state == FL_READING)
 		chip->cmdfunc(mtd, NAND_CMD_START_ECC_READ, -1, -1);
-	} else if (chip->state == FL_WRITING) {
+	else if (chip->state == FL_WRITING)
 		chip->cmdfunc(mtd, NAND_CMD_PAGEPROG, -1, -1);
-	}
 
 	/* wait for PECC_BUSY to go down */
 	return chip->waitfunc(mtd, chip);
@@ -961,7 +961,8 @@ report_ecc_errors_ep501(struct mtd_info *mtd, struct nand_chip *chip,
 			       page, column, ecc_status_reg->err_bit);
 
 			if (column < mtd->writesize) {
-				buffer[column] ^= (1 << ecc_status_reg->err_bit);
+				buffer[column] ^=
+					(1 << ecc_status_reg->err_bit);
 				++mtd->ecc_stats.corrected;
 			} else {
 				printk(KERN_ERR
@@ -971,7 +972,7 @@ report_ecc_errors_ep501(struct mtd_info *mtd, struct nand_chip *chip,
 				       column, mtd->writesize);
 				rc = -1;
 			}
-		} else if((ecc_status & 0x3000) == 2) {
+		} else if ((ecc_status & 0x3000) == 2) {
 			printk(KERN_ERR
 			       "Uncorrectable ECC Error: "
 			       "Page=0x%x Column=0x%x\n",
@@ -2643,17 +2644,17 @@ fix_section(unsigned long offset, void *data, int *syndromes_in)
 	memcpy((void *)syndromes, (void *)syndromes_in, sizeof(int) * 9);
 	d_flg = 0;
 
-	// initialise table entries
+	/* initialise table entries */
 	for (i = 0; i < 8; i++)
-	  syndromes[i] = i_to_a[syndromes[i]];
+		syndromes[i] = i_to_a[syndromes[i]];
 
 	Matrix_c[0] = 0;
 	Matrix_c[1] = syndromes[0];
 	err_loc_ply[0][0] = 1;
 	err_loc_ply[1][0] = 1;
 	for (i = 1; i < 8; i++) {
-	  err_loc_ply[0][i] = 0;
-	  err_loc_ply[1][i] = 0;
+		err_loc_ply[0][i] = 0;
+		err_loc_ply[1][i] = 0;
 	}
 	Matrix_a[0] = 0;
 	Matrix_a[1] = 0;
@@ -2662,112 +2663,119 @@ fix_section(unsigned long offset, void *data, int *syndromes_in)
 	alpha = -1;
 
 	do {
-	  // skip even loops
-	  alpha += 2;
-	  if (Matrix_c[alpha] != -1) {
-	    temp_index = alpha - 2;
-	    if (temp_index<0) temp_index=0;
-	    while ((Matrix_c[temp_index] == -1) && (temp_index > 0))
-	      temp_index=temp_index-2;
-	    if (temp_index < 0) temp_index = 0;
+		/* skip even loops */
+		alpha += 2;
+		if (Matrix_c[alpha] != -1) {
+			temp_index = alpha - 2;
+			if (temp_index < 0)
+				temp_index = 0;
+			while ((Matrix_c[temp_index] == -1) && (temp_index > 0))
+				temp_index = temp_index-2;
+			if (temp_index < 0)
+				temp_index = 0;
 
-	    if (temp_index > 0) {
-	      j = temp_index;
-	      do {
-		j=j-2;
-		if (j < 0) j = 0;
-		if ((Matrix_c[j] != -1) && (Matrix_b[temp_index] < Matrix_b[j]))
-		  temp_index = j;
-	      } while (j > 0);
-	    }
+			if (temp_index > 0) {
+				j = temp_index;
+				do {
+					j = j-2;
+					if (j < 0)
+						j = 0;
+					if ((Matrix_c[j] != -1) &&
+					   (Matrix_b[temp_index] < Matrix_b[j]))
+						temp_index = j;
+				} while (j > 0);
+			}
 
-	    if (Matrix_a[alpha] > Matrix_a[temp_index] + alpha - temp_index)
-	      Matrix_a[alpha + 2] = Matrix_a[alpha];
-	    else
-	      Matrix_a[alpha + 2] = Matrix_a[temp_index] + alpha - temp_index;
+			if (Matrix_a[alpha] > Matrix_a[temp_index] +
+				alpha - temp_index)
+				Matrix_a[alpha + 2] = Matrix_a[alpha];
+			else
+				Matrix_a[alpha + 2] = Matrix_a[temp_index] +
+					 alpha - temp_index;
 
-	    for (i = 0; i < 8; ++i) {
-		    err_loc_ply[alpha + 2][i] = 0;
-	    }
+			for (i = 0; i < 8; ++i)
+				err_loc_ply[alpha + 2][i] = 0;
 
-	    for (i = 0; i <= Matrix_a[temp_index]; i++) {
-	      if (err_loc_ply[temp_index][i] != 0)
-		    err_loc_ply[alpha + 2][i + alpha - temp_index] =
-			    a_to_i[(Matrix_c[alpha] + block_length -
-				    Matrix_c[temp_index] +
-				    i_to_a[err_loc_ply[temp_index][i]]) %
-				   block_length];
-	    }
+			for (i = 0; i <= Matrix_a[temp_index]; i++) {
+				if (err_loc_ply[temp_index][i] != 0)
+					err_loc_ply[alpha + 2][i + \
+						alpha - temp_index] =
+					a_to_i[(Matrix_c[alpha] + \
+						block_length - \
+						Matrix_c[temp_index] + \
+						i_to_a[err_loc_ply[temp_index] \
+						[i]]) % block_length];
+			}
 
-	    for (i = 0; i <= Matrix_a[alpha]; i++) {
-		    err_loc_ply[alpha + 2][i] ^= err_loc_ply[alpha][i];
-	    }
-	  } else {
-		  Matrix_a[alpha + 2] = Matrix_a[alpha];
+			for (i = 0; i <= Matrix_a[alpha]; i++)
+				err_loc_ply[alpha + 2][i] ^=
+					err_loc_ply[alpha][i];
+		} else {
+			Matrix_a[alpha + 2] = Matrix_a[alpha];
 
-		  for (i = 0; i <= Matrix_a[alpha]; i++) {
-			  err_loc_ply[alpha + 2][i] = err_loc_ply[alpha][i];
-		  }
-	  }
+			for (i = 0; i <= Matrix_a[alpha]; i++)
+				err_loc_ply[alpha + 2][i] =
+					err_loc_ply[alpha][i];
+		}
 
-	  Matrix_b[alpha + 2] = alpha+1 - Matrix_a[alpha + 2];
+		Matrix_b[alpha + 2] = alpha+1 - Matrix_a[alpha + 2];
 
-	  // Form (alpha+2)th discrepancy.
-	  if (alpha < 8) {
-		  if (syndromes[alpha + 1] != -1) {
-			  Matrix_c[alpha + 2] = a_to_i[syndromes[alpha + 1]];
-		  } else {
-			  Matrix_c[alpha + 2] = 0;
-		  }
+		/* Form (alpha+2)th discrepancy. */
+		if (alpha < 8) {
+			if (syndromes[alpha + 1] != -1)
+				Matrix_c[alpha + 2] =
+					a_to_i[syndromes[alpha + 1]];
+			else
+				Matrix_c[alpha + 2] = 0;
 
-		  for (i = 1; i <= Matrix_a[alpha + 2]; i++) {
-			  if ((syndromes[alpha + 1 - i] != -1) && (err_loc_ply[alpha + 2][i] != 0))
-				  Matrix_c[alpha + 2] ^= a_to_i[(syndromes[alpha + 1 - i] + i_to_a[err_loc_ply[alpha + 2][i]]) % block_length];
-		  }
-		  Matrix_c[alpha + 2] = i_to_a[Matrix_c[alpha + 2]];
-	  }
+			for (i = 1; i <= Matrix_a[alpha + 2]; i++) {
+				if ((syndromes[alpha + 1 - i] != -1) &&
+					(err_loc_ply[alpha + 2][i] != 0))
+					Matrix_c[alpha + 2] ^=
+						a_to_i[(syndromes[alpha + 1 - i]
+						+ i_to_a[err_loc_ply[alpha + 2]\
+						[i]]) % block_length];
+			}
+			Matrix_c[alpha + 2] = i_to_a[Matrix_c[alpha + 2]];
+		}
 	} while ((alpha < 7) && (Matrix_a[alpha + 2] <= 4));
 
-	alpha=alpha+2;
+	alpha = alpha+2;
 	Matrix_a[7] = Matrix_a[alpha];
 	if (Matrix_a[7] <= 4) {
+		for (i = 1; i <= Matrix_a[7]; i++)
+			Element[i] = i_to_a[err_loc_ply[alpha][i]];
 
-	  for (i = 1; i <= Matrix_a[7]; i++) {
-	    Element[i] = i_to_a[err_loc_ply[alpha][i]];
-	  }
+		err_count = 0 ;
+		for (i = 1; i <= block_length; i++) {
+			elp_sum = 1 ;
+			for (j = 1; j <= Matrix_a[7]; j++)
+				if (Element[j] != -1) {
+					Element[j] = (Element[j] + j) %
+						block_length ;
+					elp_sum ^= a_to_i[Element[j]] ;
+				}
 
-	  err_count = 0 ;
-	  for (i = 1; i <= block_length; i++) {
-	    elp_sum = 1 ;
-	    for (j = 1; j <= Matrix_a[7]; j++)
-	      if (Element[j] != -1) {
-		Element[j] = (Element[j] + j) % block_length ;
-		elp_sum ^= a_to_i[Element[j]] ;
-	      }
+			if (!elp_sum) {
+				err_location[err_count] = block_length - i ;
+				err_count++ ;
+			}
+		}
 
-	    if (!elp_sum) {
-	      err_location[err_count] = block_length - i ;
-	      err_count++ ;
-	    }
-	  }
-
-	  if (err_count == Matrix_a[7])
-	    d_flg = 1 ;
+		if (err_count == Matrix_a[7])
+			d_flg = 1 ;
 	}
 
 	if (d_flg == 0) {
 		return -1;
-	}
-	else {
-		for (i=0; i<err_count; i++)
-		{
+	} else {
+		for (i = 0; i < err_count; i++) {
 			if (err_location[i] >= 52)
 				data_location = err_location[i] - 52;
 			else
 				data_location = err_location[i] + data_length;
 
-			if (data_location <= 4095)
-			{
+			if (data_location <= 4095) {
 				rev_location = 4095 - data_location;
 				result_bit = rev_location%8;
 				result_byte = (rev_location - result_bit)/8;
@@ -2871,18 +2879,19 @@ report_ecc_errors_ep501g1(struct mtd_info *mtd, struct nand_chip *chip,
 		}
 	}
 
+#ifdef NOT_USED
 	/* Debug output (BCH status register and syndromes). */
-#if 0
-	printk("BCH Status Register: 0x%02lx\n", bch_status);
+	printk(KERN_INFO "BCH Status Register: 0x%02lx\n", bch_status);
 
 	for (section = 0; section < 8; ++section) {
-		printk("Syndromes, Section %d: ", section);
+		printk(KERN_INFO "Syndromes, Section %d: ", section);
 
 		for (syndrome = 0; syndrome < 8; ++syndrome) {
-			printk("0x%04lx ", syndromes[section][syndrome]);
+			printk(KERN_INFO "0x%04lx ",
+			       syndromes[section][syndrome]);
 		}
 
-		printk("\n");
+		printk(KERN_INFO "\n");
 	}
 #endif
 
@@ -2985,18 +2994,17 @@ report_ecc_errors_ep501g3(struct mtd_info *mtd, struct nand_chip *chip,
 		}
 	}
 
+#ifdef NOT_USED
 	/* Debug output (BCH status register and syndromes). */
-#if 0
-	printk("BCH Status Register: 0x%02lx\n", bch_status);
+	printk(KERN_INFO "BCH Status Register: 0x%02lx\n", bch_status);
 
 	for (section = 0; section < 8; ++section) {
-		printk("Syndromes, Section %d: ", section);
+		printk(KERN_INFO "Syndromes, Section %d: ", section);
 
-		for (syndrome = 0; syndrome < 8; ++syndrome) {
-			printk("0x%04lx ", syndromes[section][syndrome]);
-		}
+		for (syndrome = 0; syndrome < 8; ++syndrome)
+			printk(KERN_INFO "0x%04lx ",
 
-		printk("\n");
+		printk(KERN_INFO "\n");
 	}
 #endif
 
@@ -3153,9 +3161,8 @@ lsi_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	/* Send command to read back the data */
 	chip->cmdfunc(mtd, NAND_CMD_READ0, 0, page);
 
-	if (chip->verify_buf(mtd, buf, mtd->writesize)) {
+	if (chip->verify_buf(mtd, buf, mtd->writesize))
 		return -EIO;
-	}
 #endif
 
 	return 0;
@@ -3272,28 +3279,58 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 		/* and device sizes as follows. */
 		if (512 == mtd->writesize) {
 			switch (mbits) {
-			case 64:                 break;
-			case 128:   config |= 1; break;
-			case 256:   config |= 2; break;
-			case 512:   config |= 3; break;
-			case 1024:  config |= 4; break;
-			case 2048:  config |= 5; break;
-			case 4096:  config |= 6; break;
-			case 8192:  config |= 7; break;
+			case 64:
+				break;
+			case 128:
+				config |= 1;
+				break;
+			case 256:
+				config |= 2;
+				break;
+			case 512:
+				config |= 3;
+				break;
+			case 1024:
+				config |= 4;
+				break;
+			case 2048:
+				config |= 5;
+				break;
+			case 4096:
+				config |= 6;
+				break;
+			case 8192:
+				config |= 7;
+				 break;
 			default:
 				return -1;
 				break;
 			}
 		} else {
 			switch (mbits) {
-			case 512:   config |= 3; break;
-			case 1024:  config |= 4; break;
-			case 2048:  config |= 5; break;
-			case 4096:  config |= 6; break;
-			case 8192:  config |= 7; break;
-			case 16384:              break;
-			case 32768: config |= 1; break;
-			case 65536: config |= 2; break;
+			case 512:
+				config |= 3;
+				break;
+			case 1024:
+				config |= 4;
+				break;
+			case 2048:
+				config |= 5;
+				break;
+			case 4096:
+				config |= 6;
+				break;
+			case 8192:
+				config |= 7;
+				break;
+			case 16384:
+				break;
+			case 32768:
+				config |= 1;
+				break;
+			case 65536:
+				config |= 2;
+				break;
 			default:
 				return -1;
 				break;
@@ -3325,11 +3362,11 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 
 		chip->ecc.size = mtd->writesize;
 
-		if (mtd->oobsize == 224) {
+		if (mtd->oobsize == 224)
 			chip->ecc.bytes = 224 - chip->ecc.layout->eccbytes;
-		} else {
+		else
 			chip->ecc.bytes = chip->ecc.layout->eccbytes;
-		}
+
 	} else if (LSI_NAND_EP501G3 == lsi_nand_type) {
 		/* The EP501G3 only supports 2k, 4k, and 8k page sizes, */
 		if (2048 != mtd->writesize &&
@@ -3339,16 +3376,31 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 
 		/* and device sizes as follows. */
 		switch (mbits) {
-		case 512:   config |= 3; break;
-		case 1024:  config |= 4; break;
-		case 2048:  config |= 5; break;
-		case 4096:  config |= 6; break;
-		case 8192:  config |= 7; break;
-		case 16384:              break;
-		case 32768: config |= 1; break;
-		case 65536: config |= 2; break;
+		case 512:
+			config |= 3;
+			break;
+		case 1024:
+			config |= 4;
+`			break;
+		case 2048:
+			config |= 5;
+			break;
+		case 4096:
+			config |= 6;
+			break;
+		case 8192:
+			config |= 7;
+			break;
+		case 16384:
+			break;
+		case 32768:
+			config |= 1;
+			break;
+		case 65536:
+			config |= 2;
+			break;
 		default:
-			printk("Invalid Device Size: 0x%lx\n", mbits);
+			printk(KERN_ERR "Invalid Device Size: 0x%lx\n", mbits);
 			return -1;
 			break;
 		}
@@ -3362,7 +3414,7 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 			config |= 0x2 << 8;
 			chip->ecc.layout = &lsi_4k_4bit_ecclayout;
 			break;
-#if 0
+#ifdef NOT_USED
 		case 8192:
 			config |= 0x3 << 8;
 			chip->ecc.layout = &lsi_8k_4bit_ecclayout;
@@ -3419,7 +3471,7 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 static int __init
 lsi_nand_init(void)
 {
-	void* nand_base;
+	void *nand_base;
 	struct device_node *np = NULL;
 
 	np = of_find_node_by_type(np, "nand");
@@ -3451,7 +3503,7 @@ lsi_nand_init(void)
 			reg += 2;
 			gpreg_address = of_translate_address(np, reg);
 			gpreg_length = reg[1];
-			printk("nand_address=0x%08llx nand_length=0x%lx\n"
+			printk(KERN_INFO "nand_address=0x%08llx nand_length=0x%lx\n"
 			       "gpreg_address=0x%08llx gpreg_length=0x%lx\n",
 			       nand_address, nand_length,
 			       gpreg_address, gpreg_length);
@@ -3461,7 +3513,7 @@ lsi_nand_init(void)
 			return -1;
 		}
 	} else {
-		printk("ACP NAND: Using Static Addresses.\n");
+		printk(KERN_INFO "ACP NAND: Using Static Addresses.\n");
 		nand_base = ioremap(0x002000440000ULL, 0x20000);
 		gpreg_base = ioremap(0x00200040c000ULL, 0x1000);
 	}
@@ -3477,39 +3529,38 @@ lsi_nand_init(void)
 	{
 		unsigned long cr;
 		unsigned long cr_save;
-		
+
 		cr = cr_save = READL((void *)(nand_base + NAND_CONFIG_REG));
 		cr = 0x2038;
 		WRITEL(cr, (void *)(nand_base + EP501_NAND_CONFIG_REG));
 		cr = READL((void *)nand_base + EP501_NAND_CONFIG_REG);
 		WRITEL(cr_save, (void *)(nand_base + EP501_NAND_CONFIG_REG));
 
-		if (0 == (cr & 0x2038)) {
+		if (0 == (cr & 0x2038))
 			lsi_nand_type = LSI_NAND_EP501G1;
-		} else if (0x38 == (cr & 0x2038)) {
+		else if (0x38 == (cr & 0x2038))
 			lsi_nand_type = LSI_NAND_EP501;
-		} else if (0x2000 == (cr & 0x2038)) {
+		else if (0x2000 == (cr & 0x2038))
 			lsi_nand_type = LSI_NAND_EP501G3;
-		} else {
+		else
 			lsi_nand_type = LSI_NAND_NONE;
-		}
 	}
 
 	switch (lsi_nand_type) {
 	case LSI_NAND_EP501:
-		printk("EP501 NAND Controller.\n");
+		printk(KERN_INFO "EP501 NAND Controller.\n");
 		nand_cmd_ce_off = NAND_CMD_CE_OFF_501;
 		break;
 	case LSI_NAND_EP501G1:
-		printk("EP501G1 NAND Controller.\n");
+		printk(KERN_INFO "EP501G1 NAND Controller.\n");
 		nand_cmd_ce_off = NAND_CMD_CE_OFF_501G1;
 		break;
 	case LSI_NAND_EP501G3:
-		printk("EP501G3 NAND Controller.\n");
+		printk(KERN_INFO "EP501G3 NAND Controller.\n");
 		nand_cmd_ce_off = NAND_CMD_CE_OFF_501G3;
 		break;
 	default:
-		printk("Unknown NAND Controller!\n");
+		printk(KERN_INFO "Unknown NAND Controller!\n");
 		return -1;
 		break;
 	}
@@ -3634,7 +3685,7 @@ lsi_nand_init(void)
 
 	/* Register the partitions */
 	{
-		int ret = 0; 
+		int ret = 0;
 		ret = mtd_device_register(&lsi_nand_mtd,
 					  partition_info, ret);
 		if (ret)
