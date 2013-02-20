@@ -209,10 +209,6 @@ static int acp_pmu_add(struct perf_event *event, int flags)
 
 	perf_pmu_disable(event->pmu);
 	cpuhw = &get_cpu_var(cpu_hw_events);
-#if 0
-	if (event->hw.config & ACP_EVENT_RESTRICTED)
-		num_counters = ppmu->n_restricted;
-#endif
 	/*
 	 * Allocate counters from top-down, so that restricted-capable
 	 * counters are kept free as long as possible.
