@@ -31,7 +31,7 @@ static inline void acp_rio_install_destid_cb(void) {}
 
 #if defined(CONFIG_ACP3400_DUS)
 
-//#define HERMES_I2C_DEBUG
+/* #define HERMES_I2C_DEBUG */
 
 #ifdef HERMES_I2C_DEBUG
 struct srds_data {
@@ -46,7 +46,7 @@ int hermes_serdes(u32 snid, u32 *serdesParam, u32 size);
 #endif
 void hermes_sync_i2c_bus(void);
 
-#else // #if defined(CONFIG_ACP3400_DUS)
+#else /* #if defined(CONFIG_ACP3400_DUS) */
 
 static inline int hermes_serdes(u32 snid, u32 *serdesParam, u32 size) { return 0; }
 

@@ -24,7 +24,7 @@ static inline int fsl_rio_mcheck_exception(struct pt_regs *regs) {return 0; }
 extern int acp_rio_mcheck_exception(struct pt_regs *regs);
 
 #define DEF_RIO_IN_BE(name, size, op)					\
-	static inline int name(u##size *dst,				\
+	static inline int name(u##size * dst,				\
 		       const volatile u##size __iomem *addr)		\
 	{								\
 	int err = 0;							\

@@ -59,24 +59,27 @@
 
 #define PMRN_PMUGS0     0x000 /* PMU Global Status Register */
 
-#define PMUGS_PMC_STATE(nr) (1<<(31-(nr))) /* Stop/Start state of PMUC(nr), 1== start */
-#define PMUGS_CPUFAC    (1<< (31-29)) /* PMU_C476FAC signal input */
-#define PMUGS_CPUR      (1<< (31-30)) /* PMU_C476PR signal input */
-#define PMUGS_CPUMM     (1<< (31-31)) /* PMU_C476MM signal input */
+#define PMUGS_PMC_STATE(nr) (1<<(31-(nr))) /* Stop/Start state of PMUC(nr),
+						1== start */
+#define PMUGS_CPUFAC    (1 << (31-29)) /* PMU_C476FAC signal input */
+#define PMUGS_CPUR      (1 << (31-30)) /* PMU_C476PR signal input */
+#define PMUGS_CPUMM     (1 << (31-31)) /* PMU_C476MM signal input */
 
 #define PMRN_PMUGC0     0x004 /* PMU Global Control Register */
 
-#define PMUGC0_PMCC      (1<< (31-15)) /* Returns all counters to zero */
-#define PMUGC0_LFAC      (1<< (31-30)) /* Freeze all counters */
-#define PMUGC0_FCEC      (1<< (31-31)) /* Freeze counters on enabled Condition*/
+#define PMUGC0_PMCC      (1 << (31-15)) /* Returns all counters to zero */
+#define PMUGC0_LFAC      (1 << (31-30)) /* Freeze all counters */
+#define PMUGC0_FCEC      (1 << (31-31)) /* Freeze cntrs on enabled Condition */
 
 #define PMRN_PMUIS0     0x010 /* PMU Global Interrupt Status Register */
 
-#define PMUIS_ISTAT(nr) (1<< (31-(nr))) /* Interrupt status of PMUC(nr), 1== counter has an enable condition */
+#define PMUIS_ISTAT(nr) (1 << (31-(nr))) /* Interrupt status of PMUC(nr),
+					 1== counter has an enable condition */
 
 #define PMRN_PMUIE0     0x014 /* PMU Global Interrupt Control Register */
 
-#define PMUIE_IE(nr) (1<< (31-(nr))) /* Interrupt enable of PMUC(nr), 1== Interrupt enable for PMUC(nr) */
+#define PMUIE_IE(nr)	(1 << (31-(nr))) /* Interrupt enable of PMUC(nr),
+					 1== Interrupt enable for PMUC(nr) */
 
 #define PMRN_REVID      0xC00 /* PMU Revision ID register */
 
@@ -100,12 +103,12 @@
 #define PMRN_PMLCA7	0x930	/* PM Local Counter Control Register 7 */
 
 
-#define PMLCA_FC	(1<< (31-10))   	/* Freeze Counter */
-#define PMLCA_FCS	(1<< (31-11))   	/* Freeze in Supervisor */
-#define PMLCA_FCU	(1<< (31-12))   	/* Freeze in User */
-#define PMLCA_FCM1	(1<< (31-13))   	/* Freeze Counter while Mark is Set */
-#define PMLCA_FCM0	(1<< (31-14))   	/* Freeze Counter while Mark is Cleared */
-#define PMLCA_CE	(1<< (31-15))   	/* Condition Enable */
+#define PMLCA_FC	(1 << (31-10))	/* Freeze Counter */
+#define PMLCA_FCS	(1 << (31-11))	/* Freeze in Supervisor */
+#define PMLCA_FCU	(1 << (31-12))	/* Freeze in User */
+#define PMLCA_FCM1	(1 << (31-13))	/* Freeze Counter while Mark is Set */
+#define PMLCA_FCM0	(1 << (31-14))	/* Freeze Counter while Mark is Clrd */
+#define PMLCA_CE	(1 << (31-15))	/* Condition Enable */
 
 #define PMLCA_EVENT_MASK 0x0000003f	/* Event field */
 #define PMLCA_EVENT_SHIFT 0

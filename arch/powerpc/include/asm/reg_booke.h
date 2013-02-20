@@ -29,11 +29,11 @@
 #if defined(CONFIG_PPC_BOOK3E_64)
 #define MSR_64BIT	MSR_CM
 
-#define MSR_		MSR_ME | MSR_CE
-#define MSR_KERNEL	MSR_ | MSR_64BIT
-#define MSR_USER32	MSR_ | MSR_PR | MSR_EE
-#define MSR_USER64	MSR_USER32 | MSR_64BIT
-#elif defined (CONFIG_40x)
+#define MSR_		(MSR_ME | MSR_CE)
+#define MSR_KERNEL	(MSR_ | MSR_64BIT)
+#define MSR_USER32	(MSR_ | MSR_PR | MSR_EE)
+#define MSR_USER64	(MSR_USER32 | MSR_64BIT)
+#elif defined(CONFIG_40x)
 #define MSR_KERNEL	(MSR_ME|MSR_RI|MSR_IR|MSR_DR|MSR_CE)
 #define MSR_USER	(MSR_KERNEL|MSR_PR|MSR_EE)
 #else
@@ -146,8 +146,8 @@
 #define SPRN_MMUCFG	0x3F7	/* MMU Configuration Register */
 #define SPRN_PIT	0x3DB	/* Programmable Interval Timer */
 #define SPRN_BUCSR	0x3F5	/* Branch Unit Control and Status */
-#define SPRN_L2CSR0	0x3F9	/* L2 Data Cache Control and Status Register 0 */
-#define SPRN_L2CSR1	0x3FA	/* L2 Data Cache Control and Status Register 1 */
+#define SPRN_L2CSR0	0x3F9	/* L2 Data Cache Control and Status Reg 0 */
+#define SPRN_L2CSR1	0x3FA	/* L2 Data Cache Control and Status Reg 1 */
 #define SPRN_DCCR	0x3FA	/* Data Cache Cacheability Register */
 #define SPRN_ICCR	0x3FB	/* Instruction Cache Cacheability Register */
 #define SPRN_SVR	0x3FF	/* System Version Register */
@@ -173,7 +173,7 @@
 #define SPRN_TCR	0x154	/* Timer Control Register */
 #endif /* Book E */
 #ifdef CONFIG_40x
-#define SPRN_DBCR1	0x3BD	/* Debug Control Register 1 */		
+#define SPRN_DBCR1	0x3BD	/* Debug Control Register 1 */
 #define SPRN_ESR	0x3D4	/* Exception Syndrome Register */
 #define SPRN_DEAR	0x3D5	/* Data Error Address Register */
 #define SPRN_TSR	0x3D8	/* Timer Status Register */
@@ -193,7 +193,7 @@
 #endif
 
 /* Bit definitions for CCR1. */
-#define	CCR1_DPC	0x00000100 /* Disable L1 I-Cache/D-Cache parity checking */
+#define	CCR1_DPC	0x00000100 /* Disable L1 I-Cache/D-Cache parity check*/
 #define	CCR1_TCS	0x00000080 /* Timer Clock Select */
 
 /* Bit definitions for the MCSR. */
@@ -210,25 +210,26 @@
 #define PPC47x_MCSR_GPR	0x01000000 /* GPR parity error */
 #define PPC47x_MCSR_FPR	0x00800000 /* FPR parity error */
 #define PPC47x_MCSR_IPR	0x00400000 /* Imprecise Machine Check Exception */
-#define PPC47x_MCSR_L2	0x00200000 /* Error or system error reported through the L2 cache */
+#define PPC47x_MCSR_L2	0x00200000 /* Error or system error reported through
+				      the L2 cache */
 #define PPC47x_MCSR_DCR	0x00100000 /* DCR timeout */
 
 #ifdef CONFIG_E500
 /* All e500 */
-#define MCSR_MCP 	0x80000000UL /* Machine Check Input Pin */
-#define MCSR_ICPERR 	0x40000000UL /* I-Cache Parity Error */
+#define MCSR_MCP	0x80000000UL /* Machine Check Input Pin */
+#define MCSR_ICPERR	0x40000000UL /* I-Cache Parity Error */
 
 /* e500v1/v2 */
-#define MCSR_DCP_PERR 	0x20000000UL /* D-Cache Push Parity Error */
-#define MCSR_DCPERR 	0x10000000UL /* D-Cache Parity Error */
-#define MCSR_BUS_IAERR 	0x00000080UL /* Instruction Address Error */
-#define MCSR_BUS_RAERR 	0x00000040UL /* Read Address Error */
-#define MCSR_BUS_WAERR 	0x00000020UL /* Write Address Error */
-#define MCSR_BUS_IBERR 	0x00000010UL /* Instruction Data Error */
-#define MCSR_BUS_RBERR 	0x00000008UL /* Read Data Bus Error */
-#define MCSR_BUS_WBERR 	0x00000004UL /* Write Data Bus Error */
-#define MCSR_BUS_IPERR 	0x00000002UL /* Instruction parity Error */
-#define MCSR_BUS_RPERR 	0x00000001UL /* Read parity Error */
+#define MCSR_DCP_PERR	0x20000000UL /* D-Cache Push Parity Error */
+#define MCSR_DCPERR	0x10000000UL /* D-Cache Parity Error */
+#define MCSR_BUS_IAERR	0x00000080UL /* Instruction Address Error */
+#define MCSR_BUS_RAERR	0x00000040UL /* Read Address Error */
+#define MCSR_BUS_WAERR	0x00000020UL /* Write Address Error */
+#define MCSR_BUS_IBERR	0x00000010UL /* Instruction Data Error */
+#define MCSR_BUS_RBERR	0x00000008UL /* Read Data Bus Error */
+#define MCSR_BUS_WBERR	0x00000004UL /* Write Data Bus Error */
+#define MCSR_BUS_IPERR	0x00000002UL /* Instruction parity Error */
+#define MCSR_BUS_RPERR	0x00000001UL /* Read parity Error */
 
 /* e500mc */
 #define MCSR_DCPERR_MC	0x20000000UL /* D-Cache Parity Error */
@@ -245,14 +246,14 @@
 #endif
 
 #ifdef CONFIG_E200
-#define MCSR_MCP 	0x80000000UL /* Machine Check Input Pin */
-#define MCSR_CP_PERR 	0x20000000UL /* Cache Push Parity Error */
-#define MCSR_CPERR 	0x10000000UL /* Cache Parity Error */
-#define MCSR_EXCP_ERR 	0x08000000UL /* ISI, ITLB, or Bus Error on 1st insn
+#define MCSR_MCP	0x80000000UL /* Machine Check Input Pin */
+#define MCSR_CP_PERR	0x20000000UL /* Cache Push Parity Error */
+#define MCSR_CPERR	0x10000000UL /* Cache Parity Error */
+#define MCSR_EXCP_ERR	0x08000000UL /* ISI, ITLB, or Bus Error on 1st insn
 					fetch for an exception handler */
-#define MCSR_BUS_IRERR 	0x00000010UL /* Read Bus Error on instruction fetch*/
-#define MCSR_BUS_DRERR 	0x00000008UL /* Read Bus Error on data load */
-#define MCSR_BUS_WRERR 	0x00000004UL /* Write Bus Error on buffered
+#define MCSR_BUS_IRERR	0x00000010UL /* Read Bus Error on instruction fetch*/
+#define MCSR_BUS_DRERR	0x00000008UL /* Read Bus Error on data load */
+#define MCSR_BUS_WRERR	0x00000004UL /* Write Bus Error on buffered
 					store or cache line push */
 #endif
 
@@ -298,10 +299,10 @@
 #define DBSR_BT		0x40000000	/* Branch taken */
 #define DBSR_IRPT	0x20000000	/* Exception Debug Event */
 #define DBSR_TIE	0x10000000	/* Trap Instruction debug Event */
-#define DBSR_IAC1	0x04000000	/* Instruction Address Compare 1 Event */
-#define DBSR_IAC2	0x02000000	/* Instruction Address Compare 2 Event */
-#define DBSR_IAC3	0x00080000	/* Instruction Address Compare 3 Event */
-#define DBSR_IAC4	0x00040000	/* Instruction Address Compare 4 Event */
+#define DBSR_IAC1	0x04000000	/* Instr Address Compare 1 Event*/
+#define DBSR_IAC2	0x02000000	/* Instr Address Compare 2 Event*/
+#define DBSR_IAC3	0x00080000	/* Instr Address Compare 3 Event*/
+#define DBSR_IAC4	0x00040000	/* Instr Address Compare 4 Event*/
 #define DBSR_DAC1R	0x01000000	/* Data Address Compare 1 Read Event */
 #define DBSR_DAC1W	0x00800000	/* Data Address Compare 1 Write Event */
 #define DBSR_DAC2R	0x00400000	/* Data Address Compare 2 Read Event */
@@ -429,26 +430,26 @@
 #define DBCR1_IAC1US	0xC0000000	/* Instr Addr Cmp 1 Sup/User   */
 #define DBCR1_IAC1ER	0x30000000	/* Instr Addr Cmp 1 Eff/Real */
 #define DBCR1_IAC1ER_01	0x10000000	/* reserved */
-#define DBCR1_IAC1ER_10	0x20000000	/* Instr Addr Cmp 1 Eff/Real MSR[IS]=0 */
-#define DBCR1_IAC1ER_11	0x30000000	/* Instr Addr Cmp 1 Eff/Real MSR[IS]=1 */
+#define DBCR1_IAC1ER_10	0x20000000	/* Instr Addr Cmp 1 Ef/Real MSR[IS]=0*/
+#define DBCR1_IAC1ER_11	0x30000000	/* Instr Addr Cmp 1 Ef/Real MSR[IS]=1*/
 #define DBCR1_IAC2US	0x0C000000	/* Instr Addr Cmp 2 Sup/User   */
 #define DBCR1_IAC2ER	0x03000000	/* Instr Addr Cmp 2 Eff/Real */
 #define DBCR1_IAC2ER_01	0x01000000	/* reserved */
-#define DBCR1_IAC2ER_10	0x02000000	/* Instr Addr Cmp 2 Eff/Real MSR[IS]=0 */
-#define DBCR1_IAC2ER_11	0x03000000	/* Instr Addr Cmp 2 Eff/Real MSR[IS]=1 */
+#define DBCR1_IAC2ER_10	0x02000000	/* Instr Addr Cmp 2 Ef/Real MSR[IS]=0*/
+#define DBCR1_IAC2ER_11	0x03000000	/* Instr Addr Cmp 2 Ef/Real MSR[IS]=1*/
 #define DBCR1_IAC12M	0x00800000	/* Instr Addr 1-2 range enable */
 #define DBCR1_IAC12MX	0x00C00000	/* Instr Addr 1-2 range eXclusive */
 #define DBCR1_IAC12AT	0x00010000	/* Instr Addr 1-2 range Toggle */
 #define DBCR1_IAC3US	0x0000C000	/* Instr Addr Cmp 3 Sup/User   */
 #define DBCR1_IAC3ER	0x00003000	/* Instr Addr Cmp 3 Eff/Real */
 #define DBCR1_IAC3ER_01	0x00001000	/* reserved */
-#define DBCR1_IAC3ER_10	0x00002000	/* Instr Addr Cmp 3 Eff/Real MSR[IS]=0 */
-#define DBCR1_IAC3ER_11	0x00003000	/* Instr Addr Cmp 3 Eff/Real MSR[IS]=1 */
+#define DBCR1_IAC3ER_10	0x00002000	/* Instr Addr Cmp 3 Ef/Real MSR[IS]=0*/
+#define DBCR1_IAC3ER_11	0x00003000	/* Instr Addr Cmp 3 Ef/Real MSR[IS]=1*/
 #define DBCR1_IAC4US	0x00000C00	/* Instr Addr Cmp 4 Sup/User   */
 #define DBCR1_IAC4ER	0x00000300	/* Instr Addr Cmp 4 Eff/Real */
-#define DBCR1_IAC4ER_01	0x00000100	/* Instr Addr Cmp 4 Eff/Real MSR[IS]=0 */
-#define DBCR1_IAC4ER_10	0x00000200	/* Instr Addr Cmp 4 Eff/Real MSR[IS]=0 */
-#define DBCR1_IAC4ER_11	0x00000300	/* Instr Addr Cmp 4 Eff/Real MSR[IS]=1 */
+#define DBCR1_IAC4ER_01	0x00000100	/* Instr Addr Cmp 4 Ef/Real MSR[IS]=0*/
+#define DBCR1_IAC4ER_10	0x00000200	/* Instr Addr Cmp 4 Ef/Real MSR[IS]=0*/
+#define DBCR1_IAC4ER_11	0x00000300	/* Instr Addr Cmp 4 Ef/Real MSR[IS]=1*/
 #define DBCR1_IAC34M	0x00000080	/* Instr Addr 3-4 range enable */
 #define DBCR1_IAC34MX	0x000000C0	/* Instr Addr 3-4 range eXclusive */
 #define DBCR1_IAC34AT	0x00000001	/* Instr Addr 3-4 range Toggle */

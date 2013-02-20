@@ -58,12 +58,12 @@ static void set_pmc_user_kernel(int core, int ctr, int user, int kernel)
 
 	pmlc = get_pmlc(core, ctr);
 
-	if(user)
+	if (user)
 		pmlc &= ~PMLCA_FCU;
 	else
 		pmlc |= PMLCA_FCU;
 
-	if(kernel)
+	if (kernel)
 		pmlc &= ~PMLCA_FCS;
 	else
 		pmlc |= PMLCA_FCS;
@@ -75,12 +75,12 @@ static void set_pmc_marked(int core, int ctr, int mark0, int mark1)
 {
 	u32 pmlc = get_pmlc(core, ctr);
 
-	if(mark0)
+	if (mark0)
 		pmlc &= ~PMLCA_FCM0;
 	else
 		pmlc |= PMLCA_FCM0;
 
-	if(mark1)
+	if (mark1)
 		pmlc &= ~PMLCA_FCM1;
 	else
 		pmlc |= PMLCA_FCM1;
@@ -127,7 +127,7 @@ static void pmc_stop_ctrs(int core)
 	u32 pmgc0;
 
 	mtdcrx(PMUDCRAI(core), PMRN_PMUGC0);
-        pmgc0 = mfdcrx(PMUDCRDI(core));
+	pmgc0 = mfdcrx(PMUDCRDI(core));
 
 
 	pmgc0 |= (PMUGC0_LFAC|PMUGC0_PMCC);
@@ -147,7 +147,7 @@ static int acp_pmu_cpu_setup(struct op_counter_config *ctr)
 	/* freeze all counters */
 	pmc_stop_ctrs(core);
 
-	for (i = 0;i < num_counters;i++) {
+	for (i = 0; i < num_counters; i++) {
 		init_pmc_stop(core, i);
 
 		set_pmc_event(core, i, ctr[i].event);
@@ -211,7 +211,7 @@ static int acp_pmu_start(struct op_counter_config *ctr)
 
 	oprofile_running = 1;
 #ifdef DEBUG
-        mtdcrx(PMUDCRAI(core), PMRN_PMUGC0);
+	mtdcrx(PMUDCRAI(core), PMRN_PMUGC0);
 #endif
 	pr_debug("start on cpu %d, pmgc0 %x\n", core,
 		 mfdcrx(PMUDCRDI(core)));
@@ -228,7 +228,7 @@ static void acp_pmu_stop(void)
 
 	oprofile_running = 0;
 
-        mtdcrx(PMUDCRAI(core), PMRN_PMUGC0);
+	mtdcrx(PMUDCRAI(core), PMRN_PMUGC0);
 	pr_debug("stop on cpu %d, pmgc0 %x\n", smp_processor_id(),
 		 mfdcrx(PMUDCRDI(core)));
 

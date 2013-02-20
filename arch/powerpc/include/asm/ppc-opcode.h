@@ -162,17 +162,17 @@
 #define PPC_RFDI		stringify_in_c(.long PPC_INST_RFDI)
 #define PPC_RFMCI		stringify_in_c(.long PPC_INST_RFMCI)
 #define PPC_TLBILX(t, a, b)	stringify_in_c(.long PPC_INST_TLBILX | \
-					__PPC_T_TLB(t) | __PPC_RA(a) | __PPC_RB(b))
+				__PPC_T_TLB(t) | __PPC_RA(a) | __PPC_RB(b))
 #define PPC_TLBILX_ALL(a, b)	PPC_TLBILX(0, a, b)
 #define PPC_TLBILX_PID(a, b)	PPC_TLBILX(1, a, b)
 #define PPC_TLBILX_VA(a, b)	PPC_TLBILX(3, a, b)
 #define PPC_WAIT(w)		stringify_in_c(.long PPC_INST_WAIT | \
 					__PPC_WC(w))
-#define PPC_TLBIE(lp,a) 	stringify_in_c(.long PPC_INST_TLBIE | \
-					       __PPC_RB(a) | __PPC_RS(lp))
-#define PPC_TLBSRX_DOT(a,b)	stringify_in_c(.long PPC_INST_TLBSRX_DOT | \
+#define PPC_TLBIE(lp, a)	stringify_in_c(.long PPC_INST_TLBIE | \
+					__PPC_RB(a) | __PPC_RS(lp))
+#define PPC_TLBSRX_DOT(a, b)	stringify_in_c(.long PPC_INST_TLBSRX_DOT | \
 					__PPC_RA(a) | __PPC_RB(b))
-#define PPC_TLBIVAX(a,b)	stringify_in_c(.long PPC_INST_TLBIVAX | \
+#define PPC_TLBIVAX(a, b)	stringify_in_c(.long PPC_INST_TLBIVAX | \
 					__PPC_RA(a) | __PPC_RB(b))
 
 #define PPC_ERATWE(s, a, w)	stringify_in_c(.long PPC_INST_ERATWE | \

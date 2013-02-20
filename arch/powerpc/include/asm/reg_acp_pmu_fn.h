@@ -25,33 +25,33 @@
 static inline u32 get_pmlc(int core, int ctr)
 {
 	switch (ctr) {
-		case 0:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA0);
-			break;
-		case 1:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA1);
-			break;
-		case 2:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA2);
-			break;
-		case 3:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA3);
-			break;
-		case 4:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA4);
-			break;
-		case 5:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA5);
-			break;
-		case 6:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA6);
-			break;
-		case 7:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA7);
-			break;
-		default:
-			printk(KERN_ERR "oops trying to read PMC%d\n", ctr);
-			return 0;
+	case 0:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA0);
+		break;
+	case 1:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA1);
+		break;
+	case 2:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA2);
+		break;
+	case 3:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA3);
+		break;
+	case 4:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA4);
+		break;
+	case 5:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA5);
+		break;
+	case 6:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA6);
+		break;
+	case 7:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA7);
+		break;
+	default:
+		printk(KERN_ERR "oops trying to read PMC%d\n", ctr);
+		return 0;
 	}
 	return mfdcrx(PMUDCRDI(core));
 }
@@ -61,33 +61,33 @@ static inline u32 get_pmlc(int core, int ctr)
 static inline void set_pmlc(int core, int ctr, u32 pmlc)
 {
 	switch (ctr) {
-		case 0:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA0);
-			break;
-		case 1:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA1);
-			break;
-		case 2:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA2);
-			break;
-		case 3:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA3);
-			break;
-		case 4:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA4);
-			break;
-		case 5:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA5);
-			break;
-		case 6:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA6);
-			break;
-		case 7:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMLCA7);
-			break;
-		default:
-			printk(KERN_ERR "oops trying to read PMC%d\n", ctr);
-			return;
+	case 0:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA0);
+		break;
+	case 1:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA1);
+		break;
+	case 2:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA2);
+		break;
+	case 3:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA3);
+		break;
+	case 4:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA4);
+		break;
+	case 5:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA5);
+		break;
+	case 6:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA6);
+		break;
+	case 7:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMLCA7);
+		break;
+	default:
+		printk(KERN_ERR "oops trying to read PMC%d\n", ctr);
+		return;
 	}
 	mtdcrx(PMUDCRDI(core), pmlc);
 }
@@ -96,33 +96,33 @@ static inline void set_pmlc(int core, int ctr, u32 pmlc)
 
 static inline unsigned int ctr_read(int core, unsigned int i)
 {
-	switch(i) {
-		case 0:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA0);
-			break;
-		case 1:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA1);
-			break;
-		case 2:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA2);
-			break;
-		case 3:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA3);
-			break;
-		case 4:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA4);
-			break;
-		case 5:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA5);
-			break;
-		case 6:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA6);
-			break;
-		case 7:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA7);
-			break;
-		default:
-			return 0;
+	switch (i) {
+	case 0:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA0);
+		break;
+	case 1:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA1);
+		break;
+	case 2:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA2);
+		break;
+	case 3:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA3);
+		break;
+	case 4:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA4);
+		break;
+	case 5:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA5);
+		break;
+	case 6:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA6);
+		break;
+	case 7:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA7);
+		break;
+	default:
+		return 0;
 	}
 	return mfdcrx(PMUDCRDI(core));
 }
@@ -131,33 +131,33 @@ static inline unsigned int ctr_read(int core, unsigned int i)
 
 static inline void ctr_write(int core, unsigned int i, unsigned int val)
 {
-	switch(i) {
-		case 0:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA0);
-			break;
-		case 1:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA1);
-			break;
-		case 2:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA2);
-			break;
-		case 3:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA3);
-			break;
-		case 4:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA4);
-			break;
-		case 5:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA5);
-			break;
-		case 6:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA6);
-			break;
-		case 7:
-			mtdcrx(PMUDCRAI(core),  PMRN_PMCA7);
-			break;
-		default:
-			return;
+	switch (i) {
+	case 0:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA0);
+		break;
+	case 1:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA1);
+		break;
+	case 2:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA2);
+		break;
+	case 3:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA3);
+		break;
+	case 4:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA4);
+		break;
+	case 5:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA5);
+		break;
+	case 6:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA6);
+		break;
+	case 7:
+		mtdcrx(PMUDCRAI(core),  PMRN_PMCA7);
+		break;
+	default:
+		return;
 	}
 	mtdcrx(PMUDCRDI(core), val);
 }
