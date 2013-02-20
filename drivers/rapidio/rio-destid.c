@@ -73,11 +73,15 @@ struct rio_dest {
 #define RIO_ONE_WAY_ENABLE    (1 << 2)
 #define RIO_LEGACY_ENABLE     (1 << 3)
 #define RIO_REDUNDANT_ENABLE  (1 << 4)
-#define RIO_DEFAULT_FLAGS     ((u16)(RIO_HW_LOCK_ENABLE | RIO_UPDATE_LUT_ENABLE))
+#define RIO_DEFAULT_FLAGS     ((u16)(RIO_HW_LOCK_ENABLE | \
+				RIO_UPDATE_LUT_ENABLE))
 
 #define RIO_FLAG_GET(p, flag) (((p)->flags & flag) ? 1 : 0)
 #define RIO_FLAG_ADD(p, flag) ((p)->flags |= (u16)(flag))
 #define RIO_DEF_FLAGS_SET(p)  ((p)->flags = RIO_DEFAULT_FLAGS)
+
+#define WARN_MSG \
+	"Operation aborted - Node destid tables are only probed during boot\n"
 
 /**
  * RIO destid internal
@@ -131,12 +135,14 @@ static int __rio_remove_netid(u16 mport_destid, int net_id)
 	list_for_each_entry_safe(net, next, &rio_net, node) {
 		if (net->destid == mport_destid && net->net_id == net_id) {
 			if (!net->pinned) {
-				pr_info("RIO: removing net id %d\n", net->net_id);
+				pr_info("RIO: removing net id %d\n",
+					net->net_id);
 				list_del_init(&net->node);
 				rio_net_put(net);
 				rc = 0;
 			} else {
-				pr_warn("RIO: Not removing Net id %d - in use\n", net->net_id);
+				pr_warn("RIO: Not removing Net id %d -in use\n",
+					net->net_id);
 				rc = -EBUSY;
 			}
 			goto done;
@@ -147,7 +153,8 @@ done:
 	return rc;
 }
 
-static struct rio_net_id *find_rio_net_id(u16 mport_destid, struct rio_net_id *from)
+static struct rio_net_id *find_rio_net_id(u16 mport_destid,
+					  struct rio_net_id *from)
 {
 	struct rio_net_id *net;
 	struct list_head *n;
@@ -169,6 +176,7 @@ exit:
 	spin_unlock(&rio_net_lock);
 	return net;
 }
+
 int rio_pin_netid(u16 host_deviceid, int net_id)
 {
 	struct rio_net_id *net, *next;
@@ -185,6 +193,7 @@ int rio_pin_netid(u16 host_deviceid, int net_id)
 	spin_unlock(&rio_net_lock);
 	return -ENODEV;
 }
+
 int rio_unlock_netid(u16 host_deviceid, int net_id)
 {
 	struct rio_net_id *net, *next;
@@ -204,8 +213,9 @@ int rio_unlock_netid(u16 host_deviceid, int net_id)
 
 static void rio_node_release(struct kref *kref)
 {
-	struct rio_net_node *node = container_of(kref, struct rio_net_node, kref);
-
+	struct rio_net_node *node = container_of(kref,
+						 struct rio_net_node,
+						 kref);
 	kfree(node);
 }
 
@@ -222,20 +232,22 @@ static void rio_node_put(struct rio_net_node *node)
 	if (node)
 		kref_put(&node->kref, rio_node_release);
 }
+
 static int __rio_add_destid(struct rio_mport *mport,
 			    u16 parent_destid, int parent_port,
 			    int hopcount, struct rio_dest *dest)
 {
-	unsigned long key = RIO_DESTID_KEY(hopcount, parent_port, parent_destid);
+	unsigned long key = RIO_DESTID_KEY(hopcount,
+					   parent_port,
+					   parent_destid);
 	struct rio_net_node *node = NULL;
 	int rc;
 
 	rcu_read_lock();
 	node = radix_tree_lookup(&mport->net.dst_tree, key);
 	rcu_read_unlock();
-	if (node) {
+	if (node)
 		return -EBUSY;
-	}
 	node = kzalloc(sizeof(*node), GFP_KERNEL);
 	if (!node)
 		return -ENOMEM;
@@ -282,24 +294,31 @@ static int __rio_add_destid(struct rio_mport *mport,
 	spin_unlock(&mport->net.tree_lock);
 	return rc;
 }
-static struct rio_net_node *rio_get_net_node(struct rio_mport *mport, u16 parent_destid,
-                                             int parent_port, int hopcount)
+
+static struct rio_net_node *rio_get_net_node(struct rio_mport *mport,
+					     u16 parent_destid,
+					     int parent_port,
+					     int hopcount)
 {
 	struct rio_net_node *node = NULL;
-	unsigned long key = RIO_DESTID_KEY(hopcount, parent_port, parent_destid);
+	unsigned long key = RIO_DESTID_KEY(hopcount,
+					   parent_port,
+					   parent_destid);
 
 	rcu_read_lock();
 	node = radix_tree_lookup(&mport->net.dst_tree, key);
-	if (node) {
+	if (node)
 		node = rio_node_get(node);
-	}
 	rcu_read_unlock();
 	return node;
 }
-static int get_destid_tag(struct rio_mport *mport, u16 parent_destid, int parent_port,
-			  int hopcount, unsigned int tag)
+
+static int get_destid_tag(struct rio_mport *mport, u16 parent_destid,
+			  int parent_port, int hopcount, unsigned int tag)
 {
-	unsigned long key = RIO_DESTID_KEY(hopcount, parent_port, parent_destid);
+	unsigned long key = RIO_DESTID_KEY(hopcount,
+					   parent_port,
+					   parent_destid);
 	int set;
 
 	rcu_read_lock();
@@ -331,9 +350,10 @@ static int __remove_static_routes_for_node(struct rio_mport *mport,
 
 	spin_lock(&mport->net.tree_lock);
 
-	num = radix_tree_gang_lookup_slot(&node->route_tree, (void ***)nptr,
-						  keys, 0, items);
-	for (i=0; i<num; i++) {
+	num = radix_tree_gang_lookup_slot(&node->route_tree,
+					  (void ***)nptr,
+					  keys, 0, items);
+	for (i = 0; i < num; i++) {
 		u8 *curr_port = radix_tree_deref_slot((void **)nptr[i]);
 
 		if (unlikely(!curr_port))
@@ -358,11 +378,14 @@ done_keys:
 	return rc;
 }
 #endif
-static int __rio_release_destid(struct rio_mport *mport, u16 parent_destid, int parent_port,
-				 int hopcount)
+
+static int __rio_release_destid(struct rio_mport *mport, u16 parent_destid,
+				int parent_port, int hopcount)
 {
 	struct rio_net_node *node = NULL;
-	unsigned long key = RIO_DESTID_KEY(hopcount, parent_port, parent_destid);
+	unsigned long key = RIO_DESTID_KEY(hopcount,
+					   parent_port,
+					   parent_destid);
 
 	spin_lock(&mport->net.tree_lock);
 	node = radix_tree_lookup(&mport->net.dst_tree, key);
@@ -377,18 +400,21 @@ static int __rio_release_destid(struct rio_mport *mport, u16 parent_destid, int 
 #if defined(CONFIG_RAPIDIO_STATIC_DESTID)
 		/* remove static routes if added */
 		__remove_static_routes_for_node(mport, node,
-						atomic_read(&node->rio_route_num));
+					     atomic_read(&node->rio_route_num));
 #endif
 		rio_node_put(node);
 		atomic_dec(&mport->net.rio_dst_num);
 	}
 	return 0;
 }
+
 int rio_pin_destid(struct rio_mport *mport, u16 parent_destid, int parent_port,
-			    int hopcount)
+		   int hopcount)
 {
 	struct rio_net_node *node = NULL;
-	unsigned long key = RIO_DESTID_KEY(hopcount, parent_port, parent_destid);
+	unsigned long key = RIO_DESTID_KEY(hopcount,
+					   parent_port,
+					   parent_destid);
 	int rc = 0;
 
 	spin_lock(&mport->net.tree_lock);
@@ -400,11 +426,14 @@ int rio_pin_destid(struct rio_mport *mport, u16 parent_destid, int parent_port,
 	spin_unlock(&mport->net.tree_lock);
 	return rc;
 }
-int rio_unlock_destid(struct rio_mport *mport, u16 parent_destid, int parent_port,
-			       int hopcount)
+
+int rio_unlock_destid(struct rio_mport *mport, u16 parent_destid,
+		      int parent_port, int hopcount)
 {
 	struct rio_net_node *node = NULL;
-	unsigned long key = RIO_DESTID_KEY(hopcount, parent_port, parent_destid);
+	unsigned long key = RIO_DESTID_KEY(hopcount,
+					   parent_port,
+					   parent_destid);
 	int rc = 0;
 
 	spin_lock(&mport->net.tree_lock);
@@ -442,13 +471,15 @@ int __rio_release_node_table(struct rio_mport *mport)
 			if (parent_port > 20)
 				break;
 			for (parent_destid = 0;
-			     parent_destid <= atomic_read(&mport->net.rio_max_dest);
+			     parent_destid <=
+				atomic_read(&mport->net.rio_max_dest);
 			     parent_destid++) {
 
-				struct rio_net_node *node = rio_get_net_node(mport,
-									     parent_destid,
-									     parent_port,
-									     hopcount);
+				struct rio_net_node *node =
+					rio_get_net_node(mport,
+							 parent_destid,
+							 parent_port,
+							 hopcount);
 				if (node) {
 					rc = __rio_release_destid(mport,
 								  parent_destid,
@@ -468,8 +499,11 @@ struct rio_route {
 	unsigned long key;
 	u8  *port;
 };
-static int __lookup_static_route(struct rio_mport *mport, unsigned long node_key,
-				 struct rio_static_route *sroute, int num)
+
+static int __lookup_static_route(struct rio_mport *mport,
+				 unsigned long node_key,
+				 struct rio_static_route *sroute,
+				 int num)
 {
 	int rc = 0;
 	struct rio_net_node *node = NULL;
@@ -478,18 +512,20 @@ static int __lookup_static_route(struct rio_mport *mport, unsigned long node_key
 	node = radix_tree_lookup(&mport->net.dst_tree, node_key);
 	if (node) {
 		int i;
-		for (i=0; i<num; i++) {
+		for (i = 0; i < num; i++) {
 			u8 *curr_port = NULL;
 			unsigned long key = sroute[i].sw_destid;
 			curr_port = radix_tree_lookup(&node->route_tree, key);
 			if (curr_port)
 				sroute[i].sw_port = *curr_port;
 		}
-	} else
+	} else {
 		rc = -ENODEV;
+	}
 	rcu_read_unlock();
 	return rc;
 }
+
 static int __static_route_table(struct rio_mport *mport, unsigned long node_key,
 				struct rio_static_route *sroute, int items)
 {
@@ -512,10 +548,11 @@ static int __static_route_table(struct rio_mport *mport, unsigned long node_key,
 	if (node) {
 		int i;
 		int num;
-	retry:
-		num = radix_tree_gang_lookup_slot(&node->route_tree, (void ***)nptr,
+retry:
+		num = radix_tree_gang_lookup_slot(&node->route_tree,
+						  (void ***)nptr,
 						  keys, 0, items);
-		for (i=0; i<num; i++) {
+		for (i = 0; i < num; i++) {
 			u8 *curr_port = radix_tree_deref_slot((void **)nptr[i]);
 
 			if (unlikely(!curr_port)) {
@@ -543,7 +580,9 @@ static int __static_route_table(struct rio_mport *mport, unsigned long node_key,
 
 	return rc;
 }
-static int __remove_static_route(struct rio_mport *mport, unsigned long node_key,
+
+static int __remove_static_route(struct rio_mport *mport,
+				 unsigned long node_key,
 				 struct rio_route *route)
 {
 	struct rio_net_node *node = NULL;
@@ -558,9 +597,11 @@ static int __remove_static_route(struct rio_mport *mport, unsigned long node_key
 		}
 		while (route->key != RIO_INVALID_DESTID) {
 			u8 *curr_port = NULL;
-			curr_port = radix_tree_lookup(&node->route_tree, route->key);
+			curr_port = radix_tree_lookup(&node->route_tree,
+						      route->key);
 			if (curr_port) {
-				curr_port = radix_tree_delete(&node->route_tree, route->key);
+				curr_port = radix_tree_delete(&node->route_tree,
+							      route->key);
 				route->port = curr_port;
 				atomic_dec(&node->rio_route_num);
 			} else {
@@ -591,13 +632,15 @@ static int __add_static_route(struct rio_mport *mport, unsigned long node_key,
 		while (route->port) {
 			void **rp = NULL;
 			u8 *curr_port = NULL;
-			rp = radix_tree_lookup_slot(&node->route_tree, route->key);
+			rp = radix_tree_lookup_slot(&node->route_tree,
+						    route->key);
 			if (rp) {
 				if (update) {
 					curr_port = radix_tree_deref_slot(rp);
 					if (unlikely(!curr_port))
 						goto next;
-					radix_tree_replace_slot(rp, route->port);
+					radix_tree_replace_slot(rp,
+								route->port);
 					route->port = curr_port;
 				} else {
 					rc = -EBUSY;
@@ -611,7 +654,7 @@ static int __add_static_route(struct rio_mport *mport, unsigned long node_key,
 				atomic_inc(&node->rio_route_num);
 				route->port = NULL;
 			}
-		next:
+next:
 			route++;
 		}
 	}
@@ -619,6 +662,7 @@ done:
 	spin_unlock(&mport->net.tree_lock);
 	return rc;
 }
+
 static struct rio_route *__alloc_route_table(struct rio_static_route *route,
 					     int num_routes, int add)
 {
@@ -628,7 +672,7 @@ static struct rio_route *__alloc_route_table(struct rio_static_route *route,
 	rp = kzalloc(sizeof(*rp) * (num_routes + 1), GFP_KERNEL);
 	if (!rp)
 		return ERR_PTR(-ENOMEM);
-	for (i=0; i<num_routes; i++) {
+	for (i = 0; i < num_routes; i++) {
 		if (add) {
 			rp[i].port = kmalloc(sizeof(u8), GFP_KERNEL);
 			if (!rp[i].port)
@@ -645,7 +689,7 @@ static struct rio_route *__alloc_route_table(struct rio_static_route *route,
 	return rp;
 
 cleanup:
-	for (i=0; i<num_routes; i++) {
+	for (i = 0; i < num_routes; i++) {
 		if (rp[i].port)
 			kfree(rp[i].port);
 	}
@@ -655,14 +699,14 @@ cleanup:
 
 static int add_static_route(struct rio_mport *mport, u16 parent_destid,
 			    int parent_port, int hopcount,
-			    struct rio_static_route *route, int num_routes, int update)
+			    struct rio_static_route *route,
+			    int num_routes, int update)
 {
 	struct rio_route *rp;
 	int i, rc = -ENOMEM;
 
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Node destid tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 	BUG_ON(!mport || !route || !num_routes);
@@ -671,7 +715,7 @@ static int add_static_route(struct rio_mport *mport, u16 parent_destid,
 	if (IS_ERR(rp))
 		return PTR_ERR(rp);
 
-        rc = __add_static_route(mport,
+	rc = __add_static_route(mport,
 				RIO_DESTID_KEY(hopcount,
 					       parent_port,
 					       parent_destid),
@@ -680,7 +724,7 @@ static int add_static_route(struct rio_mport *mport, u16 parent_destid,
 	if (update)
 		synchronize_rcu();
 
-	for (i=0; i<num_routes; i++) {
+	for (i = 0; i < num_routes; i++) {
 		if (rp[i].port)
 			kfree(rp[i].port);
 	}
@@ -688,6 +732,7 @@ static int add_static_route(struct rio_mport *mport, u16 parent_destid,
 
 	return rc;
 }
+
 int rio_remove_static_route(struct rio_mport *mport, u16 parent_destid,
 			int parent_port, int hopcount,
 			struct rio_static_route *route, int num_routes)
@@ -696,8 +741,7 @@ int rio_remove_static_route(struct rio_mport *mport, u16 parent_destid,
 	int i, rc = -ENOMEM;
 
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Node destid tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 	BUG_ON(!mport || !route || !num_routes);
@@ -706,14 +750,14 @@ int rio_remove_static_route(struct rio_mport *mport, u16 parent_destid,
 	if (IS_ERR(rp))
 		return PTR_ERR(rp);
 
-        rc = __remove_static_route(mport,
+	rc = __remove_static_route(mport,
 				   RIO_DESTID_KEY(hopcount,
 						  parent_port,
 						  parent_destid),
 				   &rp[0]);
 	synchronize_rcu();
 
-	for (i=0; i<num_routes; i++) {
+	for (i = 0; i < num_routes; i++) {
 		if (rp[i].port) {
 			pr_debug("RIO: removed %lx %hhu from static route table\n",
 				 rp[i].key, *rp[i].port);
@@ -724,22 +768,27 @@ int rio_remove_static_route(struct rio_mport *mport, u16 parent_destid,
 
 	return rc;
 }
+
 EXPORT_SYMBOL(rio_remove_static_route);
 
 int rio_add_static_route(struct rio_mport *mport, u16 parent_destid,
 			 int parent_port, int hopcount,
 			 struct rio_static_route *route, int num_routes)
 {
-	return add_static_route(mport, parent_destid, parent_port, hopcount, route, num_routes, 0);
+	return add_static_route(mport, parent_destid, parent_port,
+				hopcount, route, num_routes, 0);
 }
+
 EXPORT_SYMBOL(rio_add_static_route);
 
 int rio_update_static_route(struct rio_mport *mport, u16 parent_destid,
 			    int parent_port, int hopcount,
 			    struct rio_static_route *route, int num_routes)
 {
-	return add_static_route(mport, parent_destid, parent_port, hopcount, route, num_routes, 1);
+	return add_static_route(mport, parent_destid, parent_port,
+				hopcount, route, num_routes, 1);
 }
+
 EXPORT_SYMBOL(rio_update_static_route);
 
 int rio_lookup_static_route(struct rio_dev *rdev, u16 sw_dest, u8 *route_port)
@@ -756,6 +805,7 @@ int rio_lookup_static_route(struct rio_dev *rdev, u16 sw_dest, u8 *route_port)
 	*route_port = sroute.sw_port;
 	return rc;
 }
+
 EXPORT_SYMBOL(rio_lookup_static_route);
 int rio_lookup_static_routes(struct rio_mport *mport, u16 parent_destid,
 			     int parent_port, int hopcount,
@@ -767,6 +817,7 @@ int rio_lookup_static_routes(struct rio_mport *mport, u16 parent_destid,
 						    parent_destid),
 				     sroute, num_routes);
 }
+
 EXPORT_SYMBOL(rio_lookup_static_routes);
 
 struct rio_static_route *rio_static_route_table(struct rio_mport *mport,
@@ -805,6 +856,7 @@ struct rio_static_route *rio_static_route_table(struct rio_mport *mport,
 	}
 	return sroute;
 }
+
 EXPORT_SYMBOL(rio_static_route_table);
 
 /**
@@ -812,7 +864,7 @@ EXPORT_SYMBOL(rio_static_route_table);
  */
 
 int rio_get_next_destid(struct rio_mport *mport, u16 parent_destid,
-                        int port_num, u8 hopcount, u16 *id, int *comptag)
+			int port_num, u8 hopcount, u16 *id, int *comptag)
 {
 	struct rio_net_node *node = NULL;
 
@@ -839,7 +891,7 @@ int rio_get_next_netid(u16 host_deviceid, int *net_id, int *comptag)
 
 	if (net) {
 		pr_debug("Assign DUS net_id %d to mport %4.4x net\n",
-                         net->net_id, host_deviceid);
+			 net->net_id, host_deviceid);
 		*net_id = net->net_id;
 		*comptag = net->comptag;
 		rio_net_put(net);
@@ -856,45 +908,45 @@ static int next_destid = 0;
 static int next_netid = 0;
 
 int rio_get_next_destid(struct rio_mport *mport, u16 parent_destid,
-                        int port_num, u8 hopcount, u16 *id, int *comptag)
+			int port_num, u8 hopcount, u16 *id, int *comptag)
 {
 	struct rio_net_node *node = NULL;
-        int rc = 0;
+	int rc = 0;
 
 	node = rio_get_net_node(mport, parent_destid, port_num, hopcount);
 
 	if (node) {
-                *comptag = node->comptag;
-                *id = node->destid;
+		*comptag = node->comptag;
+		*id = node->destid;
 		rio_node_put(node);
 	} else {
 		struct rio_dest dest = {0};
-                if (next_destid == mport->host_deviceid)
-                        next_destid++;
+		if (next_destid == mport->host_deviceid)
+			next_destid++;
 		RIO_DEF_FLAGS_SET(&dest);
 		dest.destid = next_destid;
 		dest.comptag = next_destid;
 
-                if ((rc = __rio_add_destid(mport, parent_destid, port_num,
-					   hopcount, &dest))) {
-                        goto done;
-                }
-                *comptag = next_destid;
-                *id = next_destid;
-                next_destid++;
-        }
+		rc = __rio_add_destid(mport, parent_destid, port_num,
+				      hopcount, &dest);
+		if (rc)
+			goto done;
+		*comptag = next_destid;
+		*id = next_destid;
+		next_destid++;
+	}
 	pr_debug("Assign destid %4.4x to device\n"
 		 "At hopcount %u port %d parent destid %4.4x\n",
 		 *id, hopcount, port_num, parent_destid);
 
 done:
-        return rc;
+	return rc;
 }
 
 int rio_get_next_netid(u16 host_deviceid, int *net_id, int *comptag)
 {
 	struct rio_net_id *net = NULL;
-        int rc = 0;
+	int rc = 0;
 
 	net = find_rio_net_id(host_deviceid, net);
 
@@ -903,19 +955,19 @@ int rio_get_next_netid(u16 host_deviceid, int *net_id, int *comptag)
 		*comptag = net->comptag;
 		rio_net_put(net);
 	} else {
-		if ((rc = __rio_add_netid(host_deviceid, next_netid, next_destid))) {
-                        goto done;
-                }
+		rc = __rio_add_netid(host_deviceid, next_netid, next_destid);
+		if (rc)
+			goto done;
 		*net_id = next_netid;
 		*comptag = next_destid;
-                next_netid++;
+		next_netid++;
 		next_destid++;
-        }
+	}
 	pr_debug("Assign net_id %d to mport %4.4x net\n",
 		 *net_id, host_deviceid);
 
 done:
-        return rc;
+	return rc;
 }
 #endif
 
@@ -959,6 +1011,7 @@ static int dump_node(char *buf, struct rio_mport *mport,
 
 	return str - buf;
 }
+
 static ssize_t __rio_net_nodes_show(struct rio_mport *mport, char *buf)
 {
 	char *str = buf;
@@ -973,7 +1026,8 @@ static ssize_t __rio_net_nodes_show(struct rio_mport *mport, char *buf)
 
 	mp_node = rio_get_net_node(mport, -1, -1, -1);
 	if (mp_node) {
-		str += dump_node(str, mport, mp_node, RIO_DESTID_KEY(-1,-1,-1));
+		str += dump_node(str, mport, mp_node,
+				 RIO_DESTID_KEY(-1, -1, -1));
 		rio_node_put(mp_node);
 	}
 	for (hopcount = 0; hopcount < 256; hopcount++) {
@@ -982,18 +1036,21 @@ static ssize_t __rio_net_nodes_show(struct rio_mport *mport, char *buf)
 			if (parent_port > 20)
 				break;
 			for (parent_destid = 0;
-			     parent_destid <= atomic_read(&mport->net.rio_max_dest);
+			     parent_destid <=
+				 atomic_read(&mport->net.rio_max_dest);
 			     parent_destid++) {
 
-				struct rio_net_node *node = rio_get_net_node(mport,
-									     parent_destid,
-									     parent_port,
-									     hopcount);
+				struct rio_net_node *node =
+					rio_get_net_node(mport,
+							 parent_destid,
+							 parent_port,
+							 hopcount);
 				if (node) {
-					str += dump_node(str, mport, node,
-							 RIO_DESTID_KEY(hopcount,
-									parent_port,
-									parent_destid));
+					str +=
+					  dump_node(str, mport, node,
+						 RIO_DESTID_KEY(hopcount,
+								parent_port,
+								parent_destid));
 					rio_node_put(node);
 				}
 			}
@@ -1007,7 +1064,7 @@ static ssize_t __rio_net_nodes_show(struct rio_mport *mport, char *buf)
 
 int rio_destid_sysfs_init(struct rio_mport *mport)
 {
-//	return sysfs_create_group(&mport->dev.kobj, &rio_attribute_group);
+/*	return sysfs_create_group(&mport->dev.kobj, &rio_attribute_group); */
 	return 0;
 }
 
@@ -1028,25 +1085,31 @@ int rio_lookup_next_destid(struct rio_mport *mport, u16 parent_destid,
 }
 EXPORT_SYMBOL(rio_lookup_next_destid);
 
-int rio_dest_is_redundant(struct rio_mport *mport, u16 parent_destid, int parent_port,
-			  int hopcount)
+int rio_dest_is_redundant(struct rio_mport *mport, u16 parent_destid,
+			  int parent_port, int hopcount)
 {
 	return get_destid_tag(mport, parent_destid, parent_port, hopcount,
 			      RIO_DESTID_REDUNDANT_TAG);
 }
-int rio_dest_is_legacy(struct rio_mport *mport, u16 parent_destid, int parent_port,
+
+int rio_dest_is_legacy(struct rio_mport *mport, u16 parent_destid,
+		       int parent_port,
 		       int hopcount)
 {
 	return get_destid_tag(mport, parent_destid, parent_port, hopcount,
 			      RIO_DESTID_LEGACY_TAG);
 }
-int rio_dest_is_one_way(struct rio_mport *mport, u16 parent_destid, int parent_port,
+
+int rio_dest_is_one_way(struct rio_mport *mport, u16 parent_destid,
+			int parent_port,
 		       int hopcount)
 {
 	return get_destid_tag(mport, parent_destid, parent_port, hopcount,
 			      RIO_DESTID_ONE_WAY_TAG);
 }
-int rio_get_return_port(struct rio_mport *mport, u16 parent_destid, int parent_port,
+
+int rio_get_return_port(struct rio_mport *mport, u16 parent_destid,
+			int parent_port,
 			int hopcount, u8 *rport)
 {
 	struct rio_net_node *node = NULL;
@@ -1054,22 +1117,24 @@ int rio_get_return_port(struct rio_mport *mport, u16 parent_destid, int parent_p
 	node = rio_get_net_node(mport, parent_destid, parent_port, hopcount);
 
 	if (node) {
-                 *rport = node->return_port;
+		*rport = node->return_port;
 		rio_node_put(node);
 		return 0;
 	}
 	return -ENODEV;
 }
-int rio_get_legacy_properties(struct rio_mport *mport, u16 parent_destid, int parent_port,
-			      int hopcount, u8 *lock_hw, u8 *lut_update)
+
+int rio_get_legacy_properties(struct rio_mport *mport, u16 parent_destid,
+			      int parent_port, int hopcount, u8 *lock_hw,
+			      u8 *lut_update)
 {
 	struct rio_net_node *node = NULL;
 
 	node = rio_get_net_node(mport, parent_destid, parent_port, hopcount);
 
 	if (node) {
-                 *lock_hw = node->lock_hw;
-		 *lut_update = node->lut_update;
+		*lock_hw = node->lock_hw;
+		*lut_update = node->lut_update;
 		rio_node_put(node);
 		return 0;
 	}
@@ -1082,7 +1147,8 @@ int rio_eval_destid(struct rio_dev *new_rdev)
 	int rc = 0;
 
 	rcu_read_lock();
-	rdev = radix_tree_lookup(&new_rdev->hport->net.dev_tree, new_rdev->destid);
+	rdev = radix_tree_lookup(&new_rdev->hport->net.dev_tree,
+				 new_rdev->destid);
 	if (rdev) {
 		pr_warn("RIO: Duplicate DestID %hx found - New device is not added\n"
 			"Possible causes:"
@@ -1105,14 +1171,16 @@ int rio_eval_destid(struct rio_dev *new_rdev)
  * Reads the base/extended device id from a device.
  * Returns success or failure.
  */
-int rio_get_destid(struct rio_mport *mport, u16 destid, u8 hopcount, u16 *res_destid)
+int rio_get_destid(struct rio_mport *mport, u16 destid,
+		   u8 hopcount, u16 *res_destid)
 {
-        int rc = 0;
-        u32 result;
+	int rc = 0;
+	u32 result;
 
-	rc = rio_mport_read_config_32(mport, destid, hopcount, RIO_DID_CSR, &result);
+	rc = rio_mport_read_config_32(mport, destid, hopcount,
+				      RIO_DID_CSR, &result);
 	*res_destid = RIO_GET_DID(mport->sys_size, result);
-        return rc;
+	return rc;
 }
 
 /**
@@ -1124,14 +1192,15 @@ int rio_get_destid(struct rio_mport *mport, u16 destid, u8 hopcount, u16 *res_de
  * Reads the comptag from a device.
  * Returns success or failure.
  */
-int rio_read_comptag(struct rio_mport *mport, u16 destid, u8 hopcount, u32 *comptag)
+int rio_read_comptag(struct rio_mport *mport, u16 destid,
+		     u8 hopcount, u32 *comptag)
 {
-        int rc = 0;
+	int rc = 0;
 	u32 regval;
 
-        rc = rio_mport_read_config_32(mport, destid, hopcount,
-                                      RIO_COMPONENT_TAG_CSR, &regval);
-        *comptag = regval & 0xffff;
+	rc = rio_mport_read_config_32(mport, destid, hopcount,
+				      RIO_COMPONENT_TAG_CSR, &regval);
+	*comptag = regval & 0xffff;
 
 	return rc;
 }
@@ -1162,7 +1231,9 @@ int rio_set_master_destid(struct rio_mport *mport, u16 did)
 int rio_has_destid(int src_ops,
 		   int dst_ops)
 {
-	u32 mask = RIO_OPS_READ | RIO_OPS_WRITE | RIO_OPS_ATOMIC_TST_SWP | RIO_OPS_ATOMIC_INC | RIO_OPS_ATOMIC_DEC | RIO_OPS_ATOMIC_SET | RIO_OPS_ATOMIC_CLR;
+	u32 mask = RIO_OPS_READ | RIO_OPS_WRITE | RIO_OPS_ATOMIC_TST_SWP |
+		   RIO_OPS_ATOMIC_INC | RIO_OPS_ATOMIC_DEC |
+		   RIO_OPS_ATOMIC_SET | RIO_OPS_ATOMIC_CLR;
 
 	return !!((src_ops | dst_ops) & mask);
 }
@@ -1179,32 +1250,34 @@ int rio_has_destid(int src_ops,
 int rio_set_device_id(struct rio_mport *mport, u16 destid, u8 hopcount, u16 did)
 {
 	return rio_mport_write_config_32(mport, destid, hopcount, RIO_DID_CSR,
-                                         RIO_SET_DID(mport->sys_size, did));
+					 RIO_SET_DID(mport->sys_size, did));
 }
 
 int rio_assign_destid(struct rio_dev *rdev, struct rio_mport *mport, u16 destid,
-                      int hopcount, u16 *id)
+		      int hopcount, u16 *id)
 {
-        int rc = 0;
+	int rc = 0;
 	if (rio_is_switch(rdev)) {
-                rdev->destid = rdev->comp_tag;
-        } else {
-                if ((rc = rio_set_device_id(mport, destid, hopcount, *id)))
-                        goto done;
-                rdev->destid = *id;
-        }
+		rdev->destid = rdev->comp_tag;
+	} else {
+		rc = rio_set_device_id(mport, destid, hopcount, *id);
+		if (rc)
+			goto done;
+		rdev->destid = *id;
+	}
 done:
-        return rc;
+	return rc;
 }
+
 int rio_add_netid(u16 mport_destid, int net_id, int comptag)
 {
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Net ID tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 	return __rio_add_netid(mport_destid, net_id, comptag);
 }
+
 #ifdef CONFIG_RAPIDIO_STATIC_DESTID
 EXPORT_SYMBOL(rio_add_netid);
 #endif
@@ -1212,22 +1285,22 @@ EXPORT_SYMBOL(rio_add_netid);
 int rio_remove_netid(u16 mport_destid, int net_id)
 {
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Net ID tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 	return __rio_remove_netid(mport_destid, net_id);
 }
+
 #ifdef CONFIG_RAPIDIO_STATIC_DESTID
 EXPORT_SYMBOL(rio_remove_netid);
 #endif
+
 int rio_find_netid(u16 mport_destid, int *net_id)
 {
 	struct rio_net_id *net = NULL;
 
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Net ID tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 	net = find_rio_net_id(mport_destid, net);
@@ -1235,10 +1308,11 @@ int rio_find_netid(u16 mport_destid, int *net_id)
 		*net_id = net->net_id;
 		rio_net_put(net);
 		return 0;
-	}
-	else
+	} else {
 		return -ENODEV;
+	}
 }
+
 #ifdef CONFIG_RAPIDIO_STATIC_DESTID
 EXPORT_SYMBOL(rio_find_netid);
 #endif
@@ -1275,8 +1349,7 @@ int rio_add_destid(struct rio_mport *mport,
 	struct rio_dest dest = {0};
 
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Node destid tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 	RIO_DEF_FLAGS_SET(&dest);
@@ -1286,6 +1359,7 @@ int rio_add_destid(struct rio_mport *mport,
 	return __rio_add_destid(mport, parent_destid, parent_port,
 				hopcount, &dest);
 }
+
 #ifdef CONFIG_RAPIDIO_STATIC_DESTID
 EXPORT_SYMBOL(rio_add_destid);
 #endif
@@ -1320,8 +1394,7 @@ int rio_block_destid_route(struct rio_mport *mport,
 	struct rio_dest dest = {0};
 
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Node destid tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 	RIO_DEF_FLAGS_SET(&dest);
@@ -1332,6 +1405,7 @@ int rio_block_destid_route(struct rio_mport *mport,
 	return __rio_add_destid(mport, parent_destid, parent_port,
 				hopcount, &dest);
 }
+
 #ifdef CONFIG_RAPIDIO_STATIC_DESTID
 EXPORT_SYMBOL(rio_block_destid_route);
 #endif
@@ -1367,13 +1441,13 @@ EXPORT_SYMBOL(rio_block_destid_route);
  */
 int rio_split_destid_route(struct rio_mport *mport,
 			   u16 parent_destid, int parent_port,
-			   int hopcount, u16 destid, u16 comptag, u8 return_port)
+			   int hopcount, u16 destid, u16 comptag,
+			   u8 return_port)
 {
 	struct rio_dest dest = {0};
 
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Node destid tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 	RIO_DEF_FLAGS_SET(&dest);
@@ -1385,6 +1459,7 @@ int rio_split_destid_route(struct rio_mport *mport,
 	return __rio_add_destid(mport, parent_destid, parent_port,
 				hopcount, &dest);
 }
+
 #ifdef CONFIG_RAPIDIO_STATIC_DESTID
 EXPORT_SYMBOL(rio_split_destid_route);
 #endif
@@ -1418,8 +1493,7 @@ int rio_legacy_destid_route(struct rio_mport *mport,
 	struct rio_dest dest = {0};
 
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Node destid tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 	if (lock_hw)
@@ -1435,6 +1509,7 @@ int rio_legacy_destid_route(struct rio_mport *mport,
 	return __rio_add_destid(mport, parent_destid, parent_port,
 				hopcount, &dest);
 }
+
 #ifdef CONFIG_RAPIDIO_STATIC_DESTID
 EXPORT_SYMBOL(rio_legacy_destid_route);
 #endif
@@ -1443,13 +1518,13 @@ void rio_release_destid(struct rio_mport *mport, u16 parent_destid,
 			int parent_port, int hopcount)
 {
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Node destid tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return;
 #endif
 	__rio_release_destid(mport, parent_destid, parent_port,
 			     hopcount);
 }
+
 #ifdef CONFIG_RAPIDIO_STATIC_DESTID
 EXPORT_SYMBOL(rio_release_destid);
 #endif
@@ -1458,13 +1533,13 @@ EXPORT_SYMBOL(rio_release_destid);
 int rio_release_node_table(struct rio_mport *mport)
 {
 #if !defined(CONFIG_RAPIDIO_HOTPLUG)
-	if (WARN(system_state != SYSTEM_BOOTING,
-		 "Operation aborted - Node destid tables are only probed during boot\n"))
+	if (WARN(system_state != SYSTEM_BOOTING, WARN_MSG))
 		return -EINVAL;
 #endif
 
 	return __rio_release_node_table(mport);
 }
+
 EXPORT_SYMBOL(rio_release_node_table);
 #endif
 

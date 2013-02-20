@@ -81,17 +81,16 @@ int __rio_local_write_config_##size					\
 }
 
 RIO_LOP_READ(8, u8, 1)
-RIO_LOP_READ(16, u16, 2)
-RIO_LOP_READ(32, u32, 4)
-RIO_LOP_WRITE(8, u8, 1)
-RIO_LOP_WRITE(16, u16, 2)
-RIO_LOP_WRITE(32, u32, 4)
-
 EXPORT_SYMBOL_GPL(__rio_local_read_config_8);
+RIO_LOP_READ(16, u16, 2)
 EXPORT_SYMBOL_GPL(__rio_local_read_config_16);
+RIO_LOP_READ(32, u32, 4)
 EXPORT_SYMBOL_GPL(__rio_local_read_config_32);
+RIO_LOP_WRITE(8, u8, 1)
 EXPORT_SYMBOL_GPL(__rio_local_write_config_8);
+RIO_LOP_WRITE(16, u16, 2)
 EXPORT_SYMBOL_GPL(__rio_local_write_config_16);
+RIO_LOP_WRITE(32, u32, 4)
 EXPORT_SYMBOL_GPL(__rio_local_write_config_32);
 
 /**
@@ -147,17 +146,16 @@ int rio_mport_write_config_##size					\
 }
 
 RIO_OP_READ(8, u8, 1)
-RIO_OP_READ(16, u16, 2)
-RIO_OP_READ(32, u32, 4)
-RIO_OP_WRITE(8, u8, 1)
-RIO_OP_WRITE(16, u16, 2)
-RIO_OP_WRITE(32, u32, 4)
-
 EXPORT_SYMBOL_GPL(rio_mport_read_config_8);
+RIO_OP_READ(16, u16, 2)
 EXPORT_SYMBOL_GPL(rio_mport_read_config_16);
+RIO_OP_READ(32, u32, 4)
 EXPORT_SYMBOL_GPL(rio_mport_read_config_32);
+RIO_OP_WRITE(8, u8, 1)
 EXPORT_SYMBOL_GPL(rio_mport_write_config_8);
+RIO_OP_WRITE(16, u16, 2)
 EXPORT_SYMBOL_GPL(rio_mport_write_config_16);
+RIO_OP_WRITE(32, u32, 4)
 EXPORT_SYMBOL_GPL(rio_mport_write_config_32);
 
 /**
@@ -181,5 +179,4 @@ int rio_mport_send_doorbell(struct rio_mport *mport, u16 destid, u16 data)
 
 	return res;
 }
-
 EXPORT_SYMBOL_GPL(rio_mport_send_doorbell);

@@ -57,14 +57,11 @@ static const struct rio_device_id *rio_match_device(const struct rio_device_id
  */
 struct rio_dev *rio_dev_get(struct rio_dev *rdev)
 {
-	if (rdev) {
+	if (rdev)
 		get_device(&rdev->dev);
-//		pr_info("%s: for %s refcount after: %d\n",
-//			__func__, rio_name(rdev), atomic_read(&rdev->dev.kobj.kref.refcount));
-
-	}
 	return rdev;
 }
+EXPORT_SYMBOL_GPL(rio_dev_get);
 
 /**
  * rio_dev_put - Release a use of the RIO device structure
@@ -77,16 +74,14 @@ struct rio_dev *rio_dev_get(struct rio_dev *rdev)
  */
 void rio_dev_put(struct rio_dev *rdev)
 {
-	if (rdev) {
-//		pr_info("%s: for %s refcount before: %d\n",
-//			__func__, rio_name(rdev), atomic_read(&rdev->dev.kobj.kref.refcount));
-
+	if (rdev)
 		put_device(&rdev->dev);
-	}
 }
+EXPORT_SYMBOL_GPL(rio_dev_put);
 
 /**
- *  rio_device_probe - Tell if a RIO device structure has a matching RIO device id structure
+ *  rio_device_probe - Tell if a RIO device structure has a matching
+ *                     RIO device id structure
  *  @dev: the RIO device structure to match against
  *
  * return 0 and set rio_dev->driver when drv claims rio_dev, else error
@@ -106,11 +101,13 @@ static int rio_device_probe(struct device *dev)
 		if (id)
 			error = rdrv->probe(rdev, id);
 		if (error >= 0) {
-			pr_debug("%s: for %s got driver %pF\n", __func__, rio_name(rdev), rdrv->probe);
+			pr_debug("%s: for %s got driver %pF\n",
+				 __func__, rio_name(rdev), rdrv->probe);
 			rdev->driver = rdrv;
 			error = 0;
 		} else {
-			pr_debug("%s: for %s probe fail\n", __func__, rio_name(rdev));
+			pr_debug("%s: for %s probe fail\n",
+				 __func__, rio_name(rdev));
 			rio_dev_put(rdev);
 		}
 	}
@@ -134,10 +131,12 @@ static int rio_device_remove(struct device *dev)
 	pr_debug("device remove for %s\n", rio_name(rdev));
 	if (rdrv) {
 		if (rdrv->remove) {
-			pr_debug("driver remove for %s using %pF\n", rio_name(rdev), rdrv->remove);
+			pr_debug("driver remove for %s using %pF\n",
+				 rio_name(rdev), rdrv->remove);
 			rdrv->remove(rdev);
 		} else {
-			pr_debug("driver not registered for %s\n", rio_name(rdev));
+			pr_debug("driver not registered for %s\n",
+				 rio_name(rdev));
 		}
 		rdev->driver = NULL;
 	}
@@ -191,6 +190,7 @@ out_newid:
 	goto out;
 
 }
+EXPORT_SYMBOL_GPL(rio_register_driver);
 
 /**
  *  rio_unregister_driver - unregister a RIO driver
@@ -207,9 +207,11 @@ void rio_unregister_driver(struct rio_driver *rdrv)
 	rio_remove_newid_file(rdrv);
 	driver_unregister(&rdrv->driver);
 }
+EXPORT_SYMBOL_GPL(rio_unregister_driver);
 
 /**
- *  rio_match_bus - Tell if a RIO device structure has a matching RIO driver device id structure
+ *  rio_match_bus - Tell if a RIO device structure has a matching RIO
+ *  driver device id structure
  *  @dev: the standard device structure to match against
  *  @drv: the standard driver structure containing the ids to match against
  *
@@ -233,7 +235,8 @@ static int rio_match_bus(struct device *dev, struct device_driver *drv)
 	if (found_id)
 		return 1;
 
-      out:return 0;
+out:
+	return 0;
 }
 
 struct device rio_bus = {
@@ -247,6 +250,7 @@ struct bus_type rio_bus_type = {
 	.probe = rio_device_probe,
 	.remove = rio_device_remove,
 };
+EXPORT_SYMBOL_GPL(rio_bus_type);
 
 /**
  *  rio_bus_init - Register the RapidIO bus with the device model
@@ -257,14 +261,8 @@ struct bus_type rio_bus_type = {
 static int __init rio_bus_init(void)
 {
 	if (device_register(&rio_bus) < 0)
-		printk("RIO: failed to register RIO bus device\n");
+		printk(KERN_ERR "RIO: failed to register RIO bus device\n");
 	return bus_register(&rio_bus_type);
 }
 
 postcore_initcall(rio_bus_init);
-
-EXPORT_SYMBOL_GPL(rio_register_driver);
-EXPORT_SYMBOL_GPL(rio_unregister_driver);
-EXPORT_SYMBOL_GPL(rio_bus_type);
-EXPORT_SYMBOL_GPL(rio_dev_get);
-EXPORT_SYMBOL_GPL(rio_dev_put);
