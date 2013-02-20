@@ -62,19 +62,18 @@
 
 #if defined(CONFIG_DEBUGGER) || defined(CONFIG_KEXEC)
 int (*__debugger)(struct pt_regs *regs) __read_mostly;
-int (*__debugger_ipi)(struct pt_regs *regs) __read_mostly;
-int (*__debugger_bpt)(struct pt_regs *regs) __read_mostly;
-int (*__debugger_sstep)(struct pt_regs *regs) __read_mostly;
-int (*__debugger_iabr_match)(struct pt_regs *regs) __read_mostly;
-int (*__debugger_dabr_match)(struct pt_regs *regs) __read_mostly;
-int (*__debugger_fault_handler)(struct pt_regs *regs) __read_mostly;
-
 EXPORT_SYMBOL(__debugger);
+int (*__debugger_ipi)(struct pt_regs *regs) __read_mostly;
 EXPORT_SYMBOL(__debugger_ipi);
+int (*__debugger_bpt)(struct pt_regs *regs) __read_mostly;
 EXPORT_SYMBOL(__debugger_bpt);
+int (*__debugger_sstep)(struct pt_regs *regs) __read_mostly;
 EXPORT_SYMBOL(__debugger_sstep);
+int (*__debugger_iabr_match)(struct pt_regs *regs) __read_mostly;
 EXPORT_SYMBOL(__debugger_iabr_match);
+int (*__debugger_dabr_match)(struct pt_regs *regs) __read_mostly;
 EXPORT_SYMBOL(__debugger_dabr_match);
+int (*__debugger_fault_handler)(struct pt_regs *regs) __read_mostly;
 EXPORT_SYMBOL(__debugger_fault_handler);
 #endif
 
@@ -141,7 +140,7 @@ static void __kprobes oops_end(unsigned long flags, struct pt_regs *regs,
 	add_taint(TAINT_DIE);
 	die_nest_count--;
 	oops_exit();
-	printk("\n");
+	printk(KERN_ERR "\n");
 	if (!die_nest_count)
 		/* Nest count reaches zero, release the lock. */
 		arch_spin_unlock(&die_lock);
@@ -187,20 +186,20 @@ static void __kprobes oops_end(unsigned long flags, struct pt_regs *regs,
 
 static int __kprobes __die(const char *str, struct pt_regs *regs, long err)
 {
-	printk("Oops: %s, sig: %ld [#%d]\n", str, err, ++die_counter);
+	printk(KERN_ERR "Oops: %s, sig: %ld [#%d]\n", str, err, ++die_counter);
 #ifdef CONFIG_PREEMPT
-	printk("PREEMPT ");
+	printk(KERN_ERR "PREEMPT ");
 #endif
 #ifdef CONFIG_SMP
-	printk("SMP NR_CPUS=%d ", NR_CPUS);
+	printk(KERN_ERR "SMP NR_CPUS=%d ", NR_CPUS);
 #endif
 #ifdef CONFIG_DEBUG_PAGEALLOC
-	printk("DEBUG_PAGEALLOC ");
+	printk(KERN_ERR "DEBUG_PAGEALLOC ");
 #endif
 #ifdef CONFIG_NUMA
-	printk("NUMA ");
+	printk(KERN_ERR "NUMA ");
 #endif
-	printk("%s\n", ppc_md.name ? ppc_md.name : "");
+	printk(KERN_ERR "%s\n", ppc_md.name ? ppc_md.name : "");
 
 	if (notify_die(DIE_OOPS, str, regs, err, 255, SIGSEGV) == NOTIFY_STOP)
 		return 1;
@@ -295,8 +294,9 @@ static inline int check_io_access(struct pt_regs *regs)
 	const struct exception_table_entry *entry;
 	unsigned int *nip = (unsigned int *)regs->nip;
 
+	entry = search_exception_tables(regs->nip);
 	if (((msr & 0xffff0000) == 0 || (msr & (0x80000 | 0x40000)))
-	    && (entry = search_exception_tables(regs->nip)) != NULL) {
+	    && (entry != NULL)) {
 		/*
 		 * Check that it's a sync instruction, or somewhere
 		 * in the twi; isync; nop sequence that inb/inw/inl uses.
@@ -365,11 +365,11 @@ int machine_check_4xx(struct pt_regs *regs)
 	unsigned long reason = get_mc_reason(regs);
 
 	if (reason & ESR_IMCP) {
-		printk("Instruction");
+		printk(KERN_ERR "Instruction");
 		mtspr(SPRN_ESR, reason & ~ESR_IMCP);
 	} else
-		printk("Data");
-	printk(" machine check in kernel mode.\n");
+		printk(KERN_ERR "Data");
+	printk(KERN_ERR " machine check in kernel mode.\n");
 
 	return 0;
 }
@@ -378,30 +378,30 @@ int machine_check_440A(struct pt_regs *regs)
 {
 	unsigned long reason = get_mc_reason(regs);
 
-	printk("Machine check in kernel mode.\n");
+	printk(KERN_ERR "Machine check in kernel mode.\n");
 	if (reason & ESR_IMCP) {
-		printk("Instruction Synchronous Machine Check exception\n");
+		printk(KERN_ERR "Instruction Synchronous Machine Check exception\n");
 		mtspr(SPRN_ESR, reason & ~ESR_IMCP);
 	} else {
 		u32 mcsr = mfspr(SPRN_MCSR);
 		if (mcsr & MCSR_IB)
-			printk("Instruction Read PLB Error\n");
+			printk(KERN_ERR "Instruction Read PLB Error\n");
 		if (mcsr & MCSR_DRB)
-			printk("Data Read PLB Error\n");
+			printk(KERN_ERR "Data Read PLB Error\n");
 		if (mcsr & MCSR_DWB)
-			printk("Data Write PLB Error\n");
+			printk(KERN_ERR "Data Write PLB Error\n");
 		if (mcsr & MCSR_TLBP)
-			printk("TLB Parity Error\n");
+			printk(KERN_ERR "TLB Parity Error\n");
 		if (mcsr & MCSR_ICP) {
 			flush_instruction_cache();
-			printk("I-Cache Parity Error\n");
+			printk(KERN_ERR "I-Cache Parity Error\n");
 		}
 		if (mcsr & MCSR_DCSP)
-			printk("D-Cache Search Parity Error\n");
+			printk(KERN_ERR "D-Cache Search Parity Error\n");
 		if (mcsr & MCSR_DCFP)
-			printk("D-Cache Flush Parity Error\n");
+			printk(KERN_ERR "D-Cache Flush Parity Error\n");
 		if (mcsr & MCSR_IMPE)
-			printk("Machine Check exception is imprecise\n");
+			printk(KERN_ERR "Machine Check exception is imprecise\n");
 
 		/* Clear MCSR */
 		mtspr(SPRN_MCSR, mcsr);
@@ -426,7 +426,6 @@ int machine_check_47x(struct pt_regs *regs)
 
 	printk(KERN_ERR "Machine check in kernel mode. reason %lx\n", reason);
 	mcsr = mfspr(SPRN_MCSR);
-
 
 	if (mcsr & MCSR_IB)
 		printk(KERN_ERR "Instruction Read PLB Error\n");
@@ -469,14 +468,14 @@ int machine_check_e500mc(struct pt_regs *regs)
 			goto silent_out;
 	}
 
-	printk("Machine check in kernel mode.\n");
-	printk("Caused by (from MCSR=%lx): ", reason);
+	printk(KERN_ERR "Machine check in kernel mode.\n");
+	printk(KERN_ERR "Caused by (from MCSR=%lx): ", reason);
 
 	if (reason & MCSR_MCP)
-		printk("Machine Check Signal\n");
+		printk(KERN_ERR "Machine Check Signal\n");
 
 	if (reason & MCSR_ICPERR) {
-		printk("Instruction Cache Parity Error\n");
+		printk(KERN_ERR "Instruction Cache Parity Error\n");
 
 		/*
 		 * This is recoverable by invalidating the i-cache.
@@ -494,7 +493,7 @@ int machine_check_e500mc(struct pt_regs *regs)
 	}
 
 	if (reason & MCSR_DCPERR_MC) {
-		printk("Data Cache Parity Error\n");
+		printk(KERN_ERR "Data Cache Parity Error\n");
 
 		/*
 		 * In write shadow mode we auto-recover from the error, but it
@@ -506,38 +505,38 @@ int machine_check_e500mc(struct pt_regs *regs)
 	}
 
 	if (reason & MCSR_L2MMU_MHIT) {
-		printk("Hit on multiple TLB entries\n");
+		printk(KERN_ERR "Hit on multiple TLB entries\n");
 		recoverable = 0;
 	}
 
 	if (reason & MCSR_NMI)
-		printk("Non-maskable interrupt\n");
+		printk(KERN_ERR "Non-maskable interrupt\n");
 
 	if (reason & MCSR_IF) {
-		printk("Instruction Fetch Error Report\n");
+		printk(KERN_ERR "Instruction Fetch Error Report\n");
 		recoverable = 0;
 	}
 
 	if (reason & MCSR_LD) {
-		printk("Load Error Report\n");
+		printk(KERN_ERR "Load Error Report\n");
 		recoverable = 0;
 	}
 
 	if (reason & MCSR_ST) {
-		printk("Store Error Report\n");
+		printk(KERN_ERR "Store Error Report\n");
 		recoverable = 0;
 	}
 
 	if (reason & MCSR_LDG) {
-		printk("Guarded Load Error Report\n");
+		printk(KERN_ERR "Guarded Load Error Report\n");
 		recoverable = 0;
 	}
 
 	if (reason & MCSR_TLBSYNC)
-		printk("Simultaneous tlbsync operations\n");
+		printk(KERN_ERR "Simultaneous tlbsync operations\n");
 
 	if (reason & MCSR_BSL2_ERR) {
-		printk("Level 2 Cache Error\n");
+		printk(KERN_ERR "Level 2 Cache Error\n");
 		recoverable = 0;
 	}
 
@@ -547,7 +546,7 @@ int machine_check_e500mc(struct pt_regs *regs)
 		addr = mfspr(SPRN_MCAR);
 		addr |= (u64)mfspr(SPRN_MCARU) << 32;
 
-		printk("Machine Check %s Address: %#llx\n",
+		printk(KERN_ERR "Machine Check %s Address: %#llx\n",
 		       reason & MCSR_MEA ? "Effective" : "Physical", addr);
 	}
 
@@ -565,33 +564,33 @@ int machine_check_e500(struct pt_regs *regs)
 			return 1;
 	}
 
-	printk("Machine check in kernel mode.\n");
-	printk("Caused by (from MCSR=%lx): ", reason);
+	printk(KERN_ERR "Machine check in kernel mode.\n");
+	printk(KERN_ERR "Caused by (from MCSR=%lx): ", reason);
 
 	if (reason & MCSR_MCP)
-		printk("Machine Check Signal\n");
+		printk(KERN_ERR "Machine Check Signal\n");
 	if (reason & MCSR_ICPERR)
-		printk("Instruction Cache Parity Error\n");
+		printk(KERN_ERR "Instruction Cache Parity Error\n");
 	if (reason & MCSR_DCP_PERR)
-		printk("Data Cache Push Parity Error\n");
+		printk(KERN_ERR "Data Cache Push Parity Error\n");
 	if (reason & MCSR_DCPERR)
-		printk("Data Cache Parity Error\n");
+		printk(KERN_ERR "Data Cache Parity Error\n");
 	if (reason & MCSR_BUS_IAERR)
-		printk("Bus - Instruction Address Error\n");
+		printk(KERN_ERR "Bus - Instruction Address Error\n");
 	if (reason & MCSR_BUS_RAERR)
-		printk("Bus - Read Address Error\n");
+		printk(KERN_ERR "Bus - Read Address Error\n");
 	if (reason & MCSR_BUS_WAERR)
-		printk("Bus - Write Address Error\n");
+		printk(KERN_ERR "Bus - Write Address Error\n");
 	if (reason & MCSR_BUS_IBERR)
-		printk("Bus - Instruction Data Error\n");
+		printk(KERN_ERR "Bus - Instruction Data Error\n");
 	if (reason & MCSR_BUS_RBERR)
-		printk("Bus - Read Data Bus Error\n");
+		printk(KERN_ERR "Bus - Read Data Bus Error\n");
 	if (reason & MCSR_BUS_WBERR)
-		printk("Bus - Read Data Bus Error\n");
+		printk(KERN_ERR "Bus - Read Data Bus Error\n");
 	if (reason & MCSR_BUS_IPERR)
-		printk("Bus - Instruction Parity Error\n");
+		printk(KERN_ERR "Bus - Instruction Parity Error\n");
 	if (reason & MCSR_BUS_RPERR)
-		printk("Bus - Read Parity Error\n");
+		printk(KERN_ERR "Bus - Read Parity Error\n");
 
 	return 0;
 }
@@ -605,23 +604,25 @@ int machine_check_e200(struct pt_regs *regs)
 {
 	unsigned long reason = get_mc_reason(regs);
 
-	printk("Machine check in kernel mode.\n");
-	printk("Caused by (from MCSR=%lx): ", reason);
+	printk(KERN_ERR "Machine check in kernel mode.\n");
+	printk(KERN_ERR "Caused by (from MCSR=%lx): ", reason);
 
 	if (reason & MCSR_MCP)
-		printk("Machine Check Signal\n");
+		printk(KERN_ERR "Machine Check Signal\n");
 	if (reason & MCSR_CP_PERR)
-		printk("Cache Push Parity Error\n");
+		printk(KERN_ERR "Cache Push Parity Error\n");
 	if (reason & MCSR_CPERR)
-		printk("Cache Parity Error\n");
+		printk(KERN_ERR "Cache Parity Error\n");
 	if (reason & MCSR_EXCP_ERR)
-		printk("ISI, ITLB, or Bus Error on first instruction fetch for an exception handler\n");
+		printk(KERN_ERR
+		       "ISI, ITLB, or Bus Error on first instruction fetch for an exception handler\n");
 	if (reason & MCSR_BUS_IRERR)
-		printk("Bus - Read Bus Error on instruction fetch\n");
+		printk(KERN_ERR "Bus - Read Bus Error on instruction fetch\n");
 	if (reason & MCSR_BUS_DRERR)
-		printk("Bus - Read Bus Error on data load\n");
+		printk(KERN_ERR "Bus - Read Bus Error on data load\n");
 	if (reason & MCSR_BUS_WRERR)
-		printk("Bus - Write Bus Error on buffered store or cache line push\n");
+		printk(KERN_ERR
+		       "Bus - Write Bus Error on buffered store or cache line push\n");
 
 	return 0;
 }
@@ -630,34 +631,34 @@ int machine_check_generic(struct pt_regs *regs)
 {
 	unsigned long reason = get_mc_reason(regs);
 
-	printk("Machine check in kernel mode.\n");
-	printk("Caused by (from SRR1=%lx): ", reason);
+	printk(KERN_ERR "Machine check in kernel mode.\n");
+	printk(KERN_ERR "Caused by (from SRR1=%lx): ", reason);
 	switch (reason & 0x601F0000) {
 	case 0x80000:
-		printk("Machine check signal\n");
+		printk(KERN_ERR "Machine check signal\n");
 		break;
 	case 0:		/* for 601 */
 	case 0x40000:
 	case 0x140000:	/* 7450 MSS error and TEA */
-		printk("Transfer error ack signal\n");
+		printk(KERN_ERR "Transfer error ack signal\n");
 		break;
 	case 0x20000:
-		printk("Data parity error signal\n");
+		printk(KERN_ERR "Data parity error signal\n");
 		break;
 	case 0x10000:
-		printk("Address parity error signal\n");
+		printk(KERN_ERR "Address parity error signal\n");
 		break;
 	case 0x20000000:
-		printk("L1 Data Cache error\n");
+		printk(KERN_ERR "L1 Data Cache error\n");
 		break;
 	case 0x40000000:
-		printk("L1 Instruction Cache error\n");
+		printk(KERN_ERR "L1 Instruction Cache error\n");
 		break;
 	case 0x00100000:
-		printk("L2 data cache parity error\n");
+		printk(KERN_ERR "L2 data cache parity error\n");
 		break;
 	default:
-		printk("Unknown values in msr\n");
+		printk(KERN_ERR "Unknown values in msr\n");
 	}
 	return 0;
 }
@@ -716,7 +717,7 @@ void SMIException(struct pt_regs *regs)
 
 void unknown_exception(struct pt_regs *regs)
 {
-	printk("Bad trap at PC: %lx, SR: %lx, vector=%lx\n",
+	printk(KERN_ERR "Bad trap at PC: %lx, SR: %lx, vector=%lx\n",
 	       regs->nip, regs->msr, regs->trap);
 
 	_exception(SIGTRAP, regs, 0, 0);
@@ -828,41 +829,42 @@ static int emulate_string_inst(struct pt_regs *regs, u32 instword)
 	EA = (rA == 0) ? 0 : regs->gpr[rA];
 
 	switch (instword & PPC_INST_STRING_MASK) {
-		case PPC_INST_LSWX:
-		case PPC_INST_STSWX:
-			EA += NB_RB;
-			num_bytes = regs->xer & 0x7f;
-			break;
-		case PPC_INST_LSWI:
-		case PPC_INST_STSWI:
-			num_bytes = (NB_RB == 0) ? 32 : NB_RB;
-			break;
-		default:
-			return -EINVAL;
+	case PPC_INST_LSWX:
+	case PPC_INST_STSWX:
+		EA += NB_RB;
+		num_bytes = regs->xer & 0x7f;
+		break;
+	case PPC_INST_LSWI:
+	case PPC_INST_STSWI:
+		num_bytes = (NB_RB == 0) ? 32 : NB_RB;
+		break;
+	default:
+		return -EINVAL;
 	}
 
-	while (num_bytes != 0)
-	{
+	while (num_bytes != 0) {
 		u8 val;
 		u32 shift = 8 * (3 - (pos & 0x3));
 
 		switch ((instword & PPC_INST_STRING_MASK)) {
-			case PPC_INST_LSWX:
-			case PPC_INST_LSWI:
-				if (get_user(val, (u8 __user *)EA))
-					return -EFAULT;
-				/* first time updating this reg,
-				 * zero it out */
-				if (pos == 0)
-					regs->gpr[rT] = 0;
-				regs->gpr[rT] |= val << shift;
-				break;
-			case PPC_INST_STSWI:
-			case PPC_INST_STSWX:
-				val = regs->gpr[rT] >> shift;
-				if (put_user(val, (u8 __user *)EA))
-					return -EFAULT;
-				break;
+		case PPC_INST_LSWX:
+		case PPC_INST_LSWI:
+			if (get_user(val, (u8 __user *)EA))
+				return -EFAULT;
+			/*
+			 * First time updating this reg,
+			 * zero it out
+			 */
+			if (pos == 0)
+				regs->gpr[rT] = 0;
+			regs->gpr[rT] |= val << shift;
+			break;
+		case PPC_INST_STSWI:
+		case PPC_INST_STSWX:
+			val = regs->gpr[rT] >> shift;
+			if (put_user(val, (u8 __user *)EA))
+				return -EFAULT;
+			break;
 		}
 		/* move EA to next address */
 		EA += 1;
@@ -881,7 +883,7 @@ static int emulate_string_inst(struct pt_regs *regs, u32 instword)
 
 static int emulate_popcntb_inst(struct pt_regs *regs, u32 instword)
 {
-	u32 ra,rs;
+	u32 ra, rs;
 	unsigned long tmp;
 
 	ra = (instword >> 16) & 0x1f;
@@ -1028,14 +1030,12 @@ static int emulate_instruction(struct pt_regs *regs)
 
 #ifdef CONFIG_PPC_47x
 	/* Emulate dcbf instruction */
-	if ((instword & PPC_INST_DCBF_MASK) == PPC_INST_DCBF) {
+	if ((instword & PPC_INST_DCBF_MASK) == PPC_INST_DCBF)
 		return emulate_dcbf(regs, instword);
-	}
 
 	/* Emulate dcbz instruction */
-	if ((instword & PPC_INST_DCBZ_MASK) == PPC_INST_DCBZ) {
+	if ((instword & PPC_INST_DCBZ_MASK) == PPC_INST_DCBZ)
 		return emulate_dcbz(regs, instword);
-	}
 
 	/* Emulate icbi instruction */
 	if ((instword & PPC_INST_ICBI_MASK) == PPC_INST_ICBI)
@@ -1192,15 +1192,16 @@ void trace_syscall(struct pt_regs *regs)
 {
 	printk(KERN_ERR
 	       "Task:%p(%d), PC:%08lX/%08lX, Syscall: %3ld, Result: %s%ld %s\n",
-	        current, task_pid_nr(current), regs->nip, regs->link,
-		regs->gpr[0], regs->ccr&0x10000000 ? "Error=" :"",
-	        regs->gpr[3], print_tainted());
+		current, task_pid_nr(current), regs->nip, regs->link,
+		regs->gpr[0], regs->ccr&0x10000000 ? "Error=" : "",
+		regs->gpr[3], print_tainted());
 }
 
 void kernel_fp_unavailable_exception(struct pt_regs *regs)
 {
-	printk(KERN_EMERG "Unrecoverable FP Unavailable Exception "
-			  "%lx at %lx\n", regs->trap, regs->nip);
+	printk(KERN_EMERG
+	       "Unrecoverable FP Unavailable Exception %lx at %lx\n",
+	       regs->trap, regs->nip);
 	die("Unrecoverable FP Unavailable Exception", regs, SIGABRT);
 }
 
@@ -1213,8 +1214,9 @@ void altivec_unavailable_exception(struct pt_regs *regs)
 		return;
 	}
 
-	printk(KERN_EMERG "Unrecoverable VMX/Altivec Unavailable Exception "
-			"%lx at %lx\n", regs->trap, regs->nip);
+	printk(KERN_EMERG
+	       "Unrecoverable VMX/Altivec Unavailable Exception %lx at %lx\n",
+	       regs->trap, regs->nip);
 	die("Unrecoverable VMX/Altivec Unavailable Exception", regs, SIGABRT);
 }
 
@@ -1227,8 +1229,9 @@ void vsx_unavailable_exception(struct pt_regs *regs)
 		return;
 	}
 
-	printk(KERN_EMERG "Unrecoverable VSX Unavailable Exception "
-			"%lx at %lx\n", regs->trap, regs->nip);
+	printk(KERN_EMERG
+	       "Unrecoverable VSX Unavailable Exception %lx at %lx\n",
+	       regs->trap, regs->nip);
 	die("Unrecoverable VSX Unavailable Exception", regs, SIGABRT);
 }
 
@@ -1425,7 +1428,7 @@ void __kprobes DebugException(struct pt_regs *regs, unsigned long debug_status)
 #if !defined(CONFIG_TAU_INT)
 void TAUException(struct pt_regs *regs)
 {
-	printk("TAU trap at PC: %lx, MSR: %lx, vector=%lx    %s\n",
+	printk(KERN_ERR "TAU trap at PC: %lx, MSR: %lx, vector=%lx    %s\n",
 	       regs->nip, regs->msr, regs->trap, print_tainted());
 }
 #endif /* CONFIG_INT_TAU */
@@ -1436,8 +1439,9 @@ void altivec_assist_exception(struct pt_regs *regs)
 	int err;
 
 	if (!user_mode(regs)) {
-		printk(KERN_EMERG "VMX/Altivec assist exception in kernel mode"
-		       " at %lx\n", regs->nip);
+		printk(KERN_EMERG
+		       "VMX/Altivec assist exception in kernel mode at %lx\n",
+		       regs->nip);
 		die("Kernel VMX/Altivec assist exception", regs, SIGILL);
 	}
 
@@ -1457,8 +1461,9 @@ void altivec_assist_exception(struct pt_regs *regs)
 	} else {
 		/* didn't recognize the instruction */
 		/* XXX quick hack for now: set the non-Java bit in the VSCR */
-		printk_ratelimited(KERN_ERR "Unrecognized altivec instruction "
-				   "in %s at %lx\n", current->comm, regs->nip);
+		printk_ratelimited(KERN_ERR
+				   "Unrecognized altivec instruction in %s at %lx\n",
+				   current->comm, regs->nip);
 		current->thread.vscr.u[3] |= 0x10000;
 	}
 }
@@ -1468,8 +1473,9 @@ void altivec_assist_exception(struct pt_regs *regs)
 void vsx_assist_exception(struct pt_regs *regs)
 {
 	if (!user_mode(regs)) {
-		printk(KERN_EMERG "VSX assist exception in kernel mode"
-		       " at %lx\n", regs->nip);
+		printk(KERN_EMERG
+		       "VSX assist exception in kernel mode at %lx\n",
+		       regs->nip);
 		die("Kernel VSX assist exception", regs, SIGILL);
 	}
 
@@ -1531,8 +1537,8 @@ void SPEFloatingPointException(struct pt_regs *regs)
 		_exception(SIGSEGV, regs, SEGV_ACCERR, regs->nip);
 	} else if (err == -EINVAL) {
 		/* didn't recognize the instruction */
-		printk(KERN_ERR "unrecognized spe instruction "
-		       "in %s at %lx\n", current->comm, regs->nip);
+		printk(KERN_ERR "unrecognized spe instruction in %s at %lx\n",
+		       current->comm, regs->nip);
 	} else {
 		_exception(SIGFPE, regs, code, regs->nip);
 	}
@@ -1563,8 +1569,8 @@ void SPEFloatingPointRoundException(struct pt_regs *regs)
 		_exception(SIGSEGV, regs, SEGV_ACCERR, regs->nip);
 	} else if (err == -EINVAL) {
 		/* didn't recognize the instruction */
-		printk(KERN_ERR "unrecognized spe instruction "
-		       "in %s at %lx\n", current->comm, regs->nip);
+		printk(KERN_ERR "unrecognized spe instruction in %s at %lx\n",
+		       current->comm, regs->nip);
 	} else {
 		_exception(SIGFPE, regs, 0, regs->nip);
 		return;
@@ -1599,7 +1605,7 @@ void __attribute__ ((weak)) WatchdogHandler(struct pt_regs *regs)
 
 void WatchdogException(struct pt_regs *regs)
 {
-	printk (KERN_EMERG "PowerPC Book-E Watchdog Exception\n");
+	printk(KERN_EMERG "PowerPC Book-E Watchdog Exception\n");
 	WatchdogHandler(regs);
 }
 #endif
