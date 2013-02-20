@@ -74,9 +74,8 @@ static inline int adt75_write(struct i2c_client *client, u8 reg, u16 value)
 static void adt75_init_client(struct i2c_client *client)
 {
 	int ret = adt75_write(client, ADT75_REG_CONF, 0x0000);
-	if (ret < 0) {
+	if (ret < 0)
 		dev_err(&client->dev, "cannot write configuration register\n");
-	} 
 }
 
 static struct adt75_data *adt75_update_device(struct device *dev)
@@ -121,7 +120,9 @@ static ssize_t set_temp(struct device *dev, struct device_attribute *devattr,
 
 	mutex_lock(&data->lock);
 	data->temp[attr->index] = LM75_TEMP_TO_REG(temp);
-	adt75_write(client, ADT75_REG_TEMP[attr->index], data->temp[attr->index]);
+	adt75_write(client,
+		    ADT75_REG_TEMP[attr->index],
+		    data->temp[attr->index]);
 	mutex_unlock(&data->lock);
 	return count;
 }
@@ -145,7 +146,8 @@ static int adt75_probe(struct i2c_client *client,
 	struct adt75_data *data;
 	int err;
 
-	if (!(data = kzalloc(sizeof(struct adt75_data), GFP_KERNEL))) {
+	data = kzalloc(sizeof(struct adt75_data), GFP_KERNEL);
+	if (!data) {
 		err = -ENOMEM;
 		goto exit;
 	}
@@ -161,7 +163,8 @@ static int adt75_probe(struct i2c_client *client,
 	adt75_init_client(client);
 
 	/* Register sysfs hooks */
-	if ((err = sysfs_create_group(&client->dev.kobj, &data->attrs)))
+	err = sysfs_create_group(&client->dev.kobj, &data->attrs);
+	if (err)
 		goto exit_free;
 
 	data->hwmon_dev = hwmon_device_register(&client->dev);

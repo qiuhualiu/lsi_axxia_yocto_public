@@ -185,7 +185,8 @@ static void rbs_trig_activate(struct led_classdev *led_cdev)
 
 	led_cdev->trigger_data = NULL;
 
-	if ((led = kzalloc(sizeof(*led), GFP_KERNEL)) == NULL)
+	led = kzalloc(sizeof(*led), GFP_KERNEL);
+	if (led == NULL)
 		return;
 
 	mutex_init(&led->mode_lock);
