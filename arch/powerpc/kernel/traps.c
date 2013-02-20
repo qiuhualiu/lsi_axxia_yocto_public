@@ -35,27 +35,27 @@
 #include <linux/kdebug.h>
 #include <linux/debugfs.h>
 #include <linux/ratelimit.h>
+#include <linux/uaccess.h>
+#include <linux/io.h>
+#ifdef CONFIG_PMAC_BACKLIGHT
+#include <linux/backlight.h>
+#endif
 
 #include <asm/emulated_ops.h>
 #include <asm/pgtable.h>
-#include <asm/uaccess.h>
-#include <asm/io.h>
 #include <asm/machdep.h>
 #include <asm/rtas.h>
 #include <asm/pmc.h>
 #ifdef CONFIG_PPC32
 #include <asm/reg.h>
 #endif
-#ifdef CONFIG_PMAC_BACKLIGHT
-#include <asm/backlight.h>
-#endif
 #ifdef CONFIG_PPC64
-#include <asm/firmware.h>
+#include <linux/firmware.h>
 #include <asm/processor.h>
 #endif
-#include <asm/kexec.h>
+#include <linux/kexec.h>
 #include <asm/ppc-opcode.h>
-#include <asm/rio.h>
+#include <linux/rio.h>
 #include <asm/fadump.h>
 #include <asm/switch_to.h>
 #include <asm/debug.h>
@@ -316,7 +316,7 @@ static inline int check_io_access(struct pt_regs *regs)
 			--nip;
 			rb = (*nip >> 11) & 0x1f;
 			printk(KERN_DEBUG "%s bad port %lx at %p\n",
-			       (*nip & 0x100)? "OUT to": "IN from",
+			       (*nip & 0x100) ? "OUT to" : "IN from",
 			       regs->gpr[rb] - _IO_BASE, nip);
 			regs->msr |= MSR_RI;
 			regs->nip = entry->fixup;
@@ -379,11 +379,10 @@ int machine_check_440A(struct pt_regs *regs)
 	unsigned long reason = get_mc_reason(regs);
 
 	printk("Machine check in kernel mode.\n");
-	if (reason & ESR_IMCP){
+	if (reason & ESR_IMCP) {
 		printk("Instruction Synchronous Machine Check exception\n");
 		mtspr(SPRN_ESR, reason & ~ESR_IMCP);
-	}
-	else {
+	} else {
 		u32 mcsr = mfspr(SPRN_MCSR);
 		if (mcsr & MCSR_IB)
 			printk("Instruction Read PLB Error\n");
@@ -393,7 +392,7 @@ int machine_check_440A(struct pt_regs *regs)
 			printk("Data Write PLB Error\n");
 		if (mcsr & MCSR_TLBP)
 			printk("TLB Parity Error\n");
-		if (mcsr & MCSR_ICP){
+		if (mcsr & MCSR_ICP) {
 			flush_instruction_cache();
 			printk("I-Cache Parity Error\n");
 		}
@@ -416,8 +415,8 @@ int machine_check_47x(struct pt_regs *regs)
 	u32 mcsr;
 
 	if (reason & ESR_IMCP) {
-		printk(KERN_ERR
-		       "Instruction Synchronous Machine Check exception reason %lx\n", reason);
+		printk(KERN_ERR "Instruction Synchronous Machine Check"
+		printk(KERN_ERR " exception reason %lx\n", reason);
 		mtspr(SPRN_ESR, reason & ~ESR_IMCP);
 		return 0;
 	}
@@ -615,13 +614,15 @@ int machine_check_e200(struct pt_regs *regs)
 	if (reason & MCSR_CPERR)
 		printk("Cache Parity Error\n");
 	if (reason & MCSR_EXCP_ERR)
-		printk("ISI, ITLB, or Bus Error on first instruction fetch for an exception handler\n");
+		printk("ISI, ITLB, or Bus Error on first instruction fetch");
+		printk(" for an exception handler\n");
 	if (reason & MCSR_BUS_IRERR)
 		printk("Bus - Read Bus Error on instruction fetch\n");
 	if (reason & MCSR_BUS_DRERR)
 		printk("Bus - Read Bus Error on data load\n");
 	if (reason & MCSR_BUS_WRERR)
-		printk("Bus - Write Bus Error on buffered store or cache line push\n");
+		printk("Bus - Write Bus Error on buffered store");
+		printk(" or cache line push\n");
 
 	return 0;
 }
@@ -887,7 +888,8 @@ static int emulate_popcntb_inst(struct pt_regs *regs, u32 instword)
 
 	tmp = regs->gpr[rs];
 	tmp = tmp - ((tmp >> 1) & 0x5555555555555555ULL);
-	tmp = (tmp & 0x3333333333333333ULL) + ((tmp >> 2) & 0x3333333333333333ULL);
+	tmp = (tmp & 0x3333333333333333ULL) +
+		((tmp >> 2) & 0x3333333333333333ULL);
 	tmp = (tmp + (tmp >> 4)) & 0x0f0f0f0f0f0f0f0fULL;
 	regs->gpr[ra] = tmp;
 
@@ -1187,9 +1189,10 @@ void nonrecoverable_exception(struct pt_regs *regs)
 
 void trace_syscall(struct pt_regs *regs)
 {
-	printk("Task: %p(%d), PC: %08lX/%08lX, Syscall: %3ld, Result: %s%ld    %s\n",
-	       current, task_pid_nr(current), regs->nip, regs->link, regs->gpr[0],
-	       regs->ccr&0x10000000?"Error=":"", regs->gpr[3], print_tainted());
+	printk("Task: %p(%d), PC: %08lX/%08lX, Syscall: %3ld, Result: %s%ld
+		%s\n", current, task_pid_nr(current), regs->nip, regs->link,
+		regs->gpr[0], regs->ccr&0x10000000?"Error=":"", regs->gpr[3],
+		print_tainted());
 }
 
 void kernel_fp_unavailable_exception(struct pt_regs *regs)
@@ -1359,9 +1362,9 @@ void __kprobes DebugException(struct pt_regs *regs, unsigned long debug_status)
 	current->thread.dbsr = debug_status;
 
 	/* Hack alert: On BookE, Branch Taken stops on the branch itself, while
-	 * on server, it stops on the target of the branch. In order to simulate
-	 * the server behaviour, we thus restart right away with a single step
-	 * instead of stopping here when hitting a BT
+	 * on server, it stops on the target of the branch. In order to
+	 * simulate the server behaviour, we thus restart right away with a
+	 * single step instead of stopping here when hitting a BT
 	 */
 	if (debug_status & DBSR_BT) {
 		regs->msr &= ~MSR_DE;
@@ -1385,7 +1388,7 @@ void __kprobes DebugException(struct pt_regs *regs, unsigned long debug_status)
 		}
 		if (debugger_sstep(regs))
 			return;
-	} else if (debug_status & DBSR_IC) { 	/* Instruction complete */
+	} else if (debug_status & DBSR_IC) {	/* Instruction complete */
 		regs->msr &= ~MSR_DE;
 
 		/* Disable instruction completion */
@@ -1502,18 +1505,16 @@ void SPEFloatingPointException(struct pt_regs *regs)
 	spefscr = current->thread.spefscr;
 	fpexc_mode = current->thread.fpexc_mode;
 
-	if ((spefscr & SPEFSCR_FOVF) && (fpexc_mode & PR_FP_EXC_OVF)) {
+	if ((spefscr & SPEFSCR_FOVF) && (fpexc_mode & PR_FP_EXC_OVF))
 		code = FPE_FLTOVF;
-	}
-	else if ((spefscr & SPEFSCR_FUNF) && (fpexc_mode & PR_FP_EXC_UND)) {
+	else if ((spefscr & SPEFSCR_FUNF) && (fpexc_mode & PR_FP_EXC_UND))
 		code = FPE_FLTUND;
-	}
 	else if ((spefscr & SPEFSCR_FDBZ) && (fpexc_mode & PR_FP_EXC_DIV))
 		code = FPE_FLTDIV;
-	else if ((spefscr & SPEFSCR_FINV) && (fpexc_mode & PR_FP_EXC_INV)) {
+	else if ((spefscr & SPEFSCR_FINV) && (fpexc_mode & PR_FP_EXC_INV))
 		code = FPE_FLTINV;
-	}
-	else if ((spefscr & (SPEFSCR_FG | SPEFSCR_FX)) && (fpexc_mode & PR_FP_EXC_RES))
+	else if ((spefscr & (SPEFSCR_FG | SPEFSCR_FX)) &&
+			(fpexc_mode & PR_FP_EXC_RES))
 		code = FPE_FLTRES;
 
 	err = do_spe_mathemu(regs);

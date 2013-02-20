@@ -9,7 +9,7 @@
  * Copyright (C) 2002-2003 Eric Biederman  <ebiederm@xmission.com>
  * GameCube/ppc32 port Copyright (C) 2004 Albert Herranz
  * PPC44x port. Copyright (C) 2011,  IBM Corporation
- * 		Author: Suzuki Poulose <suzuki@in.ibm.com>
+ *		Author: Suzuki Poulose <suzuki@in.ibm.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -814,7 +814,7 @@ skip:
 	mr	r25, r4
 
 	/* Extract the TLB PageSize */
-	li	r10, 1 			/* r10 will hold PageSize */
+	li	r10, 1			/* r10 will hold PageSize */
 	rlwinm	r11, r3, 0, 24, 27	/* bits 24-27 */
 
 	/* XXX: As of now we use 256M, 4K pages */
@@ -864,23 +864,25 @@ write_out:
 
 	/* attribute fields. rwx for SUPERVISOR mode */
 	li	r5, 0
-	ori	r5, r5, (PPC44x_TLB_SW | PPC44x_TLB_SR | PPC44x_TLB_SX | PPC44x_TLB_G)
+	ori	r5, r5, (PPC44x_TLB_SW | PPC44x_TLB_SR | PPC44x_TLB_SX |
+			 PPC44x_TLB_G)
 
 	/* Create 1:1 mapping in 256M pages */
-	xori	r7, r7, 1			/* Revert back to Original TS */
+	xori	r7, r7, 1		    /* Revert back to Original TS */
 
-	li	r8, 0				/* PageNumber */
-	li	r6, 3				/* TLB Index, start at 3  */
+	li	r8, 0			    /* PageNumber */
+	li	r6, 3			    /* TLB Index, start at 3  */
 
 next_tlb:
-	rotlwi	r3, r8, 28			/* Create EPN (bits 0-3) */
-	mr	r4, r3				/* RPN = EPN  */
-	ori	r3, r3, (PPC44x_TLB_VALID | PPC44x_TLB_256M) /* SIZE = 256M, Valid */
-	insrwi	r3, r7, 1, 23			/* Set TS from r7 */
+	rotlwi	r3, r8, 28		    /* Create EPN (bits 0-3) */
+	mr	r4, r3			    /* RPN = EPN  */
+					    /* SIZE = 256M, Valid */
+	ori	r3, r3, (PPC44x_TLB_VALID | PPC44x_TLB_256M)
+	insrwi	r3, r7, 1, 23		    /* Set TS from r7 */
 
-	tlbwe	r3, r6, PPC44x_TLB_PAGEID	/* PageID field : EPN, V, SIZE */
-	tlbwe	r4, r6, PPC44x_TLB_XLAT		/* Address translation : RPN   */
-	tlbwe	r5, r6, PPC44x_TLB_ATTRIB	/* Attributes */
+	tlbwe	r3, r6, PPC44x_TLB_PAGEID   /* PageID field : EPN, V, SIZE */
+	tlbwe	r4, r6, PPC44x_TLB_XLAT	    /* Address translation : RPN   */
+	tlbwe	r5, r6, PPC44x_TLB_ATTRIB   /* Attributes */
 
 	addi	r8, r8, 1			/* Increment PN */
 	addi	r6, r6, 1			/* Increment TLB Index */
@@ -890,11 +892,11 @@ next_tlb:
 
 	/* Jump to the new mapping 1:1 */
 	li	r9,0
-	insrwi	r9, r7, 1, 26			/* Set MSR[IS] = r7 */
+	insrwi	r9, r7, 1, 26		/* Set MSR[IS] = r7 */
 
 	bl	1f
 1:	mflr	r8
-	and	r8, r8, r11			/* Get our offset within page */
+	and	r8, r8, r11		/* Get our offset within page */
 	addi	r8, r8, (2f-1b)
 
 	and	r5, r25, r10			/* Get our target PageNum */
@@ -938,7 +940,8 @@ next_tlb:
 
 	/* set a new stack at the bottom of our page... */
 	/* (not really needed now) */
-	addi	r1, r4, KEXEC_CONTROL_PAGE_SIZE - 8 /* for LR Save+Back Chain */
+	/* for LR Save+Back Chain */
+	addi	r1, r4, KEXEC_CONTROL_PAGE_SIZE - 8
 	stw	r0, 0(r1)
 
 	/* Do the copies */

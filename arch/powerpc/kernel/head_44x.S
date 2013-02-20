@@ -16,9 +16,9 @@
  *    Copyright 2000 MontaVista Software Inc.
  *	PPC405 modifications
  *      PowerPC 403GCX/405GP modifications.
- * 	Author: MontaVista Software, Inc.
- *         	frank_rowand@mvista.com or source@mvista.com
- * 	   	debbie_chu@mvista.com
+ *	Author: MontaVista Software, Inc.
+ *		frank_rowand@mvista.com or source@mvista.com
+ *		debbie_chu@mvista.com
  *    Copyright 2002-2005 MontaVista Software, Inc.
  *      PowerPC 44x support, Matt Porter <mporter@kernel.crashing.org>
  *
@@ -77,7 +77,7 @@ _ENTRY(_start);
 	bl	0f				/* Get our runtime address */
 0:	mflr	r21				/* Make it accessible */
 	addis	r21,r21,(_stext - 0b)@ha
-	addi	r21,r21,(_stext - 0b)@l 	/* Get our current runtime base */
+	addi	r21,r21,(_stext - 0b)@l		/* Get current runtime base */
 
 	/*
 	 * We have the runtime (virutal) address of our base.
@@ -280,7 +280,8 @@ interrupt_base:
 #ifdef CONFIG_PPC_FPU
 	FP_UNAVAILABLE_EXCEPTION
 #else
-	EXCEPTION(0x2010, FloatingPointUnavailable, unknown_exception, EXC_XFER_EE)
+	EXCEPTION(0x2010, FloatingPointUnavailable, \
+		unknown_exception, EXC_XFER_EE)
 #endif
 	/* System Call Interrupt */
 	START_EXCEPTION(SystemCall)
@@ -288,7 +289,8 @@ interrupt_base:
 	EXC_XFER_EE_LITE(0x0c00, DoSyscall)
 
 	/* Auxiliary Processor Unavailable Interrupt */
-	EXCEPTION(0x2020, AuxillaryProcessorUnavailable, unknown_exception, EXC_XFER_EE)
+	EXCEPTION(0x2020, AuxillaryProcessorUnavailable, \
+		unknown_exception, EXC_XFER_EE)
 
 	/* Decrementer Interrupt */
 	DECREMENTER_EXCEPTION
@@ -457,7 +459,7 @@ tlb_44x_patch_hwater_D:
 	li	r13,_PAGE_PRESENT | _PAGE_ACCESSED | _PAGE_EXEC
 
 	/* Compute pgdir/pmd offset */
-	rlwinm 	r12, r10, PPC44x_PGD_OFF_SHIFT, PPC44x_PGD_OFF_MASK_BIT, 29
+	rlwinm	r12, r10, PPC44x_PGD_OFF_SHIFT, PPC44x_PGD_OFF_MASK_BIT, 29
 	lwzx	r11, r12, r11		/* Get pgd/pmd entry */
 	rlwinm.	r12, r11, 0, 0, 20	/* Extract pt base address */
 	beq	2f			/* Bail if no table */
@@ -510,8 +512,8 @@ tlb_44x_patch_hwater_I:
 /*
  * Both the instruction and data TLB miss get to this
  * point to load the TLB.
- * 	r10 - EA of fault
- * 	r11 - PTE high word value
+ *	r10 - EA of fault
+ *	r11 - PTE high word value
  *	r12 - PTE low word value
  *	r13 - TLB index
  *	MMUCR - loaded with proper value when we get here
@@ -730,8 +732,8 @@ finish_tlb_load_44x:
 /*
  * Both the instruction and data TLB miss get to this
  * point to load the TLB.
- * 	r10 - free to use
- * 	r11 - PTE high word value
+ *	r10 - free to use
+ *	r11 - PTE high word value
  *	r12 - PTE low word value
  *      r13 - free to use
  *	MMUCR - loaded with proper value when we get here
@@ -932,7 +934,7 @@ skpinv:	addi	r4,r4,1				/* Increment */
 	sync
 
 	/* pageid fields */
-	clrrwi	r3,r3,10		/* Mask off the effective page number */
+	clrrwi	r3,r3,10	/* Mask off the effective page number */
 	ori	r3,r3,PPC44x_TLB_VALID | PPC44x_TLB_256M
 
 	/* xlat fields */
@@ -942,7 +944,8 @@ skpinv:	addi	r4,r4,1				/* Increment */
 	/* attrib fields */
 	/* Added guarded bit to protect against speculative loads/stores */
 	li	r5,0
-	ori	r5,r5,(PPC44x_TLB_SW | PPC44x_TLB_SR | PPC44x_TLB_SX | PPC44x_TLB_G)
+	ori	r5,r5,(PPC44x_TLB_SW | PPC44x_TLB_SR | PPC44x_TLB_SX |
+			 PPC44x_TLB_G)
 
         li      r0,63                    /* TLB slot 63 */
 
@@ -1155,7 +1158,7 @@ clear_utlb_entry:
 	sync
 
 	/* Word 0 */
-	clrrwi	r3,r3,12		/* Mask off the effective page number */
+	clrrwi	r3,r3,12	/* Mask off the effective page number */
 	ori	r3,r3,PPC47x_TLB0_VALID | PPC47x_TLB0_256M
 
 	/* Word 1 - use r25.  RPN is the same as the original entry */
@@ -1233,7 +1236,7 @@ clear_utlb_entry:
 
 #ifdef CONFIG_PPC_EARLY_DEBUG_AXXIA
 
- 	/* Word 0 */
+	/* Word 0 */
 	lis	r3,AXXIA_EARLY_DEBUG_VIRTADDR@h
 	ori	r3,r3,PPC47x_TLB0_VALID | PPC47x_TLB0_1M
 
@@ -1242,7 +1245,8 @@ clear_utlb_entry:
 	ori	r4,r4,CONFIG_PPC_EARLY_DBG_AXXIA_PHYSHIGH
 
 	/* Word 2 */
-	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I | PPC47x_TLB2_G)
+	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I |
+			 PPC47x_TLB2_G)
 
 	/* Bolted in way 0, bolt slot 4, we -hope- we don't hit the same
 	 * congruence class as the kernel, we need to make sure of it at
@@ -1253,7 +1257,7 @@ clear_utlb_entry:
 	tlbwe	r4,r0,1
 	tlbwe	r5,r0,2
 #endif
- 	/* Word 0 */
+	/* Word 0 */
 	lis	r3,(0xf0100000)@h
 	ori	r3,r3,PPC47x_TLB0_VALID | PPC47x_TLB0_1M
 
@@ -1262,7 +1266,8 @@ clear_utlb_entry:
 	ori	r4,r4,0x20
 
 	/* Word 2 */
-	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I | PPC47x_TLB2_G)
+	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I |
+			PPC47x_TLB2_G)
 
 	/* Bolted in way 0, bolt slot 4, we -hope- we don't hit the same
 	 * congruence class as the kernel, we need to make sure of it at

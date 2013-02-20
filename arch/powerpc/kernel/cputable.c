@@ -701,7 +701,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_name		= "750CL",
 		.cpu_features		= CPU_FTRS_750CL,
 		.cpu_user_features	= COMMON_USER | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 4,
@@ -767,7 +768,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_name		= "750FX",
 		.cpu_features		= CPU_FTRS_750FX,
 		.cpu_user_features	= COMMON_USER | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 4,
@@ -784,7 +786,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_name		= "750GX",
 		.cpu_features		= CPU_FTRS_750GX,
 		.cpu_user_features	= COMMON_USER | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 4,
@@ -919,7 +922,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_features		= CPU_FTRS_7455_1,
 		.cpu_user_features	= COMMON_USER |
 			PPC_FEATURE_HAS_ALTIVEC_COMP | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 6,
@@ -937,7 +941,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_features		= CPU_FTRS_7455_20,
 		.cpu_user_features	= COMMON_USER |
 			PPC_FEATURE_HAS_ALTIVEC_COMP | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 6,
@@ -955,7 +960,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_features		= CPU_FTRS_7455,
 		.cpu_user_features	= COMMON_USER |
 			PPC_FEATURE_HAS_ALTIVEC_COMP | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 6,
@@ -973,7 +979,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_features		= CPU_FTRS_7447_10,
 		.cpu_user_features	= COMMON_USER |
 			PPC_FEATURE_HAS_ALTIVEC_COMP | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 6,
@@ -991,7 +998,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_features		= CPU_FTRS_7447_10,
 		.cpu_user_features	= COMMON_USER |
 			PPC_FEATURE_HAS_ALTIVEC_COMP | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 6,
@@ -1007,8 +1015,10 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x80020000,
 		.cpu_name		= "7447/7457",
 		.cpu_features		= CPU_FTRS_7447,
-		.cpu_user_features	= COMMON_USER | PPC_FEATURE_HAS_ALTIVEC_COMP | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.cpu_user_features	= COMMON_USER |
+			PPC_FEATURE_HAS_ALTIVEC_COMP | PPC_FEATURE_PPC_LE,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 6,
@@ -1026,7 +1036,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_features		= CPU_FTRS_7447A,
 		.cpu_user_features	= COMMON_USER |
 			PPC_FEATURE_HAS_ALTIVEC_COMP | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 6,
@@ -1044,7 +1055,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_features		= CPU_FTRS_7448,
 		.cpu_user_features	= COMMON_USER |
 			PPC_FEATURE_HAS_ALTIVEC_COMP | PPC_FEATURE_PPC_LE,
-		.mmu_features		= MMU_FTR_HPTE_TABLE | MMU_FTR_USE_HIGH_BATS,
+		.mmu_features		= MMU_FTR_HPTE_TABLE |
+			MMU_FTR_USE_HIGH_BATS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 6,
@@ -1141,7 +1153,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.oprofile_type		= PPC_OPROFILE_FSL_EMB,
 		.platform		= "ppc603",
 	},
-	{	/* default match, we assume split I/D cache & TB (non-601)... */
+	{	/* default match, we assume split I/D cache
+		   & TB (non-601)... */
 		.pvr_mask		= 0x00000000,
 		.pvr_value		= 0x00000000,
 		.cpu_name		= "(generic PPC)",
@@ -1552,7 +1565,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x40000858,
 		.cpu_name		= "440EP Rev. A",
 		.cpu_features		= CPU_FTRS_44X,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
 		.mmu_features		= MMU_FTR_TYPE_44x,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
@@ -1565,19 +1579,22 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x400008d3,
 		.cpu_name		= "440GR Rev. B",
 		.cpu_features		= CPU_FTRS_44X,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
 		.mmu_features		= MMU_FTR_TYPE_44x,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.machine_check		= machine_check_4xx,
 		.platform		= "ppc440",
 	},
-	{ /* Matches both physical and logical PVR for 440EP (logical pvr = pvr | 0x8) */
+	{ /* Matches both physical and logical PVR for 440EP
+		 (logical pvr = pvr | 0x8) */
 		.pvr_mask		= 0xf0000ff7,
 		.pvr_value		= 0x400008d4,
 		.cpu_name		= "440EP Rev. C",
 		.cpu_features		= CPU_FTRS_44X,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
 		.mmu_features		= MMU_FTR_TYPE_44x,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
@@ -1590,7 +1607,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x400008db,
 		.cpu_name		= "440EP Rev. B",
 		.cpu_features		= CPU_FTRS_44X,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
 		.mmu_features		= MMU_FTR_TYPE_44x,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
@@ -1616,7 +1634,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x200008D8,
 		.cpu_name		= "440EPX",
 		.cpu_features		= CPU_FTRS_44X,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
 		.mmu_features		= MMU_FTR_TYPE_44x,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
@@ -1756,7 +1775,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x13020002,
 		.cpu_name		= "460EX",
 		.cpu_features		= CPU_FTRS_440x6,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
 		.mmu_features		= MMU_FTR_TYPE_44x,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
@@ -1769,7 +1789,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x13020004,
 		.cpu_name		= "460EX Rev. B",
 		.cpu_features		= CPU_FTRS_440x6,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
 		.mmu_features		= MMU_FTR_TYPE_44x,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
@@ -1782,7 +1803,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x13020000,
 		.cpu_name		= "460GT",
 		.cpu_features		= CPU_FTRS_440x6,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
 		.mmu_features		= MMU_FTR_TYPE_44x,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
@@ -1795,7 +1817,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x13020005,
 		.cpu_name		= "460GT Rev. B",
 		.cpu_features		= CPU_FTRS_440x6,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
 		.mmu_features		= MMU_FTR_TYPE_44x,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
@@ -1876,18 +1899,18 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.platform		= "ppc470",
 	},
 	{ /* 476 iss */
-		.pvr_mask           	= 0xffffffff,
-		.pvr_value          	= 0x12b520c0,
+		.pvr_mask		= 0xffffffff,
+		.pvr_value		= 0x12b520c0,
 		.cpu_name				= "476",
-		.cpu_features			= CPU_FTRS_47X | CPU_FTR_476_DD2,
-		.cpu_user_features		= COMMON_USER_BOOKE |
+		.cpu_features		= CPU_FTRS_47X | CPU_FTR_476_DD2,
+		.cpu_user_features	= COMMON_USER_BOOKE |
 			PPC_FEATURE_HAS_FPU,
-		.mmu_features			= MMU_FTR_TYPE_47x |
+		.mmu_features		= MMU_FTR_TYPE_47x |
 			MMU_FTR_USE_TLBIVAX_BCAST | MMU_FTR_LOCK_BCAST_INVAL,
-		.icache_bsize			= 32,
-		.dcache_bsize			= 128,
-		.machine_check			= machine_check_47x,
-		.num_pmcs				= 8,
+		.icache_bsize		= 32,
+		.dcache_bsize		= 128,
+		.machine_check		= machine_check_47x,
+		.num_pmcs		= 8,
 		.oprofile_cpu_type      = "ppc/476",
 		.oprofile_type          = PPC_OPROFILE_ACP_PMU,
 		.platform		= "ppc470",
@@ -2022,7 +2045,8 @@ static struct cpu_spec __initdata cpu_specs[] = {
 			PPC_FEATURE_HAS_SPE_COMP |
 			PPC_FEATURE_HAS_EFP_SINGLE_COMP |
 			PPC_FEATURE_HAS_EFP_DOUBLE_COMP,
-		.mmu_features		= MMU_FTR_TYPE_FSL_E | MMU_FTR_BIG_PHYS,
+		.mmu_features		= MMU_FTR_TYPE_FSL_E |
+			MMU_FTR_BIG_PHYS,
 		.icache_bsize		= 32,
 		.dcache_bsize		= 32,
 		.num_pmcs		= 4,
@@ -2037,9 +2061,10 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x80230000,
 		.cpu_name		= "e500mc",
 		.cpu_features		= CPU_FTRS_E500MC,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
-		.mmu_features		= MMU_FTR_TYPE_FSL_E | MMU_FTR_BIG_PHYS |
-			MMU_FTR_USE_TLBILX,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
+		.mmu_features		= MMU_FTR_TYPE_FSL_E |
+			MMU_FTR_BIG_PHYS | MMU_FTR_USE_TLBILX,
 		.icache_bsize		= 64,
 		.dcache_bsize		= 64,
 		.num_pmcs		= 4,
@@ -2055,9 +2080,10 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x80240000,
 		.cpu_name		= "e5500",
 		.cpu_features		= CPU_FTRS_E5500,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
-		.mmu_features		= MMU_FTR_TYPE_FSL_E | MMU_FTR_BIG_PHYS |
-			MMU_FTR_USE_TLBILX,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
+		.mmu_features		= MMU_FTR_TYPE_FSL_E |
+			MMU_FTR_BIG_PHYS | MMU_FTR_USE_TLBILX,
 		.icache_bsize		= 64,
 		.dcache_bsize		= 64,
 		.num_pmcs		= 4,
@@ -2073,9 +2099,10 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.pvr_value		= 0x80400000,
 		.cpu_name		= "e6500",
 		.cpu_features		= CPU_FTRS_E6500,
-		.cpu_user_features	= COMMON_USER_BOOKE | PPC_FEATURE_HAS_FPU,
-		.mmu_features		= MMU_FTR_TYPE_FSL_E | MMU_FTR_BIG_PHYS |
-			MMU_FTR_USE_TLBILX,
+		.cpu_user_features	= COMMON_USER_BOOKE |
+			PPC_FEATURE_HAS_FPU,
+		.mmu_features		= MMU_FTR_TYPE_FSL_E |
+			MMU_FTR_BIG_PHYS | MMU_FTR_USE_TLBILX,
 		.icache_bsize		= 64,
 		.dcache_bsize		= 64,
 		.num_pmcs		= 4,
@@ -2131,9 +2158,9 @@ static struct cpu_spec __initdata cpu_specs[] = {
 		.cpu_name		= "Book3E",
 		.cpu_features		= CPU_FTRS_BASE_BOOK3E,
 		.cpu_user_features	= COMMON_USER_PPC64,
-		.mmu_features		= MMU_FTR_TYPE_3E | MMU_FTR_USE_TLBILX |
-					  MMU_FTR_USE_TLBIVAX_BCAST |
-					  MMU_FTR_LOCK_BCAST_INVAL,
+		.mmu_features		= MMU_FTR_TYPE_3E |
+			MMU_FTR_USE_TLBILX | MMU_FTR_USE_TLBIVAX_BCAST |
+			MMU_FTR_LOCK_BCAST_INVAL,
 		.icache_bsize		= 64,
 		.dcache_bsize		= 64,
 		.num_pmcs		= 0,
@@ -2205,9 +2232,8 @@ static struct cpu_spec * __init setup_cpu_spec(unsigned long offset,
 	 * pointer on ppc64 and booke as we are running at 0 in real mode
 	 * on ppc64 and reloc_offset is always 0 on booke.
 	 */
-	if (t->cpu_setup) {
+	if (t->cpu_setup)
 		t->cpu_setup(offset, t);
-	}
 #endif /* CONFIG_PPC64 || CONFIG_BOOKE */
 
 	return t;

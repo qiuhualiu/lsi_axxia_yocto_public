@@ -114,7 +114,7 @@ void udbg_init_uart(void __iomem *comport, unsigned int speed,
 		/* RTS/DTR */
 		out_8(&udbg_comport->mcr, 0x03);
 		/* Clear & enable FIFOs */
-		out_8(&udbg_comport->fcr ,0x07);
+		out_8(&udbg_comport->fcr, 0x07);
 		udbg_putc = udbg_550_putc;
 		udbg_flush = udbg_550_flush;
 		udbg_getc = udbg_550_getc;
@@ -227,7 +227,7 @@ static int __init early_parse_comport(char *p)
 	if (!p || !(*p))
 		return 0;
 
-	udbg_44x_comport = simple_strtoul(p, 0, 16);
+	udbg_44x_comport = kstrtoul(p, 0, 16);
 
 	return 0;
 }

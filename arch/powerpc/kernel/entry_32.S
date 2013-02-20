@@ -362,7 +362,8 @@ ret_from_syscall:
 	MTMSRD(r10)
 	lwz	r9,TI_FLAGS(r12)
 	li	r8,-_LAST_ERRNO
-	andi.	r0,r9,(_TIF_SYSCALL_T_OR_A|_TIF_SINGLESTEP|_TIF_USER_WORK_MASK|_TIF_PERSYSCALL_MASK)
+	andi.	r0,r9,(_TIF_SYSCALL_T_OR_A|_TIF_SINGLESTEP|_TIF_USER_WORK_MASK|
+		_TIF_PERSYSCALL_MASK)
 	bne-	syscall_exit_work
 	cmplw	0,r3,r8
 	blt+	syscall_exit_cont
@@ -486,7 +487,7 @@ syscall_exit_work:
 	stwcx.	r8,0,r12
 	bne-	3b
 	subi	r12,r12,TI_FLAGS
-	
+
 4:	/* Anything which requires enabling interrupts? */
 	andi.	r0,r9,(_TIF_SYSCALL_T_OR_A|_TIF_SINGLESTEP)
 	beq	ret_from_except
@@ -885,16 +886,17 @@ END_MMU_FTR_SECTION_IFSET(MMU_FTR_TYPE_47x)
 	lwz	r9,_MSR(r1)
 #ifdef CONFIG_TRACE_IRQFLAGS
 	/* Lockdep doesn't know about the fact that IRQs are temporarily turned
-	 * off in this assembly code while peeking at TI_FLAGS() and such. However
-	 * we need to inform it if the exception turned interrupts off, and we
-	 * are about to trun them back on.
+	 * off in this assembly code while peeking at TI_FLAGS() and such.
+	 * However we need to inform it if the exception turned interrupts off,
+	 * and we are about to trun them back on.
 	 *
-	 * The problem here sadly is that we don't know whether the exceptions was
-	 * one that turned interrupts off or not. So we always tell lockdep about
-	 * turning them on here when we go back to wherever we came from with EE
-	 * on, even if that may meen some redudant calls being tracked. Maybe later
-	 * we could encode what the exception did somewhere or test the exception
-	 * type in the pt_regs but that sounds overkill
+	 * The problem here is that we don't know whether the exceptions was
+	 * one that turned interrupts off or not. So we always tell lockdep
+	 * about turning them on here when we go back to wherever we came from
+	 * with EE on, even if that may mean some redundant calls being
+	 * tracked. Maybe later we could encode what the exception did
+	 * somewhere or test the exception type in the pt_regs but that
+	 * sounds like overkill.
 	 */
 	andi.	r10,r9,MSR_EE
 	beq	1f
