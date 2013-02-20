@@ -299,21 +299,7 @@ static void flush_channel_job(struct gpdma_channel *dmac, int tmo)
 		gpdma_handle(dmac, dmac->job.dma_status, tmo);
 	}
 }
-#if 0
-static void flush_all_jobs(struct gpdma_engine *engine)
-{
-	int i;
 
-	for (i = 0; i < MAX_GPDMA_CHANNELS; i++) {
-		struct gpdma_channel *dmac = &engine->channel[i];
-
-		flush_channel_job(dmac, 0);
-	}
-	/* all queues should be empty now */
-	BUG_ON(!list_empty(&engine->job));
-	BUG_ON(!list_empty(&engine->pending));
-}
-#endif
 static void __job_tasklet(unsigned long data)
 {
 	struct gpdma_engine *engine = (struct gpdma_engine *)data;
