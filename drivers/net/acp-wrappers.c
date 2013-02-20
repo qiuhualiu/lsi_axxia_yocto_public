@@ -52,7 +52,9 @@ DEFINE_SPINLOCK(mdio_lock);
 */
 
 int
-acp_mdio_read(unsigned long address, unsigned long offset, unsigned short *value)
+acp_mdio_read(unsigned long address,
+	      unsigned long offset,
+	      unsigned short *value)
 {
 	unsigned long command = 0;
 	unsigned long status;
@@ -81,7 +83,7 @@ acp_mdio_read(unsigned long address, unsigned long offset, unsigned short *value
 	/* Wait for the mdio_busy (control) bit to clear. */
 	do {
 		command = in_le32(MDIO_CONTROL_RD_DATA);
-	} while(0 != (command & 0x80000000));
+	} while (0 != (command & 0x80000000));
 
 	*value = (unsigned short)(command & 0xffff);
 #endif /* BZ33327_WA */
@@ -89,7 +91,6 @@ acp_mdio_read(unsigned long address, unsigned long offset, unsigned short *value
 
 	return 0;
 }
-
 EXPORT_SYMBOL(acp_mdio_read);
 
 /*
@@ -98,7 +99,9 @@ EXPORT_SYMBOL(acp_mdio_read);
 */
 
 int
-acp_mdio_write(unsigned long address, unsigned long offset, unsigned short value)
+acp_mdio_write(unsigned long address,
+	       unsigned long offset,
+	       unsigned short value)
 {
 	unsigned long command = 0;
 	unsigned long status;
@@ -141,7 +144,6 @@ acp_mdio_write(unsigned long address, unsigned long offset, unsigned short value
 
 	return 0;
 }
-
 EXPORT_SYMBOL(acp_mdio_write);
 
 /*
@@ -178,7 +180,6 @@ acp_irq_create_mapping(struct irq_domain *host, irq_hw_number_t hwirq)
 {
 	return irq_create_mapping(host, hwirq);
 }
-
 EXPORT_SYMBOL(acp_irq_create_mapping);
 
 /*
@@ -199,7 +200,6 @@ acp_spin_lock_init(spinlock_t *lock)
 {
 	spin_lock_init(lock);
 }
-
 EXPORT_SYMBOL(acp_spin_lock_init);
 
 /*
@@ -212,7 +212,6 @@ acp_spin_lock(spinlock_t *lock)
 {
 	spin_lock(lock);
 }
-
 EXPORT_SYMBOL(acp_spin_lock);
 
 /*
@@ -225,7 +224,6 @@ acp_spin_unlock(spinlock_t *lock)
 {
 	spin_unlock(lock);
 }
-
 EXPORT_SYMBOL(acp_spin_unlock);
 
 /*
@@ -238,7 +236,6 @@ acp_spin_lock_bh(spinlock_t *lock)
 {
 	spin_lock_bh(lock);
 }
-
 EXPORT_SYMBOL(acp_spin_lock_bh);
 
 /*
@@ -251,7 +248,6 @@ acp_spin_unlock_bh(spinlock_t *lock)
 {
 	spin_unlock_bh(lock);
 }
-
 EXPORT_SYMBOL(acp_spin_unlock_bh);
 
 /*
@@ -264,7 +260,6 @@ acp_spin_lock_irqsave(spinlock_t *lock, unsigned long flags)
 {
 	spin_lock_irqsave(lock, flags);
 }
-
 EXPORT_SYMBOL(acp_spin_lock_irqsave);
 
 /*
@@ -277,7 +272,6 @@ acp_spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)
 {
 	spin_unlock_irqrestore(lock, flags);
 }
-
 EXPORT_SYMBOL(acp_spin_unlock_irqrestore);
 
 /*
@@ -301,7 +295,6 @@ acp_wrappers_init(void)
 
 	return 0;
 }
-
 module_init(acp_wrappers_init);
 
 MODULE_AUTHOR("LSI Corporation");
