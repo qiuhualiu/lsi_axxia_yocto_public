@@ -297,7 +297,6 @@ typedef union {
   unsigned short raw;
 
   struct {
-#if 1
     unsigned short soft_reset	: 1;
     unsigned short loop_back	: 1;
     unsigned short force100	 : 1; /* speedBit0 */
@@ -308,18 +307,6 @@ typedef union {
     unsigned short full_duplex	: 1; /* duplex */
     unsigned short collision_test  : 1;
     unsigned short unused	   : 7;
-#else  /* __BIG_ENDIAN */
-    unsigned short		 : 7;
-    unsigned short collision_test  : 1;
-    unsigned short full_duplex	: 1; /* duplex */
-    unsigned short restart_autoneg : 1;
-    unsigned short isolate	  : 1;
-    unsigned short power_down	: 1;
-    unsigned short autoneg_enable  : 1;
-    unsigned short force100	 : 1; /* speedBit0 */
-    unsigned short loop_back	: 1;
-    unsigned short soft_reset	: 1;
-#endif /* __BIG_ENDIAN */
   } __attribute__ ((packed)) bits;
 } __attribute__ ((packed)) phy_control_t;
 
@@ -331,7 +318,6 @@ typedef union {
   unsigned short raw;
 
   struct {
-#if 1
     unsigned short t4_capable	 : 1;
     unsigned short tx_fdx_capable    : 1;
     unsigned short tx_capable	 : 1;
@@ -345,21 +331,6 @@ typedef union {
     unsigned short link_status	: 1; /* linkStatus */
     unsigned short jabber_detect	: 1;
     unsigned short extd_reg_capable  : 1;
-#else
-    unsigned short extd_reg_capable  : 1;
-    unsigned short jabber_detect	: 1;
-    unsigned short link_status	: 1; /* linkStatus */
-    unsigned short autoneg_capable   : 1;
-    unsigned short remote_fault	: 1; /* remoutFault */
-    unsigned short autoneg_comp	: 1; /* autoNegDone */
-    unsigned short mf_pream_suppress : 1;
-    unsigned short		   : 4;
-    unsigned short tenbt_capable	: 1;
-    unsigned short bt_fdx_capable    : 1;
-    unsigned short tx_capable	 : 1;
-    unsigned short tx_fdx_capable    : 1;
-    unsigned short t4_capable	 : 1;
-#endif /* __BIG_ENDIAN */
   } __attribute__ ((packed)) bits;
 } __attribute__ ((packed)) phy_status_t;
 
@@ -383,15 +354,9 @@ typedef union {
   unsigned short raw;
 
   struct {
-#if 1
     unsigned short id	: 6;
     unsigned short model    : 6;
     unsigned short revision : 4;
-#else  /* __BIG_ENDIAN */
-    unsigned short revision : 4;
-    unsigned short model    : 6;
-    unsigned short id	: 6;
-#endif /* __BIG_ENDIAN */
   } __attribute__ ((packed)) bits;
 } __attribute__ ((packed)) phy_id_low_t;
 
@@ -2030,42 +1995,6 @@ lsinet_rx_packet(struct net_device * device)
 
 		++ dropped_by_stack_;
 	    LSINET_COUNTS_INC(LSINET_COUNTS_RX_DRPD);
-#if 0
-		ERROR_PRINT("Packet dropped by stack: 0x%x!\n", return_code_);
-	    {
-		unsigned long * packet = (unsigned long *) sk_buff_->data;
-		int data_index_ = 0;
-		static int bug = 10;
-
-		printk("\n---------- Dropped Packet\n");
-		printk("Head:0x%lx Tail:0x%lx Tail Copy:0x%x\n",
-			adapter->rx_head.raw, adapter->rx_tail->raw,
-			read_mac_(APPNIC_DMA_RX_TAIL_POINTER_LOCAL_COPY));
-		printk("Address:0x%lx Length:0x%x\n",
-			(unsigned long) packet, bytes_copied_);
-
-		while(data_index_ < (bytes_copied_ / 2)) {
-
-		int output_index_;
-		unsigned short * data_ =
-		  & (((unsigned short *) packet) [ data_index_ ]);
-
-		for(output_index_ = 0;
-			(output_index_ < 8) && (data_index_ < bytes_copied_);
-			++ output_index_, ++ data_index_) {
-
-		  printk("%04x ", htons(data_ [ output_index_ ]));
-
-		}
-
-		printk("\n");
-
-		}
-
-		if (0 == -- bug) BUG();
-
-	    }
-#endif
 	  }
 
 	} else {
@@ -2242,12 +2171,6 @@ lsinet_poll(struct napi_struct * napi, int budget)
 		adapter->rx_tail_copy.raw);
   queue_.raw = adapter->rx_tail_copy.raw;
 
-#if 0
-  if (cur_budget > device->quota) {
-    cur_budget = device->quota;
-  }
-#endif
-
   done = 1;
 
   do {
@@ -2263,11 +2186,6 @@ lsinet_poll(struct napi_struct * napi, int budget)
 	  dma_interrupt_status_ = read_mac_(APPNIC_DMA_INTERRUPT_STATUS);
 
   } while ((RX_INTERRUPT (dma_interrupt_status_)) && cur_budget);
-
-
-#if 0
-  device->quota -= packets_handled_;
-#endif
 
   if (done) {
     LSINET_COUNTS_INC(LSINET_COUNTS_POL_RNBL);
@@ -2672,15 +2590,6 @@ appnic_hard_start_xmit(struct sk_buff * skb,
   DEBUG_PRINT("length_=%d buf_per_desc_=%d tx_tail=0x%x\n",
 		length_, buf_per_desc_, swab32(adapter->tx_tail->raw));
 
-#if 0
-  if (((length_ / buf_per_desc_) + 1) >=
-	queue_uninitialized_(adapter->tx_head, SWAB_QUEUE_POINTER(adapter->tx_tail),
-				adapter->tx_num_desc)) {
-    LSINET_COUNTS_INC(LSINET_COUNTS_HST_RCLM);
-    handle_transmit_interrupt_(device);
-  }
-#else
-  /*ZZZ*/
   while(((length_ / buf_per_desc_) + 1) >=
 	 queue_uninitialized_(adapter->tx_head,
 				SWAB_QUEUE_POINTER(adapter->tx_tail),
@@ -2689,7 +2598,6 @@ appnic_hard_start_xmit(struct sk_buff * skb,
     LSINET_COUNTS_INC(LSINET_COUNTS_HST_RCLM);
     handle_transmit_interrupt_(device);
   }
-#endif
 
   if (((length_ / buf_per_desc_) + 1) <
 	queue_uninitialized_(adapter->tx_head, SWAB_QUEUE_POINTER(adapter->tx_tail),
@@ -2836,57 +2744,6 @@ appnic_get_stats(struct net_device * device)
   return & device_->stats;
 
 }
-
-/*
-  ----------------------------------------------------------------------
-  appnic_do_ioctl
-*/
-
-#if 0
-
-static int
-appnic_do_ioctl(struct net_device * device, struct ifreq * request,
-		 int command)
-{
-
-  int return_code_ = 0;
-#ifndef PHYLESS
-  u16 * data_ = (u16 *) & (request->ifr_data);
-#endif
-
-  switch(command) {
-    /* Get the speed. */
-  case 0x8946:
-    break;
-#ifndef PHYLESS
-    /* Get the PHY (defined in 2.5.x kernels) */
-  case 0x89f0:
-    data_ [ 0 ] = phy_address_;
-    break;
-    /* Read PHY (defined in 2.5.x kernels) */
-  case 0x89f1:
-    if (0 != phy_read_(data_ [ 0 ], data_ [ 1 ],
-			 & (data_ [ 3 ]))) {
-	return_code_ = -EIO;
-    }
-    break;
-    /* Write PHY (defined in 2.5.x kernels) */
-  case 0x89f2:
-    if (0 != phy_write_(data_ [ 0 ], data_ [ 1 ], data_ [ 2 ])) {
-	return_code_ = -EIO;
-    }
-    break;
-#endif
-  default:
-    ERROR_PRINT("Unknown Command: 0x%x\n", command);
-    break;
-  }
-
-  return return_code_;
-
-}
-
-#endif
 
 /*
   ----------------------------------------------------------------------
