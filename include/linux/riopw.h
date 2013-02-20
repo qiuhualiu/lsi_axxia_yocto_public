@@ -9,19 +9,6 @@
 #define IOCTL_MPORT_GETPWMSG	_IOR(RIOPW_IOC_MAGIC, 0x45, int)
 
 #ifdef __KERNEL__
-#if 0
-extern int riopw_reg_pw_callback(void (*cb) (struct rio_dev *rdev,
-					     union rio_pw_msg *msg,
-					     void *data,
-					     int event),
-				 void *private_data);
-
-extern int riopw_cancel_pw_callback(void (*cb) (struct rio_dev *rdev,
-						union rio_pw_msg *msg,
-						void *data,
-						int event),
-				    void *private_data);
-#endif
 #else
 
 #define RIO_PW_MSG_SIZE		64
