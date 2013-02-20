@@ -15,50 +15,49 @@
 #define DUS_LED_INFO	38
 
 static struct gpio_led gpm5_leds[] = {
-        {
-                .name = "gpm5-gpio:green:operation",
-                .default_trigger = "default-on",
-                .gpio = DUS_LED_OPER,
+	{
+		.name = "gpm5-gpio:green:operation",
+		.default_trigger = "default-on",
+		.gpio = DUS_LED_OPER,
 		.active_low = 0,
 		.retain_state_suspended = 0,
 		.default_state = LEDS_GPIO_DEFSTATE_ON,
-        },
+	},
 	{
-                .name = "gpm5-gpio:yellow:information",
-                .default_trigger = "default-on",
-                .gpio = DUS_LED_INFO,
+		.name = "gpm5-gpio:yellow:information",
+		.default_trigger = "default-on",
+		.gpio = DUS_LED_INFO,
 		.active_low = 0,
 		.retain_state_suspended = 0,
 		.default_state = LEDS_GPIO_DEFSTATE_KEEP,
-        },
+	},
 	{
-                .name = "gpm5-gpio:red:fault",
-                .default_trigger = "none",
-                .gpio = DUS_LED_FAULT,
+		.name = "gpm5-gpio:red:fault",
+		.default_trigger = "none",
+		.gpio = DUS_LED_FAULT,
 		.active_low = 0,
 		.retain_state_suspended = 0,
 		.default_state = LEDS_GPIO_DEFSTATE_OFF,
-        },
+	},
 	{
-                .name = "gpm5-gpio:blue:maint",
-                .default_trigger = "none",
-                .gpio = DUS_LED_MAINT,
+		.name = "gpm5-gpio:blue:maint",
+		.default_trigger = "none",
+		.gpio = DUS_LED_MAINT,
 		.active_low = 0,
 		.retain_state_suspended = 0,
 		.default_state = LEDS_GPIO_DEFSTATE_OFF,
-        },
+	},
 };
 
 static struct gpio_led_platform_data gpm5_led_data = {
-        .num_leds       = ARRAY_SIZE(gpm5_leds),
-        .leds           = gpm5_leds,
+	.num_leds       = ARRAY_SIZE(gpm5_leds),
+	.leds           = gpm5_leds,
 };
 
 static struct platform_device gpm5_gpio_leds = {
 	.name		= "leds-gpio",
 	.id		= -1,
-	.dev		=
-	{
+	.dev		= {
 		.platform_data	= &gpm5_led_data,
 	},
 };

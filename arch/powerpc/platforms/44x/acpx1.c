@@ -178,16 +178,17 @@ static void __init acpx14xx_init_early(void)
  * phys_mem_access_prot() method that just uses the default
  * memmory attributes for any sysmem address.
  */
-static pgprot_t acpx14xx_phys_mem_access_prot(struct file *file, unsigned long pfn,
-                          unsigned long size, pgprot_t vma_prot)
+static pgprot_t acpx14xx_phys_mem_access_prot(struct file *file,
+					      unsigned long pfn,
+					      unsigned long size,
+					      pgprot_t vma_prot)
 {
-    if ( pfn >= 0x01000000 )
-    {
-        /* address is above maximum possible sysmem size */
-        vma_prot = pgprot_noncached(vma_prot);
-    }
+	if (pfn >= 0x01000000) {
+		/* address is above maximum possible sysmem size */
+		vma_prot = pgprot_noncached(vma_prot);
+	}
 
-    return vma_prot;
+	return vma_prot;
 }
 
 define_machine(acpx14xx) {

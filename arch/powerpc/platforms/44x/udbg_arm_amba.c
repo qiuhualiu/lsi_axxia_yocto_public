@@ -6,7 +6,8 @@
  *	as published by the Free Software Foundation; either version
  *	2 of the License, or (at your option) any later version.
  *
- * Original patch created on arch/powerpc/kernel/udbg_16550.c by john.jacques@lsi.com
+ * Original patch created on arch/powerpc/kernel/udbg_16550.c by
+ * john.jacques@lsi.com
  */
 
 
@@ -19,7 +20,7 @@
 #define AXXIA_EARLY_DBG_TIMERADDR  0x00008040
 #define AXXIA_EARLY_DBG_UARTADDR   0x00004000
 
-static void __iomem *timer_base = (void __iomem *)(AXXIA_EARLY_DEBUG_VIRTADDR | \
+static void __iomem *timer_base = (void __iomem *)(AXXIA_EARLY_DEBUG_VIRTADDR |\
 						   AXXIA_EARLY_DBG_TIMERADDR);
 static void __iomem *uart_base = (void __iomem *)(AXXIA_EARLY_DEBUG_VIRTADDR | \
 						  AXXIA_EARLY_DBG_UARTADDR);

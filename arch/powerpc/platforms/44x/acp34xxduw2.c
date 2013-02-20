@@ -229,15 +229,14 @@ static void __init acp3400duw2_init_early(void)
  * memmory attributes for any sysmem address.
  */
 pgprot_t acp3400duw2_phys_mem_access_prot(struct file *file, unsigned long pfn,
-                                         unsigned long size, pgprot_t vma_prot)
+					  unsigned long size, pgprot_t vma_prot)
 {
-        if ( pfn >= 0x01000000 )
-        {
-                /* address is above maximum possible sysmem size */
-                vma_prot = pgprot_noncached(vma_prot);
-        }
+	if (pfn >= 0x01000000) {
+		/* address is above maximum possible sysmem size */
+		vma_prot = pgprot_noncached(vma_prot);
+	}
 
-        return vma_prot;
+	return vma_prot;
 }
 
 #define SPRN_MCSR_CLR	0x33c
@@ -303,5 +302,5 @@ define_machine(acp3400duw2) {
 	.restart		= ppc4xx_reset_system,
 	.calibrate_decr		= generic_calibrate_decr,
 	.phys_mem_access_prot   = acp3400duw2_phys_mem_access_prot,
-	.machine_check_exception= acp3400duw2_mcheck_exception,
+	.machine_check_exception = acp3400duw2_mcheck_exception,
 };
