@@ -71,7 +71,7 @@ static void __init acpx14xx_init_irq(void)
 		 * device-tree, just pass 0 to all arguments
 		 */
 		struct mpic *mpic =
-			mpic_alloc(np, 0, 1, 0, 0, " MPIC     ");
+			mpic_alloc(np, 0, 0, 0, 0, " MPIC     ");
 		BUG_ON(mpic == NULL);
 		mpic_init(mpic);
 		ppc_md.get_irq = mpic_get_irq;
