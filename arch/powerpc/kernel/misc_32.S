@@ -9,7 +9,7 @@
  * Copyright (C) 2002-2003 Eric Biederman  <ebiederm@xmission.com>
  * GameCube/ppc32 port Copyright (C) 2004 Albert Herranz
  * PPC44x port. Copyright (C) 2011,  IBM Corporation
- * 		Author: Suzuki Poulose <suzuki@in.ibm.com>
+ *		Author: Suzuki Poulose <suzuki@in.ibm.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -207,7 +207,7 @@ _GLOBAL(low_choose_7447a_dfs)
 	mfmsr	r7
 	rlwinm	r0,r7,0,17,15
 	mtmsr	r0
-	
+
 	/* Calc new HID1 value */
 	mfspr	r4,SPRN_HID1
 	insrwi	r4,r3,1,9	/* insert parameter into bit 9 */
@@ -396,7 +396,9 @@ _GLOBAL(flush_dcache_range)
 	beqlr
 	mtctr	r4
 
-1:	dcbf	0,r3
+1:	PPC476_ERR_DCBx()
+	dcbf	0,r3
+	PPC476_ERR_DCBx()
 	addi	r3,r3,L1_CACHE_BYTES
 	bdnz	1b
 	sync				/* wait for dcbst's to get to ram */
@@ -510,7 +512,9 @@ _GLOBAL(clear_pages)
 	li	r0,PAGE_SIZE/L1_CACHE_BYTES
 	slw	r0,r0,r4
 	mtctr	r0
-1:	dcbz	0,r3
+1:	PPC476_ERR_DCBx()
+	dcbz	0,r3
+	PPC476_ERR_DCBx()
 	addi	r3,r3,L1_CACHE_BYTES
 	bdnz	1b
 	blr
@@ -554,7 +558,9 @@ _GLOBAL(copy_page)
 	mtctr	r0
 1:
 	dcbt	r11,r4
+	PPC476_ERR_DCBx()
 	dcbz	r5,r3
+	PPC476_ERR_DCBx()
 	COPY_16_BYTES
 #if L1_CACHE_BYTES >= 32
 	COPY_16_BYTES
@@ -605,7 +611,7 @@ _GLOBAL(atomic_set_mask)
  * R5    has shift count
  * result in R3/R4
  *
- *  ashrdi3: arithmetic right shift (sign propagation)	
+ *  ashrdi3: arithmetic right shift (sign propagation)
  *  lshrdi3: logical right shift
  *  ashldi3: left shift
  */
@@ -700,6 +706,7 @@ _GLOBAL(kernel_thread)
 
 #ifdef CONFIG_SMP
 _GLOBAL(start_secondary_resume)
+__DEVINIT
 	/* Reset stack */
 	rlwinm	r1,r1,0,0,(31-THREAD_SHIFT)	/* current_thread_info() */
 	addi	r1,r1,THREAD_SIZE-STACK_FRAME_OVERHEAD
@@ -707,8 +714,9 @@ _GLOBAL(start_secondary_resume)
 	stw	r3,0(r1)		/* Zero the stack frame pointer	*/
 	bl	start_secondary
 	b	.
+__FINIT
 #endif /* CONFIG_SMP */
-	
+
 /*
  * This routine is just here to keep GCC happy - sigh...
  */
@@ -808,7 +816,7 @@ skip:
 	mr	r25, r4
 
 	/* Extract the TLB PageSize */
-	li	r10, 1 			/* r10 will hold PageSize */
+	li	r10, 1			/* r10 will hold PageSize */
 	rlwinm	r11, r3, 0, 24, 27	/* bits 24-27 */
 
 	/* XXX: As of now we use 256M, 4K pages */
@@ -858,23 +866,25 @@ write_out:
 
 	/* attribute fields. rwx for SUPERVISOR mode */
 	li	r5, 0
-	ori	r5, r5, (PPC44x_TLB_SW | PPC44x_TLB_SR | PPC44x_TLB_SX | PPC44x_TLB_G)
+	ori	r5, r5, (PPC44x_TLB_SW | PPC44x_TLB_SR | PPC44x_TLB_SX |
+			 PPC44x_TLB_G)
 
 	/* Create 1:1 mapping in 256M pages */
-	xori	r7, r7, 1			/* Revert back to Original TS */
+	xori	r7, r7, 1		    /* Revert back to Original TS */
 
-	li	r8, 0				/* PageNumber */
-	li	r6, 3				/* TLB Index, start at 3  */
+	li	r8, 0			    /* PageNumber */
+	li	r6, 3			    /* TLB Index, start at 3  */
 
 next_tlb:
-	rotlwi	r3, r8, 28			/* Create EPN (bits 0-3) */
-	mr	r4, r3				/* RPN = EPN  */
-	ori	r3, r3, (PPC44x_TLB_VALID | PPC44x_TLB_256M) /* SIZE = 256M, Valid */
-	insrwi	r3, r7, 1, 23			/* Set TS from r7 */
+	rotlwi	r3, r8, 28		    /* Create EPN (bits 0-3) */
+	mr	r4, r3			    /* RPN = EPN  */
+					    /* SIZE = 256M, Valid */
+	ori	r3, r3, (PPC44x_TLB_VALID | PPC44x_TLB_256M)
+	insrwi	r3, r7, 1, 23		    /* Set TS from r7 */
 
-	tlbwe	r3, r6, PPC44x_TLB_PAGEID	/* PageID field : EPN, V, SIZE */
-	tlbwe	r4, r6, PPC44x_TLB_XLAT		/* Address translation : RPN   */
-	tlbwe	r5, r6, PPC44x_TLB_ATTRIB	/* Attributes */
+	tlbwe	r3, r6, PPC44x_TLB_PAGEID   /* PageID field : EPN, V, SIZE */
+	tlbwe	r4, r6, PPC44x_TLB_XLAT	    /* Address translation : RPN   */
+	tlbwe	r5, r6, PPC44x_TLB_ATTRIB   /* Attributes */
 
 	addi	r8, r8, 1			/* Increment PN */
 	addi	r6, r6, 1			/* Increment TLB Index */
@@ -884,11 +894,11 @@ next_tlb:
 
 	/* Jump to the new mapping 1:1 */
 	li	r9,0
-	insrwi	r9, r7, 1, 26			/* Set MSR[IS] = r7 */
+	insrwi	r9, r7, 1, 26		/* Set MSR[IS] = r7 */
 
 	bl	1f
 1:	mflr	r8
-	and	r8, r8, r11			/* Get our offset within page */
+	and	r8, r8, r11		/* Get our offset within page */
 	addi	r8, r8, (2f-1b)
 
 	and	r5, r25, r10			/* Get our target PageNum */
@@ -932,7 +942,8 @@ next_tlb:
 
 	/* set a new stack at the bottom of our page... */
 	/* (not really needed now) */
-	addi	r1, r4, KEXEC_CONTROL_PAGE_SIZE - 8 /* for LR Save+Back Chain */
+	/* for LR Save+Back Chain */
+	addi	r1, r4, KEXEC_CONTROL_PAGE_SIZE - 8
 	stw	r0, 0(r1)
 
 	/* Do the copies */
@@ -1010,3 +1021,52 @@ relocate_new_kernel_end:
 relocate_new_kernel_size:
 	.long relocate_new_kernel_end - relocate_new_kernel
 #endif
+
+#ifdef CONFIG_PPC_47x
+#define ICBT(CT,RA,RB)							\
+	.long	0x7c00002c | ((CT) << 21) | ((RA) << 16) | ((RB) << 11)
+
+_GLOBAL(__icbi)
+	mflr	r5
+1:	icbi	0,r3
+	bl 2f
+2:	mflr	r3
+	li	r4,32
+	ICBT(0,r3,r4)
+	add	r3,r3,r4
+	ICBT(0,r3,r4)
+	add	r3,r3,r4
+	ICBT(0,r3,r4)
+	sync
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	mtlr	r5
+	li	r3, 0
+	blr
+_GLOBAL(__dcbf)
+	lwsync
+1:	dcbf	0,r3
+	lwsync
+	li	r3,0
+	blr
+_GLOBAL(__dcbz)
+	lwsync
+2:	dcbz	0,r3
+	lwsync
+	li	r3,0
+	blr
+3:	li	r3,-EFAULT
+	blr
+	.section __ex_table,"a"
+	.align	2
+	.long	1b,3b
+	.long	2b,3b
+	.text
+#endif /* CONFIG_PPC_47x */

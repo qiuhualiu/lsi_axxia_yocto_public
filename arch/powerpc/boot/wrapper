@@ -256,6 +256,13 @@ epapr)
     link_address='0x20000000'
     pie=-pie
     ;;
+treeboot-iss476-amp1)
+    platformo="$object/treeboot-iss4xx.o"
+    ;;
+treeboot-iss476-amp2)
+    platformo="$object/treeboot-iss4xx-hi.o"
+    link_address='0x10400000'
+    ;;
 esac
 
 vmz="$tmpdir/`basename \"$kernel\"`.$ext"
@@ -288,8 +295,9 @@ if [ "$make_space" = "y" ]; then
 	link_addr=$(printf "%d" $link_address)
 
 	if [ $link_addr -lt $strip_size ]; then
-	    echo "INFO: Uncompressed kernel (size 0x$(printf "%x\n" $strip_size))" \
-			"overlaps the address of the wrapper($link_address)"
+	    echo "INFO: Uncompressed kernel (size 0x$(printf "%x\n" \
+			$strip_size))" "overlaps the address of the \
+			wrapper($link_address)"
 	    echo "INFO: Fixing the link_address of wrapper to ($round_size)"
 	    link_address=$round_size
 	fi

@@ -105,7 +105,8 @@ static int rionet_rx_clean(struct net_device *ndev)
 		if (!rnet->rx_skb[i])
 			continue;
 
-		if (!(data = rio_get_inb_message(rnet->mport, RIONET_MAILBOX)))
+		data = rio_get_inb_message(rnet->mport, RIONET_MAILBOX);
+		if (!data)
 			break;
 
 		rnet->rx_skb[i]->data = data;
@@ -213,7 +214,8 @@ static int rionet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	return NETDEV_TX_OK;
 }
 
-static void rionet_dbell_event(struct rio_mport *mport, void *dev_id, u16 sid, u16 tid,
+static void rionet_dbell_event(struct rio_mport *mport,
+			       void *dev_id, u16 sid, u16 tid,
 			       u16 info)
 {
 	struct net_device *ndev = dev_id;
@@ -244,7 +246,8 @@ static void rionet_dbell_event(struct rio_mport *mport, void *dev_id, u16 sid, u
 	}
 }
 
-static void rionet_inb_msg_event(struct rio_mport *mport, void *dev_id, int mbox, int slot)
+static void rionet_inb_msg_event(struct rio_mport *mport,
+				 void *dev_id, int mbox, int slot)
 {
 	int n;
 	struct net_device *ndev = dev_id;
@@ -255,12 +258,14 @@ static void rionet_inb_msg_event(struct rio_mport *mport, void *dev_id, int mbox
 		       DRV_NAME, mbox, slot);
 
 	spin_lock(&rnet->lock);
-	if ((n = rionet_rx_clean(ndev)) != rnet->rx_slot)
+	n = rionet_rx_clean(ndev);
+	if (n != rnet->rx_slot)
 		rionet_rx_fill(ndev, n);
 	spin_unlock(&rnet->lock);
 }
 
-static void rionet_outb_msg_event(struct rio_mport *mport, void *dev_id, int mbox, int slot)
+static void rionet_outb_msg_event(struct rio_mport *mport,
+				  void *dev_id, int mbox, int slot)
 {
 	struct net_device *ndev = dev_id;
 	struct rionet_private *rnet = netdev_priv(ndev);
@@ -296,25 +301,28 @@ static int rionet_open(struct net_device *ndev)
 	if (netif_msg_ifup(rnet))
 		printk(KERN_INFO "%s: open\n", DRV_NAME);
 
-	if ((rc = rio_request_inb_dbell(rnet->mport,
-					(void *)ndev,
-					RIONET_DOORBELL_JOIN,
-					RIONET_DOORBELL_LEAVE,
-					rionet_dbell_event)) < 0)
+	rc = rio_request_inb_dbell(rnet->mport,
+				   (void *)ndev,
+				   RIONET_DOORBELL_JOIN,
+				   RIONET_DOORBELL_LEAVE,
+				   rionet_dbell_event);
+	if (rc < 0)
 		goto out;
 
-	if ((rc = rio_request_inb_mbox(rnet->mport,
-				       (void *)ndev,
-				       RIONET_MAILBOX,
-				       RIONET_RX_RING_SIZE,
-				       rionet_inb_msg_event)) < 0)
+	rc = rio_request_inb_mbox(rnet->mport,
+				  (void *)ndev,
+				  RIONET_MAILBOX,
+				  RIONET_RX_RING_SIZE,
+				  rionet_inb_msg_event);
+	if (rc < 0)
 		goto out;
 
-	if ((rc = rio_request_outb_mbox(rnet->mport,
-					(void *)ndev,
-					RIONET_MAILBOX,
-					RIONET_TX_RING_SIZE,
-					rionet_outb_msg_event)) < 0)
+	rc = rio_request_outb_mbox(rnet->mport,
+				   (void *)ndev,
+				   RIONET_MAILBOX,
+				   RIONET_TX_RING_SIZE,
+				   rionet_outb_msg_event);
+	if (rc < 0)
 		goto out;
 
 	/* Initialize inbound message ring */
@@ -331,10 +339,13 @@ static int rionet_open(struct net_device *ndev)
 	netif_start_queue(ndev);
 
 	list_for_each_entry_safe(peer, tmp, &rionet_peers, node) {
-		if (!(peer->res = rio_request_outb_dbell(peer->rdev,
-							 RIONET_DOORBELL_JOIN,
-							 RIONET_DOORBELL_LEAVE)))
-		{
+		peer->res = rio_request_outb_dbell(peer->rdev,
+						   RIONET_DOORBELL_JOIN,
+						   RIONET_DOORBELL_LEAVE);
+		if (!peer) {
+			rio_request_outb_dbell(peer->rdev,
+					       RIONET_DOORBELL_JOIN,
+					       RIONET_DOORBELL_LEAVE))) {
 			printk(KERN_ERR "%s: error requesting doorbells\n",
 			       DRV_NAME);
 			continue;
@@ -344,7 +355,7 @@ static int rionet_open(struct net_device *ndev)
 		rio_send_doorbell(peer->rdev, RIONET_DOORBELL_JOIN);
 	}
 
-      out:
+out:
 	return rc;
 }
 
@@ -384,8 +395,8 @@ static void rionet_remove(struct rio_dev *rdev)
 	struct net_device *ndev = rio_get_drvdata(rdev);
 	struct rionet_peer *peer, *tmp;
 
-	free_pages((unsigned long)rionet_active, get_order(sizeof(void *) *
-			RIO_MAX_ROUTE_ENTRIES(rdev->net->hport->sys_size)));
+	free_pages((unsigned long)rionet_active, rdev->hport->sys_size ?
+					__fls(sizeof(void *)) + 4 : 0);
 	unregister_netdev(ndev);
 	free_netdev(ndev);
 
@@ -441,16 +452,15 @@ static int rionet_setup_netdev(struct rio_mport *mport, struct net_device *ndev)
 	int rc = 0;
 	struct rionet_private *rnet;
 	u16 device_id;
-	const size_t rionet_active_bytes = sizeof(void *) *
-				RIO_MAX_ROUTE_ENTRIES(mport->sys_size);
 
 	rionet_active = (struct rio_dev **)__get_free_pages(GFP_KERNEL,
-			get_order(rionet_active_bytes));
+			mport->sys_size ? __fls(sizeof(void *)) + 4 : 0);
 	if (!rionet_active) {
 		rc = -ENOMEM;
 		goto out;
 	}
-	memset((void *)rionet_active, 0, rionet_active_bytes);
+	memset((void *)rionet_active, 0, sizeof(void *) *
+				RIO_MAX_ROUTE_ENTRIES(mport->sys_size));
 
 	/* Set up private area */
 	rnet = netdev_priv(ndev);
@@ -479,14 +489,14 @@ static int rionet_setup_netdev(struct rio_mport *mport, struct net_device *ndev)
 	if (rc != 0)
 		goto out;
 
-	printk("%s: %s %s Version %s, MAC %pM\n",
+	printk(KERN_INFO "%s: %s %s Version %s, MAC %pM\n",
 	       ndev->name,
 	       DRV_NAME,
 	       DRV_DESC,
 	       DRV_VERSION,
 	       ndev->dev_addr);
 
-      out:
+out:
 	return rc;
 }
 
@@ -507,6 +517,8 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 	/* Allocate our net_device structure */
 	ndev = alloc_etherdev(sizeof(struct rionet_private));
 	if (ndev == NULL) {
+		printk(KERN_INFO "%s: could not allocate ethernet device.\n",
+		       DRV_NAME);
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -517,9 +529,10 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 	 * on later probes
 	 */
 	if (!rionet_check) {
-		rio_local_read_config_32(rdev->net->hport, RIO_SRC_OPS_CAR,
+		rio_local_read_config_32(rdev->hport, RIO_PEF_CAR, &lpef);
+		rio_local_read_config_32(rdev->hport, RIO_SRC_OPS_CAR,
 					 &lsrc_ops);
-		rio_local_read_config_32(rdev->net->hport, RIO_DST_OPS_CAR,
+		rio_local_read_config_32(rdev->hport, RIO_DST_OPS_CAR,
 					 &ldst_ops);
 		if (!is_rionet_capable(lsrc_ops, ldst_ops)) {
 			printk(KERN_ERR
@@ -530,7 +543,7 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 			goto out;
 		}
 
-		rc = rionet_setup_netdev(rdev->net->hport, ndev);
+		rc = rionet_setup_netdev(rdev->hport, ndev);
 		rionet_check = 1;
 		nact = 0;
 	}
@@ -540,7 +553,8 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 	 * add it to the peer list.
 	 */
 	if (dev_rionet_capable(rdev)) {
-		if (!(peer = kmalloc(sizeof(struct rionet_peer), GFP_KERNEL))) {
+		peer = kmalloc(sizeof(struct rionet_peer), GFP_KERNEL);
+		if (!peer) {
 			rc = -ENOMEM;
 			goto out;
 		}
@@ -550,7 +564,7 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 
 	rio_set_drvdata(rdev, ndev);
 
-      out:
+out:
 	return rc;
 }
 

@@ -114,7 +114,7 @@ void udbg_init_uart(void __iomem *comport, unsigned int speed,
 		/* RTS/DTR */
 		out_8(&udbg_comport->mcr, 0x03);
 		/* Clear & enable FIFOs */
-		out_8(&udbg_comport->fcr ,0x07);
+		out_8(&udbg_comport->fcr, 0x07);
 		udbg_putc = udbg_550_putc;
 		udbg_flush = udbg_550_flush;
 		udbg_getc = udbg_550_getc;
@@ -220,6 +220,19 @@ void udbg_init_pas_realmode(void)
 #ifdef CONFIG_PPC_EARLY_DEBUG_44x
 #include <platforms/44x/44x.h>
 
+static unsigned long udbg_44x_comport = PPC44x_EARLY_DEBUG_VIRTADDR;
+
+static int __init early_parse_comport(char *p)
+{
+	if (!p || !(*p))
+		return 0;
+
+	udbg_44x_comport = kstrtoul(p, 0, 16);
+
+	return 0;
+}
+early_param("uart_addr", early_parse_comport);
+
 static void udbg_44x_as1_flush(void)
 {
 	if (udbg_comport) {
@@ -250,9 +263,7 @@ static int udbg_44x_as1_getc(void)
 
 void __init udbg_init_44x_as1(void)
 {
-	udbg_comport =
-		(struct NS16550 __iomem *)PPC44x_EARLY_DEBUG_VIRTADDR;
-
+	udbg_comport = (struct NS16550 __iomem *)udbg_44x_comport;
 	udbg_putc = udbg_44x_as1_putc;
 	udbg_flush = udbg_44x_as1_flush;
 	udbg_getc = udbg_44x_as1_getc;

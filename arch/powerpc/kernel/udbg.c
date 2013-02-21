@@ -62,6 +62,8 @@ void __init udbg_early_init(void)
 	udbg_init_cpm();
 #elif defined(CONFIG_PPC_EARLY_DEBUG_USBGECKO)
 	udbg_init_usbgecko();
+#elif defined(CONFIG_PPC_EARLY_DEBUG_AXXIA)
+	udbg_init_arm_amba();
 #elif defined(CONFIG_PPC_EARLY_DEBUG_WSP)
 	udbg_init_wsp();
 #elif defined(CONFIG_PPC_EARLY_DEBUG_EHV_BC)
@@ -95,11 +97,6 @@ void udbg_puts(const char *s)
 		if (udbg_flush)
 			udbg_flush();
 	}
-#if 0
-	else {
-		printk("%s", s);
-	}
-#endif
 }
 
 int udbg_write(const char *s, int n)
@@ -199,6 +196,3 @@ void __init register_early_udbg_console(void)
 	register_console(&udbg_console);
 }
 
-#if 0   /* if you want to use this as a regular output console */
-console_initcall(register_udbg_console);
-#endif

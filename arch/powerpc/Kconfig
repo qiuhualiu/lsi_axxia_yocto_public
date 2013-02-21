@@ -181,6 +181,11 @@ config PPC_UDBG_16550
 	bool
 	default n
 
+config PPC_UDBG_ARM_AMBA
+	bool
+	default n
+	depends on ACP
+
 config GENERIC_TBSYNC
 	bool
 	default y if PPC32 && SMP
@@ -335,7 +340,7 @@ config SWIOTLB
 
 config HOTPLUG_CPU
 	bool "Support for enabling/disabling CPUs"
-	depends on SMP && HOTPLUG && EXPERIMENTAL && (PPC_PSERIES || PPC_PMAC || PPC_POWERNV)
+	depends on SMP && HOTPLUG && EXPERIMENTAL && (PPC_PSERIES || PPC_PMAC || PPC_POWERNV || ACP)
 	---help---
 	  Say Y here to be able to disable and re-enable individual
 	  CPUs at runtime on SMP machines.
@@ -778,6 +783,51 @@ config RAPIDIO
 	  If you say Y here, the kernel will include drivers and
 	  infrastructure code to support RapidIO interconnect devices.
 
+config ACP3400_RIO
+	bool "LSI Embedded SRIO Controller support"
+	depends on RAPIDIO && HAS_RAPIDIO && ACP
+	default "n"
+	---help---
+	  Include support for RapidIO controller for LSI Axxia 3400
+
+config RIO_MAX_IRQS
+       hex "ACP RIO Interrupt queue size"
+       depends on RAPIDIO
+       default "0x20"
+       ---help---
+         Number of interrupt service requests that are accepted before
+	 the ACP RapidIO port driver asserts backpressure.
+
+config ACP_RIO_STAT
+       bool "ACP RIO driver statistics"
+       depends on ACP3400_RIO
+       default n
+       ---help---
+       	 If you say Y here, you will be able to view state and interrupt
+	 counters for the Axxia 3400 RapidIO controller via sysfs.
+
+config SRIO_IRQ_TIME
+       bool "ACP RIO IB DME IRQ latency statistics"
+       depends on ACP3400_RIO
+       select ACP_RIO_STAT
+       default n
+       ---help---
+       	 If you say Y here, timestamps may be added to inbound message
+	 payload. Enable/Disable is controller via sysfs.
+
+config ACP_RIO_16B_ID
+       bool "RapidIO large common transport system"
+	 depends on ACP3400_RIO
+	 default n
+	 ---help---
+	   Say yes here to enable use of 16 bit transport ID otherwise
+	   transport ID has 8 bits.
+
+config ACP_RIO_DEBUG
+        bool "Switch on debug info for ACP RIO driver"
+        depends on ACP3400_RIO
+        default n
+
 config FSL_RIO
 	bool "Freescale Embedded SRIO Controller support"
 	depends on RAPIDIO && HAS_RAPIDIO
@@ -785,6 +835,16 @@ config FSL_RIO
 	---help---
 	  Include support for RapidIO controller on Freescale embedded
 	  processors (MPC8548, MPC8641, etc).
+
+config RIO_MAINT_WIN_SIZE
+       hex "RIO mport maintenance window size"
+       depends on RAPIDIO
+       default "0x400000"
+       ---help---
+         Size of RAPIDIO maintenance transaction window.
+	 If RapidIO LAW size in your platform is less than 0x400000,
+	 you may use this option to adjust the maintenance transaction
+	 window accordingly.
 
 source "drivers/rapidio/Kconfig"
 
@@ -824,6 +884,7 @@ config LOWMEM_SIZE_BOOL
 
 config LOWMEM_SIZE
 	hex "Maximum low memory size (in bytes)" if LOWMEM_SIZE_BOOL
+	default "0x40000000" if ACP && !ELPASO
 	default "0x30000000"
 
 config LOWMEM_CAM_NUM_BOOL
@@ -849,14 +910,14 @@ config DYNAMIC_MEMSTART
 	select NONSTATIC_KERNEL
 	help
 	  This option enables the kernel to be loaded at any page aligned
-	  physical address. The kernel creates a mapping from KERNELBASE to 
+	  physical address. The kernel creates a mapping from KERNELBASE to
 	  the address where the kernel is loaded. The page size here implies
 	  the TLB page size of the mapping for kernel on the particular platform.
 	  Please refer to the init code for finding the TLB page size.
 
 	  DYNAMIC_MEMSTART is an easy way of implementing pseudo-RELOCATABLE
 	  kernel image, where the only restriction is the page aligned kernel
-	  load address. When this option is enabled, the compile time physical 
+	  load address. When this option is enabled, the compile time physical
 	  address CONFIG_PHYSICAL_START is ignored.
 
 	  This option is overridden by CONFIG_RELOCATABLE
@@ -896,6 +957,7 @@ config PAGE_OFFSET_BOOL
 
 config PAGE_OFFSET
 	hex "Virtual address of memory base" if PAGE_OFFSET_BOOL
+	default "0xa0000000" if ACP && !ELPASO
 	default "0xc0000000"
 
 config KERNEL_START_BOOL
@@ -913,6 +975,8 @@ config KERNEL_START
 	hex "Virtual address of kernel base" if KERNEL_START_BOOL
 	default PAGE_OFFSET if PAGE_OFFSET_BOOL
 	default "0xc2000000" if CRASH_DUMP && !NONSTATIC_KERNEL
+	default "0xa0800000" if ACP && !ELPASO
+	default "0xc0100000" if ELPASO
 	default "0xc0000000"
 
 config PHYSICAL_START_BOOL
@@ -926,6 +990,8 @@ config PHYSICAL_START_BOOL
 config PHYSICAL_START
 	hex "Physical address where the kernel is loaded" if PHYSICAL_START_BOOL
 	default "0x02000000" if PPC_STD_MMU && CRASH_DUMP && !NONSTATIC_KERNEL
+	default "0x800000" if ACP && !ELPASO
+	default "0x400000" if ELPASO
 	default "0x00000000"
 
 config PHYSICAL_ALIGN
@@ -949,6 +1015,7 @@ config TASK_SIZE_BOOL
 config TASK_SIZE
 	hex "Size of user task space" if TASK_SIZE_BOOL
 	default "0x80000000" if PPC_PREP || PPC_8xx
+	default "0xa0000000" if ACP && !ELPASO
 	default "0xc0000000"
 
 config CONSISTENT_SIZE_BOOL

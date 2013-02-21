@@ -20,4 +20,47 @@ extern int fsl_rio_mcheck_exception(struct pt_regs *);
 static inline int fsl_rio_mcheck_exception(struct pt_regs *regs) {return 0; }
 #endif
 
-#endif				/* ASM_PPC_RIO_H */
+#ifdef CONFIG_ACP3400_RIO
+extern int acp_rio_mcheck_exception(struct pt_regs *regs);
+
+#define DEF_RIO_IN_BE(name, size, op)					\
+	static inline int name(u##size * dst,				\
+		       const volatile u##size __iomem *addr)		\
+	{								\
+	int err = 0;							\
+	__asm__ __volatile__(						\
+		PPC_MSYNC "\n"						\
+		"0:"    op "%U2%X2 %1,%2\n"				\
+		"1:     sync\n"						\
+		"2:     nop\n"						\
+		"3:\n"							\
+		".section .fixup,\"ax\"\n"				\
+		"4:	li %0,%3\n"					\
+		"	b 3b\n"						\
+		".previous\n"						\
+		".section __ex_table,\"a\"\n"				\
+		PPC_LONG_ALIGN "\n"					\
+		PPC_LONG "0b,4b\n"					\
+		PPC_LONG "1b,4b\n"					\
+		PPC_LONG "2b,4b\n"					\
+		".previous"						\
+		: "=r" (err), "=r" (*dst)				\
+		: "m" (*addr), "i" (-EFAULT), "0" (err)			\
+		: "memory");						\
+	return err;							\
+	}
+
+#else
+static inline int acp_rio_mcheck_exception(struct pt_regs *regs) {return 0; }
+#endif
+
+#if defined(CONFIG_ACP3400_RIO)
+
+DEF_RIO_IN_BE(rio_in_8, 8, "lbz")
+DEF_RIO_IN_BE(rio_in_be16, 16, "lhz")
+DEF_RIO_IN_BE(rio_in_be32, 32, "lwz")
+
+#endif
+
+#endif
+

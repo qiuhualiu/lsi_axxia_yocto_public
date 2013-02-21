@@ -161,7 +161,8 @@ tsi57x_em_init(struct rio_dev *rdev)
 	u32 regval;
 	int portnum;
 
-	pr_debug("TSI578 %s [%d:%d]\n", __func__, rdev->destid, rdev->hopcount);
+	pr_debug("TSI578 %s [%d:%d]\n", __func__,
+		 rdev->destid, rdev->hopcount);
 
 	for (portnum = 0;
 	     portnum < RIO_GET_TOTAL_PORTS(rdev->swpinfo); portnum++) {
@@ -199,7 +200,8 @@ tsi57x_em_init(struct rio_dev *rdev)
 		rio_read_config_32(rdev,
 				rdev->phys_efptr + RIO_PORT_N_CTL_CSR(portnum),
 				&regval);
-		if ((regval & RIO_PORT_N_CTL_PWIDTH) == RIO_PORT_N_CTL_PWIDTH_4)
+		if ((regval & RIO_PORT_N_CTL_PWIDTH) ==
+		    RIO_PORT_N_CTL_PWIDTH_4)
 			portnum++;
 	}
 
@@ -213,7 +215,7 @@ tsi57x_em_init(struct rio_dev *rdev)
 static int
 tsi57x_em_handler(struct rio_dev *rdev, u8 portnum)
 {
-	struct rio_mport *mport = rdev->net->hport;
+	struct rio_mport *mport = rdev->hport;
 	u32 intstat, err_status;
 	int sendcount, checkcount;
 	u8 route_port;
@@ -253,13 +255,14 @@ tsi57x_em_handler(struct rio_dev *rdev, u8 portnum)
 		sendcount = 3;
 		while (sendcount) {
 			rio_write_config_32(rdev,
-					  TSI578_SP_CS_TX(portnum), 0x40fc8000);
+					    TSI578_SP_CS_TX(portnum),
+					    0x40fc8000);
 			checkcount = 3;
 			while (checkcount--) {
 				udelay(50);
 				rio_read_config_32(rdev,
 					rdev->phys_efptr +
-						RIO_PORT_N_MNT_RSP_CSR(portnum),
+					RIO_PORT_N_MNT_RSP_CSR(portnum),
 					&regval);
 				if (regval & RIO_PORT_N_MNT_RSP_RVAL)
 					goto exit_es;
@@ -279,7 +282,13 @@ exit_es:
 		rio_read_config_32(rdev,
 				TSI578_SP_LUT_PEINF(portnum), &regval);
 		regval = (mport->sys_size) ? (regval >> 16) : (regval >> 24);
+#ifdef NEW_STYLE
+		tsi57x_route_get_entry(rdev->hport, rdev->destid,
+				       rdev->hopcount, RIO_GLOBAL_TABLE,
+				       regval, &route_port);
+#else
 		route_port = rdev->rswitch->route_table[regval];
+#endif
 		pr_debug("RIO: TSI578[%s] P%d LUT Parity Error (destID=%d)\n",
 			rio_name(rdev), portnum, regval);
 		tsi57x_route_add_entry(mport, rdev->destid, rdev->hopcount,

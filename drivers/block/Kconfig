@@ -10,8 +10,8 @@ menuconfig BLK_DEV
 	  Say Y here to get to see options for various different block device
 	  drivers. This option alone does not add any kernel code.
 
-	  If you say N, all options in this submenu will be skipped and disabled;
-	  only do this if you know what you are doing.
+	  If you say N, all options in this submenu will be skipped and
+	  disabled; only do this if you know what you are doing.
 
 if BLK_DEV
 
@@ -144,13 +144,14 @@ config CISS_SCSI_TAPE
 	depends on SCSI=y || SCSI=BLK_CPQ_CISS_DA
 	help
 	  When enabled (Y), this option allows SCSI tape drives and SCSI medium
-	  changers (tape robots) to be accessed via a Compaq 5xxx array 
-	  controller.  (See <file:Documentation/blockdev/cciss.txt> for more details.)
+	  changers (tape robots) to be accessed via a Compaq 5xxx array
+	  controller. (See <file:Documentation/blockdev/cciss.txt>
+	  for more details.)
 
-	  "SCSI support" and "SCSI tape support" must also be enabled for this 
+	  "SCSI support" and "SCSI tape support" must also be enabled for this
 	  option to work.
 
-	  When this option is disabled (N), the SCSI portion of the driver 
+	  When this option is disabled (N), the SCSI portion of the driver
 	  is not compiled.
 
 config BLK_DEV_DAC960
@@ -279,7 +280,7 @@ config BLK_DEV_CRYPTOLOOP
 	select CRYPTO_CBC
 	depends on BLK_DEV_LOOP
 	---help---
-	  Say Y here if you want to be able to use the ciphers that are 
+	  Say Y here if you want to be able to use the ciphers that are
 	  provided by the CryptoAPI as loop transformation. This might be
 	  used as hard disk encryption.
 
@@ -348,7 +349,7 @@ config BLK_DEV_SX8
 	tristate "Promise SATA SX8 support"
 	depends on PCI
 	---help---
-	  Saying Y or M here will enable support for the 
+	  Saying Y or M here will enable support for the
 	  Promise SATA SX8 controllers.
 
 	  Use devices /dev/sx8/$N and /dev/sx8/$Np$M.
@@ -375,7 +376,7 @@ config BLK_DEV_RAM
 	  store a copy of a minimal root file system off of a floppy into RAM
 	  during the initial install of Linux.
 
-	  Note that the kernel command line option "ramdisk=XX" is now obsolete.
+	  Note the kernel command line option "ramdisk=XX" is now obsolete.
 	  For details, read <file:Documentation/blockdev/ramdisk.txt>.
 
 	  To compile this driver as a module, choose M here: the
@@ -410,6 +411,10 @@ config BLK_DEV_XIP
 	  top of block ram device. This will slightly enlarge the kernel, and
 	  will prevent RAM block device backing store memory from being
 	  allocated from highmem (only a problem for highmem systems).
+
+config BLK_DEV_ISS
+       bool "Support ISS Simulator Block Device"
+       default n
 
 config CDROM_PKTCDVD
 	tristate "Packet writing on CD/DVD media"

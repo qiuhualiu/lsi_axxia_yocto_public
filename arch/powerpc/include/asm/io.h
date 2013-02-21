@@ -29,6 +29,7 @@ extern int check_legacy_ioport(unsigned long base_port);
 #include <asm/synch.h>
 #include <asm/delay.h>
 #include <asm/mmu.h>
+#include <asm/ppc-opcode.h>
 
 #include <asm-generic/iomap.h>
 
@@ -92,7 +93,7 @@ extern resource_size_t isa_mem_base;
  */
 
 #ifdef CONFIG_PPC64
-#define IO_SET_SYNC_FLAG()	do { local_paca->io_sync = 1; } while(0)
+#define IO_SET_SYNC_FLAG()	do { local_paca->io_sync = 1; } while (0)
 #else
 #define IO_SET_SYNC_FLAG()
 #endif
@@ -108,7 +109,7 @@ static inline u##size name(const volatile u##size __iomem *addr)	\
 	return ret;							\
 }
 
-#define DEF_MMIO_OUT_LE(name, size, insn) 				\
+#define DEF_MMIO_OUT_LE(name, size, insn)				\
 static inline void name(volatile u##size __iomem *addr, u##size val)	\
 {									\
 	__asm__ __volatile__("sync;"#insn" %1,0,%2"			\
@@ -125,7 +126,7 @@ static inline u##size name(const volatile u##size __iomem *addr)	\
 	return ret;							\
 }
 
-#define DEF_MMIO_OUT_LE(name, size, insn) 				\
+#define DEF_MMIO_OUT_LE(name, size, insn)				\
 static inline void name(volatile u##size __iomem *addr, u##size val)	\
 {									\
 	__asm__ __volatile__("sync;"#insn" %1,%y0"			\
@@ -134,6 +135,26 @@ static inline void name(volatile u##size __iomem *addr, u##size val)	\
 }
 #endif
 
+#if defined(CONFIG_ACP)
+#define DEF_MMIO_IN_BE(name, size, insn)				\
+static inline u##size name(const volatile u##size __iomem *addr)	\
+{									\
+	u##size ret;						\
+	__asm__ __volatile__(PPC_MBAR); \
+	__asm__ __volatile__(#insn"%U1%X1 %0,%1;twi 0,%0,0;isync"\
+		: "=r" (ret) : "m" (*addr) : "memory");			\
+	return ret;							\
+}
+
+#define DEF_MMIO_OUT_BE(name, size, insn)				\
+static inline void name(volatile u##size __iomem *addr, u##size val)	\
+{									\
+	__asm__ __volatile__(PPC_MBAR); \
+	__asm__ __volatile__(#insn"%U0%X0 %1,%0"			\
+		: "=m" (*addr) : "r" (val) : "memory");			\
+	IO_SET_SYNC_FLAG();						\
+}
+#else
 #define DEF_MMIO_IN_BE(name, size, insn)				\
 static inline u##size name(const volatile u##size __iomem *addr)	\
 {									\
@@ -150,7 +171,7 @@ static inline void name(volatile u##size __iomem *addr, u##size val)	\
 		: "=m" (*addr) : "r" (val) : "memory");			\
 	IO_SET_SYNC_FLAG();						\
 }
-
+#endif
 
 DEF_MMIO_IN_BE(in_8,     8, lbz);
 DEF_MMIO_IN_BE(in_be16, 16, lhz);
@@ -184,7 +205,7 @@ static inline void out_le64(volatile u64 __iomem *addr, u64 val)
  * Low level IO stream instructions are defined out of line for now
  */
 extern void _insb(const volatile u8 __iomem *addr, void *buf, long count);
-extern void _outsb(volatile u8 __iomem *addr,const void *buf,long count);
+extern void _outsb(volatile u8 __iomem *addr, const void *buf, long count);
 extern void _insw_ns(const volatile u16 __iomem *addr, void *buf, long count);
 extern void _outsw_ns(volatile u16 __iomem *addr, const void *buf, long count);
 extern void _insl_ns(const volatile u32 __iomem *addr, void *buf, long count);
@@ -269,15 +290,15 @@ extern void _memcpy_toio(volatile void __iomem *dest, const void *src,
 #define PCI_FIX_ADDR(addr)						\
 	((PCI_IO_ADDR)(((unsigned long)(addr)) & ~PCI_IO_IND_TOKEN_MASK))
 #define PCI_GET_ADDR_TOKEN(addr)					\
-	(((unsigned long)(addr) & PCI_IO_IND_TOKEN_MASK) >> 		\
-		PCI_IO_IND_TOKEN_SHIFT)
-#define PCI_SET_ADDR_TOKEN(addr, token) 				\
+	(((unsigned long)(addr) & PCI_IO_IND_TOKEN_MASK) >>		\
+		PCI_IO_IND_TOKEN_SHIFT)					\
+#define PCI_SET_ADDR_TOKEN(addr, token)					\
 do {									\
 	unsigned long __a = (unsigned long)(addr);			\
 	__a &= ~PCI_IO_IND_TOKEN_MASK;					\
 	__a |= ((unsigned long)(token)) << PCI_IO_IND_TOKEN_SHIFT;	\
 	(addr) = (void __iomem *)__a;					\
-} while(0)
+} while (0)
 #else
 #define PCI_FIX_ADDR(addr) (addr)
 #endif
@@ -363,7 +384,7 @@ static inline unsigned int name(unsigned int port)	\
 		".previous"				\
 		: "=&r" (x)				\
 		: "r" (port + _IO_BASE)			\
-		: "memory");  				\
+		: "memory");				\
 	return x;					\
 }
 
@@ -381,7 +402,7 @@ static inline void name(unsigned int val, unsigned int port) \
 		"	.long	1b,2b\n"		\
 		".previous"				\
 		: : "r" (val), "r" (port + _IO_BASE)	\
-		: "memory");   	   	   		\
+		: "memory");				\
 }
 
 __do_in_asm(_rec_inb, "lbzx")
@@ -442,9 +463,9 @@ __do_out_asm(_rec_outl, "stwbrx")
 #define __do_inw(port)		_rec_inw(port)
 #define __do_inl(port)		_rec_inl(port)
 #else /* CONFIG_PPC32 */
-#define __do_outb(val, port)	writeb(val,(PCI_IO_ADDR)_IO_BASE+port);
-#define __do_outw(val, port)	writew(val,(PCI_IO_ADDR)_IO_BASE+port);
-#define __do_outl(val, port)	writel(val,(PCI_IO_ADDR)_IO_BASE+port);
+#define __do_outb(val, port)	writeb(val, (PCI_IO_ADDR)_IO_BASE+port);
+#define __do_outw(val, port)	writew(val, (PCI_IO_ADDR)_IO_BASE+port);
+#define __do_outl(val, port)	writel(val, (PCI_IO_ADDR)_IO_BASE+port);
 #define __do_inb(port)		readb((PCI_IO_ADDR)_IO_BASE + port);
 #define __do_inw(port)		readw((PCI_IO_ADDR)_IO_BASE + port);
 #define __do_inl(port)		readl((PCI_IO_ADDR)_IO_BASE + port);
@@ -459,16 +480,16 @@ __do_out_asm(_rec_outl, "stwbrx")
 #define __do_readsw(a, b, n)	_insw(PCI_FIX_ADDR(a), (b), (n))
 #define __do_readsl(a, b, n)	_insl(PCI_FIX_ADDR(a), (b), (n))
 #endif /* !CONFIG_EEH */
-#define __do_writesb(a, b, n)	_outsb(PCI_FIX_ADDR(a),(b),(n))
-#define __do_writesw(a, b, n)	_outsw(PCI_FIX_ADDR(a),(b),(n))
-#define __do_writesl(a, b, n)	_outsl(PCI_FIX_ADDR(a),(b),(n))
+#define __do_writesb(a, b, n)	_outsb(PCI_FIX_ADDR(a), (b), (n))
+#define __do_writesw(a, b, n)	_outsw(PCI_FIX_ADDR(a), (b), (n))
+#define __do_writesl(a, b, n)	_outsl(PCI_FIX_ADDR(a), (b), (n))
 
 #define __do_insb(p, b, n)	readsb((PCI_IO_ADDR)_IO_BASE+(p), (b), (n))
 #define __do_insw(p, b, n)	readsw((PCI_IO_ADDR)_IO_BASE+(p), (b), (n))
 #define __do_insl(p, b, n)	readsl((PCI_IO_ADDR)_IO_BASE+(p), (b), (n))
-#define __do_outsb(p, b, n)	writesb((PCI_IO_ADDR)_IO_BASE+(p),(b),(n))
-#define __do_outsw(p, b, n)	writesw((PCI_IO_ADDR)_IO_BASE+(p),(b),(n))
-#define __do_outsl(p, b, n)	writesl((PCI_IO_ADDR)_IO_BASE+(p),(b),(n))
+#define __do_outsb(p, b, n)	writesb((PCI_IO_ADDR)_IO_BASE+(p), (b), (n))
+#define __do_outsw(p, b, n)	writesw((PCI_IO_ADDR)_IO_BASE+(p), (b), (n))
+#define __do_outsl(p, b, n)	writesl((PCI_IO_ADDR)_IO_BASE+(p), (b), (n))
 
 #define __do_memset_io(addr, c, n)	\
 				_memset_io(PCI_FIX_ADDR(addr), c, n)
@@ -480,7 +501,7 @@ __do_out_asm(_rec_outl, "stwbrx")
 				eeh_memcpy_fromio(dst, PCI_FIX_ADDR(src), n)
 #else /* CONFIG_EEH */
 #define __do_memcpy_fromio(dst, src, n)	\
-				_memcpy_fromio(dst,PCI_FIX_ADDR(src),n)
+				_memcpy_fromio(dst, PCI_FIX_ADDR(src), n)
 #endif /* !CONFIG_EEH */
 
 #ifdef CONFIG_PPC_INDIRECT_PIO
@@ -578,7 +599,7 @@ static inline void mmiowb(void)
 
 static inline void iosync(void)
 {
-        __asm__ __volatile__ ("sync" : : : "memory");
+	__asm__ __volatile__ ("sync" : : : "memory");
 }
 
 /* Enforce in-order execution of data I/O.
@@ -663,7 +684,7 @@ extern void __iomem *__ioremap_caller(phys_addr_t, unsigned long size,
 
 extern void __iounmap(volatile void __iomem *addr);
 
-extern void __iomem * __ioremap_at(phys_addr_t pa, void *ea,
+extern void __iomem *__ioremap_at(phys_addr_t pa, void *ea,
 				   unsigned long size, unsigned long flags);
 extern void __iounmap_at(void *ea, unsigned long size);
 
@@ -701,7 +722,7 @@ extern void __iounmap_at(void *ea, unsigned long size);
  *	almost all conceivable cases a device driver should not be using
  *	this function
  */
-static inline unsigned long virt_to_phys(volatile void * address)
+static inline unsigned long virt_to_phys(volatile void *address)
 {
 	return __pa((unsigned long)address);
 }
@@ -718,7 +739,7 @@ static inline unsigned long virt_to_phys(volatile void * address)
  *	almost all conceivable cases a device driver should not be using
  *	this function
  */
-static inline void * phys_to_virt(unsigned long address)
+static inline void *phys_to_virt(unsigned long address)
 {
 	return (void *)__va(address);
 }
@@ -736,18 +757,18 @@ static inline void * phys_to_virt(unsigned long address)
  */
 #ifdef CONFIG_PPC32
 
-static inline unsigned long virt_to_bus(volatile void * address)
+static inline unsigned long virt_to_bus(volatile void *address)
 {
-        if (address == NULL)
+	if (address == NULL)
 		return 0;
-        return __pa(address) + PCI_DRAM_OFFSET;
+	return __pa(address) + PCI_DRAM_OFFSET;
 }
 
-static inline void * bus_to_virt(unsigned long address)
+static inline void *bus_to_virt(unsigned long address)
 {
-        if (address == 0)
+	if (address == 0)
 		return NULL;
-        return __va(address - PCI_DRAM_OFFSET);
+	return __va(address - PCI_DRAM_OFFSET);
 }
 
 #define page_to_bus(page)	(page_to_phys(page) + PCI_DRAM_OFFSET)
