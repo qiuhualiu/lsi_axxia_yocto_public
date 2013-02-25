@@ -187,17 +187,19 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 		goto fail_put_hcd;
 	}
 
+	/* FIXME: This reported error since we don't have a second register
+         *  area defined in our dtb. Should we add it or stay backwards compatible ?
+         */
 	gpreg_base = of_iomap(np, 1);
 	if (!gpreg_base) {
-		dev_err(&pdev->dev, "of_iomap error\n");
-		retval = -ENOMEM;
-		goto fail_unmap;
+		dev_warn(&pdev->dev, "of_iomap error can't map region 1\n");
 	}
+	else {
+		/* Setup GPREG for USB to enable the 6-bit address line */
+		writel(0x0, gpreg_base + 0x8);
 
-	/* Setup GPREG for USB to enable the 6-bit address line */
-	writel(0x0, gpreg_base + 0x8);
-
-	iounmap(gpreg_base);
+		iounmap(gpreg_base);
+	}
 
 	retval = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (retval == 0) {
@@ -205,7 +207,6 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 		return retval;
 	}
 
-fail_unmap:
 	iounmap(hcd->regs);
 fail_put_hcd:
 	usb_put_hcd(hcd);
