@@ -625,7 +625,6 @@ static int hrtimer_reprogram(struct hrtimer *timer,
 }
 
 static void __run_hrtimer(struct hrtimer *timer, ktime_t *now);
-static int hrtimer_rt_defer(struct hrtimer *timer);
 
 /*
  * Initialize the high resolution related parts of cpu_base
@@ -979,6 +978,7 @@ remove_hrtimer(struct hrtimer *timer, struct hrtimer_clock_base *base)
 	return 0;
 }
 
+static int hrtimer_rt_defer(struct hrtimer *timer);
 int __hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 		unsigned long delta_ns, const enum hrtimer_mode mode,
 		int wakeup)
