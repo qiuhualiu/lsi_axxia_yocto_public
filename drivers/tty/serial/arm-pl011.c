@@ -107,9 +107,10 @@ struct uart_acp_port {
 
 
 static struct platform_device *serial_device;
+
 /*
   ----------------------------------------------------------------------
-  set_clock_stuff
+  set_clock_disable
 */
 
 static void set_clock_disable(struct uart_acp_port *uap)
@@ -117,11 +118,15 @@ static void set_clock_disable(struct uart_acp_port *uap)
 	if (uap->divisor != in_le32(uap->timer_base + TIMER_LOAD)) {
 		while (0 == (in_le32((const volatile unsigned *)
 				     (uap->port.membase
-				      + UART01x_FR)) & UART011_FR_TXFE));
+				      + UART01x_FR)) & UART011_FR_TXFE)) {
+			;
+		}
 
 		while (0 != (in_le32((const volatile unsigned *)
 				     (uap->port.membase
-				      + UART01x_FR)) & UART01x_FR_BUSY));
+				      + UART01x_FR)) & UART01x_FR_BUSY)) {
+			;
+		}
 
 		out_le32((uap->timer_base + TIMER_CONTROL), 0);
 		out_le32((uap->timer_base + TIMER_LOAD), uap->divisor);
@@ -130,8 +135,8 @@ static void set_clock_disable(struct uart_acp_port *uap)
 
 static void set_clock_enable(struct uart_acp_port *uap)
 {
-        out_le32((uap->timer_base + TIMER_CONTROL), (TIMER_CONTROL_ENABLE
-                                                     | TIMER_CONTROL_MODE));
+	out_le32((uap->timer_base + TIMER_CONTROL),
+		 (TIMER_CONTROL_ENABLE | TIMER_CONTROL_MODE));
 }
 
 static int setup_clock_stuff(struct uart_acp_port *uap, int baud_rate)
@@ -143,16 +148,15 @@ static int setup_clock_stuff(struct uart_acp_port *uap, int baud_rate)
 	unsigned long fbrd;
 
 	/* Get the speed of the peripheral clock. */
-//	baud_rate = 115200;
 	per_clock = clk_get_rate(uap->clk);
 	per_clock *= 1000;
 
 	/*
-	  Since the IBDR (integer part of the baud rate
-	  divisor) is a 16 bit quatity, find the minimum load
-	  value that will let the IBDR/FBDR result in the
-	  desired baud rate.
-	*/
+	 * Since the IBDR (integer part of the baud rate
+	 * divisor) is a 16 bit quatity, find the minimum load
+	 * value that will let the IBDR/FBDR result in the
+	 * desired baud rate.
+	 */
 
 	divisor = 1;
 
@@ -161,29 +165,29 @@ static int setup_clock_stuff(struct uart_acp_port *uap, int baud_rate)
 	} while (0xff < ibrd);
 
 	/*
-	  The following forumla is from the ARM document (ARM DDI 0183E).
+	 * The following forumla is from the ARM document (ARM DDI 0183E).
+	 *
+	 * Baud Rate Divisor = (Uart Clock / (16 * Baud Rate))
 
-	  Baud Rate Divisor = (Uart Clock / (16 * Baud Rate))
-
-	  Baud Rate Divisor is then split into integral and fractional
-	  parts.  The IBRD value is simply the itegral part.  The FBRD is
-	  calculated as follows.
-
-	  FBRD = fractional part of the Baud Rate Divisor * 64 + 0.5
-
-	  The fractional part of the Baud Rate Divisor can be represented as
-	  follows.
-
-	  (Uart Clock % (16 * baud_rate)) / (16 * baud_rate)
-
-	  As long as the division isn't done till the end.  So, the above *
-	  64 + 0.5 is the FBRD.	 Also note that x/y + 1/2 = (2x+y)/2y.	This
-	  leads to
-
-	  ((Uart Clock % (16 * baud_rate)) * 64 * 2 + (16 * baud_rate))
-	  ---------------------------------------------------------------------
-	  2 * (16 * baud_rate)
-	*/
+	 * Baud Rate Divisor is then split into integral and fractional
+	 * parts.  The IBRD value is simply the itegral part.  The FBRD is
+	 * calculated as follows.
+	 *
+	 * FBRD = fractional part of the Baud Rate Divisor * 64 + 0.5
+	 *
+	 * The fractional part of the Baud Rate Divisor can be represented as
+	 * follows.
+	 *
+	 * (Uart Clock % (16 * baud_rate)) / (16 * baud_rate)
+	 *
+	 * As long as the division isn't done till the end. So, the above *
+	 * 64 + 0.5 is the FBRD. Also note that x/y + 1/2 = (2x+y)/2y.	This
+	 * leads to:
+	 *
+	 *    ((Uart Clock % (16 * baud_rate)) * 64 * 2 + (16 * baud_rate))
+	 *   ---------------------------------------------------------------
+	 *                     2 * (16 * baud_rate)
+	 */
 
 	port->uartclk = (per_clock / divisor);
 
@@ -196,12 +200,10 @@ static int setup_clock_stuff(struct uart_acp_port *uap, int baud_rate)
 	uap->ibrd = (unsigned char) ibrd;
 	uap->fbrd = (unsigned char) fbrd;
 
-	pr_debug("uap->ibrd=%d ibrd=%lu uap->fbrd=%d fbrd=%lu "
-	       "port->uartclk=%d per_clock=%lu uap->divisor=%lu divisor=%lu "
-	       "timer_load=%d cbr=%lu\n",
-	       uap->ibrd, ibrd, uap->fbrd, fbrd, port->uartclk, per_clock,
-	       uap->divisor, divisor, in_le32(uap->timer_base + TIMER_LOAD),
-	       (per_clock / divisor) * 4 / (64 * ibrd * fbrd));
+	pr_debug("uap->ibrd=%d ibrd=%lu uap->fbrd=%d fbrd=%lu port->uartclk=%d per_clock=%lu uap->divisor=%lu divisor=%lu timer_load=%d cbr=%lu\n",
+		 uap->ibrd, ibrd, uap->fbrd, fbrd, port->uartclk, per_clock,
+		 uap->divisor, divisor, in_le32(uap->timer_base + TIMER_LOAD),
+		 (per_clock / divisor) * 4 / (64 * ibrd * fbrd));
 
 	return 0;
 }
@@ -222,7 +224,7 @@ static int setup_clock_stuff(struct uart_acp_port *uap, int baud_rate)
 static unsigned int
 acp_serial_tx_empty(struct uart_port *port)
 {
-	struct uart_acp_port * uap = (struct uart_acp_port *) port;
+	struct uart_acp_port *uap = (struct uart_acp_port *) port;
 	unsigned int status =
 		in_le32((u32 *) (uap->port.membase + UART01x_FR));
 
@@ -331,7 +333,7 @@ acp_serial_rx_chars(struct uart_acp_port *uap)
 
 		uart_insert_char(&uap->port, ch, UART011_DR_OE, ch, flag);
 
-	ignore_char:
+ignore_char:
 		status = in_le32((u32 *)(uap->port.membase + UART01x_FR));
 	}
 	spin_unlock(&uap->port.lock);
@@ -438,7 +440,8 @@ acp_serial_isr(int irq, void *dev_id)
 				break;
 
 			status =
-				in_le32((u32 *)(uap->port.membase + UART011_MIS));
+				in_le32((u32 *)(uap->port.membase +
+						UART011_MIS));
 		} while (status != 0);
 		handled = 1;
 	}
@@ -525,15 +528,15 @@ acp_serial_startup(struct uart_port *port)
 	 * Set up the interrupt.
 	 */
 
-        uap->port.irq = irq_create_mapping( NULL, uap->hwirq );
+	uap->port.irq = irq_create_mapping(NULL, uap->hwirq);
 
 	if (NO_IRQ == uap->port.irq) {
-		pr_err( "irq_create_mapping() failed!\n");
+		pr_err("irq_create_mapping() failed!\n");
 		goto clk_dis;
 	}
 	retval = irq_set_irq_type(uap->port.irq, IRQ_TYPE_LEVEL_HIGH);
 	if (retval) {
-		pr_err( "set_irq_type(%d, 0x%x) failed!\n",
+		pr_err("set_irq_type(%d, 0x%x) failed!\n",
 			uap->port.irq, IRQ_TYPE_LEVEL_HIGH);
 		goto clk_dis;
 	}
@@ -541,7 +544,7 @@ acp_serial_startup(struct uart_port *port)
 			     IRQF_DISABLED, "uart-pl011", uap);
 
 	if (retval) {
-		pr_err( "request_irq(%d) failed!\n", uap->port.irq);
+		pr_err("request_irq(%d) failed!\n", uap->port.irq);
 		goto clk_dis;
 	}
 	out_le32((u32 *)(uap->port.membase + UART011_IFLS),
@@ -647,10 +650,11 @@ acp_serial_set_termios(struct uart_port *port, struct ktermios *termios,
 	 */
 
 	baud = termios->c_ospeed;
-	if(baud == 0)
+
+	if (baud == 0)
 		baud = 115200;
 
-        setup_clock_stuff(uap, baud);
+	setup_clock_stuff(uap, baud);
 
 	switch (termios->c_cflag & CSIZE) {
 	case CS5:
@@ -715,7 +719,7 @@ acp_serial_set_termios(struct uart_port *port, struct ktermios *termios,
 		acp_serial_enable_ms(port);
 
 	/* first, disable everything */
-        set_clock_disable(uap);
+	set_clock_disable(uap);
 	old_cr = in_le32((u32 *)(uap->port.membase + UART011_CR));
 	out_le32((u32 *)(uap->port.membase + UART011_CR), 0);
 
@@ -731,7 +735,7 @@ acp_serial_set_termios(struct uart_port *port, struct ktermios *termios,
 	 */
 	out_le32((u32 *)(uap->port.membase + UART011_LCRH), lcr_h);
 	out_le32((u32 *)(uap->port.membase + UART011_CR), old_cr);
-        set_clock_enable(uap);
+	set_clock_enable(uap);
 
 	spin_unlock_irqrestore(&port->lock, flags);
 }
@@ -959,8 +963,7 @@ static struct uart_driver acp_serial_driver = {
   acp_serial_add_ports
 */
 
-static int
-acp_serial_add_ports(struct uart_driver *driver)
+static int acp_serial_add_ports(struct uart_driver *driver)
 {
 	struct uart_acp_port *uap;
 	int i, ret = 0;
@@ -971,9 +974,8 @@ acp_serial_add_ports(struct uart_driver *driver)
 	const u32 *enabled = NULL;
 
 	for (i = 0; i < ARRAY_SIZE(acp_ports); ++i) {
-		if (acp_ports[i] == NULL) {
+		if (acp_ports[i] == NULL)
 			break;
-		}
 	}
 
 	if (i == ARRAY_SIZE(acp_ports)) {
@@ -993,58 +995,57 @@ acp_serial_add_ports(struct uart_driver *driver)
 	while (np && !of_device_is_compatible(np, "acp-uart0"))
 		np = of_find_node_by_type(np, "serial");
 
+	if (np)
+		enabled = of_get_property(np, "enabled", NULL);
+
+	if (!enabled) {
+		/*
+		 * FIXME: We end up here, meaning we have an:
+		 * Older LSI U-Boot package (prior to 4.8.1.36).
+		 * ???
+		 *
+		 * Only use UART0.  The timer registers are defined
+		 * differently in the device tree.
+		 */
+		uap->timer_base = ioremap(0x002000408040ULL, 0x20);
+	} else {
+		/*
+		 * Newer LSI U-Boot package (4.8.1.36 on).
+		 *
+		 * Only use a serial port if it is enabled.
+		 */
+		if (!np || (0 == *enabled)) {
+			np = NULL;
+			np = of_find_node_by_type(np, "serial");
+
+			while (np && !of_device_is_compatible(np, "acp-uart1"))
+				np = of_find_node_by_type(np, "serial");
+
+			if (np) {
+				enabled = of_get_property(np, "enabled", NULL);
+				pr_info("uart1 *enabled=%d\n", *enabled);
+			}
+		}
+
+		if (np && (0 != *enabled)) {
+			reg = of_get_property(np, "clock-reg", NULL);
+			if (reg) {
+				addr = of_translate_address(np, reg);
+				pr_info("timer addr=0x%llx\n", addr);
+				if (addr == OF_BAD_ADDR)
+					addr = 0;
+			}
+
+			if (addr)
+				uap->timer_base = ioremap(addr, reg[1]);
+			else {
+				pr_err("timer io address not found\n");
+				ret = -ENOMEM;
+			}
+		}
+	}
+
 	if (np) {
-              enabled = of_get_property(np, "enabled", NULL);
-       }
-
-       if (!enabled) {
-               /*
-                 FIXME: We end up here, meaning we have an:
-		 Older LSI U-Boot package (prior to 4.8.1.36).
-		 ???
-
-                 Only use UART0.  The timer registers are defined
-                 differently in the device tree.
-               */
-              uap->timer_base = ioremap(0x002000408040ULL, 0x20);
-       } else {
-              /*
-                Newer LSI U-Boot package (4.8.1.36 on).
-
-                Only use a serial port if it is enabled.
-               */
-               if (!np || (0 == *enabled)) {
-                       np = NULL;
-                      np = of_find_node_by_type(np, "serial");
-
-                       while (np && !of_device_is_compatible(np, "acp-uart1"))
-                              np = of_find_node_by_type(np, "serial");
-
-                      if (np) {
-                               enabled = of_get_property(np, "enabled", NULL);
-                              pr_info("uart1 *enabled=%d\n", *enabled);
-                      }
-              }
-
-              if (np && (0 != *enabled)) {
-                      reg = of_get_property(np, "clock-reg", NULL);
-                      if (reg) {
-                              addr = of_translate_address(np, reg);
-                              pr_info("timer addr=0x%llx\n", addr);
-                              if (addr == OF_BAD_ADDR)
-                                       addr = 0;
-                      }
-
-                      if (addr)
-                              uap->timer_base = ioremap(addr, reg[1]);
-                      else {
-                               pr_err( "timer io address not found\n");
-                               ret = -ENOMEM;
-                       }
-               }
-       }
-
-       if (np) {
 		reg = of_get_property(np, "reg", NULL);
 
 		if (reg) {
@@ -1057,7 +1058,7 @@ acp_serial_add_ports(struct uart_driver *driver)
 		if (addr)
 			uap->port.membase = ioremap(addr, reg[1]);
 		else {
-			pr_err( "serial io address not found\n");
+			pr_err("serial io address not found\n");
 			ret = -ENOMEM;
 		}
 
@@ -1066,29 +1067,31 @@ acp_serial_add_ports(struct uart_driver *driver)
 		if (interrupts) {
 			uap->hwirq = interrupts[0];
 		} else {
-			pr_err( "serial irq not found\n");
+			pr_err("serial irq not found\n");
 			uap->hwirq = 22;
 		}
-		/* ??? Will be initialized in the set_clock_stuff()
+
+		/*
+		 * FIXME: Will be initialized in the setup_clock_stuff()
 		 * anyway so why bother here ???
 		 */
+
 		clk = of_get_property(np, "clock-frequency", NULL);
 
 		if (clk && *clk) {
 			uap->port.uartclk = *clk;
 		} else {
-			pr_err( "serial clock frequency not found\n");
+			pr_err("serial clock frequency not found\n");
 			uap->port.uartclk = 6500000;
 		}
 
 		speed = of_get_property(np, "current-speed", NULL);
-
 		if (speed && *speed) {
 			baud_rate = *speed;
-			/* FIXME value from u-boot puts crap on console */
+			/* FIXME: anything other than 115200 breaks serial */
 			baud_rate = 115200;
 		} else {
-			pr_err( "current speed not found. Default: 115200\n");
+			pr_err("current speed not found. Default: 115200\n");
 			baud_rate = 115200;
 		}
 		uap->clk = clk_get(NULL, "clk_per");
@@ -1100,13 +1103,13 @@ acp_serial_add_ports(struct uart_driver *driver)
 			uap->port.ops = &amba_acp_pops;
 			uap->port.flags = UPF_BOOT_AUTOCONF;
 			uap->port.line = i;
-                        setup_clock_stuff(uap, baud_rate);
+			setup_clock_stuff(uap, baud_rate);
 			acp_ports[i] = uap;
 			ret = uart_add_one_port(driver, &uap->port);
-                        set_clock_disable(uap);
-                        set_clock_enable(uap);
+			set_clock_disable(uap);
+			set_clock_enable(uap);
 		}
-       } else
+	} else
 	       ret = -EFAULT;
 
 	if (ret) {
@@ -1210,7 +1213,7 @@ acp_serial_init(void)
 	serial_device = platform_device_register_simple("serial_debug",
 							-1, NULL, 0);
 	if (IS_ERR(serial_device)) {
-		pr_err( "serial: platform_device_register failed.\n");
+		pr_err("serial: platform_device_register failed.\n");
 		ret = PTR_ERR(serial_device);
 		goto out;
 	}
@@ -1218,7 +1221,7 @@ acp_serial_init(void)
 	if (sysfs_create_group(&serial_device->dev.kobj,
 			       &serial_attribute_group)) {
 
-		pr_err( "serial: failed to create sysfs device attributes.\n");
+		pr_err("serial: failed to create sysfs device attributes.\n");
 	}
 
  out:
