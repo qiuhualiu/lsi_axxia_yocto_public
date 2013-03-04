@@ -1,0 +1,10 @@
+#
+# Makefile for the linux kernel.
+#
+obj-y					:= axxia.o
+obj-y					+= clock.o
+obj-y                                   += io.o
+obj-y					+= timers.o
+obj-y					+= pci.o
+obj-$(CONFIG_SMP)			+= platsmp.o headsmp.o
+obj-$(CONFIG_HOTPLUG_CPU)		+= hotplug.o
