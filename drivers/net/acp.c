@@ -2674,8 +2674,8 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 	}
 
 	/* Free the socket buffer */
-	dev_kfree_skb(skb);
 	appnic_special_unlock(&adapter->lock);
+	dev_kfree_skb(skb);
 
 #ifdef __APPNIC_C_PROFILE__
 	end_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
