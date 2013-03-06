@@ -1,8 +1,9 @@
 /*
- *  drivers/tty/serial/arm-pl011.c
+ *  drivers/tty/serial/lsi_acp_serial.c
  *
- *  Based on linux/drivers/char/amba-pl010.c and LSI patchwork by
- *  john.jacques@lsi.com
+ *  Driver for AMBA serial ports on LSI's PPC based ACP.
+ *
+ *  Based on drivers/char/serial.c, by Linus Torvalds, Theodore Ts'o.
  *
  *  Copyright 1999 ARM Limited
  *  Copyright (C) 2000 Deep Blue Solutions Ltd.
@@ -22,9 +23,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307	 USA
  *
+ * This is a generic driver for ARM AMBA-type serial ports.  They
+ * have a lot of 16550-like features, but are not register compatible.
+ * Note that although they do have CTS, DCD and DSR inputs, they do
+ * not have an RI input, nor do they have DTR or RTS outputs.  If
+ * required, these have to be supplied via some other means (eg, GPIO)
+ * and hooked into this driver.
  */
 
-#if defined(CONFIG_SERIAL_ARM_PL011_CONSOLE) && defined(CONFIG_MAGIC_SYSRQ)
+#if defined(CONFIG_SERIAL_ACP_CONSOLE) && defined(CONFIG_MAGIC_SYSRQ)
 #define SUPPORT_SYSRQ
 #endif
 
@@ -43,10 +50,10 @@
 #include <linux/amba/serial.h>
 #include <linux/irq.h>
 #include <linux/of.h>
-#include <linux/delay.h>
-#include <linux/clk.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
+#include <asm/lsi/acp_ncr.h>
+#include <asm/lsi/acp_clock.h>
 
 #define SZ_4K (4*1024)
 #define UART_NR			2
@@ -59,6 +66,8 @@
 #define UART_DUMMY_DR_RX	(1 << 16)
 
 #define MAX_BAUD_RATE 115200
+
+static int dt_baud_rate;
 
 /*
   ======================================================================
@@ -77,7 +86,6 @@ struct uart_acp_port {
 	unsigned long divisor;
 	unsigned char ibrd;
 	unsigned char fbrd;
-	struct clk *clk;
 };
 
 /*
@@ -105,70 +113,43 @@ struct uart_acp_port {
 #define TIMER_MIS		       0x14
 #define TIMER_BGLOAD		       0x18
 
-
-static struct platform_device *serial_device;
-
 /*
   ----------------------------------------------------------------------
-  set_clock_disable
+  get_clock_stuff
 */
 
-static void set_clock_disable(struct uart_acp_port *uap)
+static int
+get_clock_stuff(struct uart_acp_port *port, int baud_rate)
 {
-	if (uap->divisor != in_le32(uap->timer_base + TIMER_LOAD)) {
-		while (0 == (in_le32((const volatile unsigned *)
-				     (uap->port.membase
-				      + UART01x_FR)) & UART011_FR_TXFE)) {
-			;
-		}
-
-		while (0 != (in_le32((const volatile unsigned *)
-				     (uap->port.membase
-				      + UART01x_FR)) & UART01x_FR_BUSY)) {
-			;
-		}
-
-		out_le32((uap->timer_base + TIMER_CONTROL), 0);
-		out_le32((uap->timer_base + TIMER_LOAD), uap->divisor);
-	}
-}
-
-static void set_clock_enable(struct uart_acp_port *uap)
-{
-	out_le32((uap->timer_base + TIMER_CONTROL),
-		 (TIMER_CONTROL_ENABLE | TIMER_CONTROL_MODE));
-}
-
-static int setup_clock_stuff(struct uart_acp_port *uap, int baud_rate)
-{
-	struct uart_port *port = &uap->port;
 	unsigned long per_clock;
 	unsigned long divisor;
 	unsigned long ibrd;
 	unsigned long fbrd;
 
 	/* Get the speed of the peripheral clock. */
-	per_clock = clk_get_rate(uap->clk);
+	acp_clock_get(1, &per_clock);
 	per_clock *= 1000;
 
 	/*
-	 * Since the IBDR (integer part of the baud rate
-	 * divisor) is a 16 bit quatity, find the minimum load
-	 * value that will let the IBDR/FBDR result in the
-	 * desired baud rate.
-	 */
+	  Since the IBDR (integer part of the baud rate
+	  divisor) is a 16 bit quatity, find the minimum load
+	  value that will let the IBDR/FBDR result in the
+	  desired baud rate.
+	*/
 
-	divisor = 1;
-
-	do {
-		ibrd = (per_clock / ++divisor) / (16 * baud_rate);
-	} while (0xff < ibrd);
+	if (is_asic()) {
+		divisor = per_clock / 25000000;
+		ibrd = 25000000 / (16 * baud_rate);
+	} else {
+		divisor = per_clock / 3250000;
+		ibrd = 3250000 / (16 * baud_rate);
+	}
 
 	/*
-	 * The following forumla is from the ARM document (ARM DDI 0183E).
+	 * The following formula is from the ARM document (ARM DDI 0183E).
 	 *
 	 * Baud Rate Divisor = (Uart Clock / (16 * Baud Rate))
-
+	 *
 	 * Baud Rate Divisor is then split into integral and fractional
 	 * parts.  The IBRD value is simply the itegral part.  The FBRD is
 	 * calculated as follows.
@@ -176,34 +157,49 @@ static int setup_clock_stuff(struct uart_acp_port *uap, int baud_rate)
 	 * FBRD = fractional part of the Baud Rate Divisor * 64 + 0.5
 	 *
 	 * The fractional part of the Baud Rate Divisor can be represented as
-	 * follows.
+	 * follows:
 	 *
-	 * (Uart Clock % (16 * baud_rate)) / (16 * baud_rate)
+	 *    (Uart Clock % (16 * baud_rate)) / (16 * baud_rate)
 	 *
-	 * As long as the division isn't done till the end. So, the above *
-	 * 64 + 0.5 is the FBRD. Also note that x/y + 1/2 = (2x+y)/2y.	This
-	 * leads to:
+	 * As long as the division isn't done until the end. So, the above
+	 * "* 64 + 0.5" is the FBRD. Also note that x/y + 1/2 = (2x+y)/2y.
+	 * This *  leads to:
 	 *
 	 *    ((Uart Clock % (16 * baud_rate)) * 64 * 2 + (16 * baud_rate))
-	 *   ---------------------------------------------------------------
+	 *  -----------------------------------------------------------------
 	 *                     2 * (16 * baud_rate)
 	 */
 
-	port->uartclk = (per_clock / divisor);
+	port->port.uartclk = (per_clock / divisor);
 
-	fbrd = port->uartclk % (16 * baud_rate);
+	fbrd = port->port.uartclk % (16 * baud_rate);
 	fbrd *= 128;
 	fbrd += (16 * baud_rate);
 	fbrd /= (2 * (16 * baud_rate));
 
-	uap->divisor = (divisor - 1);
-	uap->ibrd = (unsigned char) ibrd;
-	uap->fbrd = (unsigned char) fbrd;
+	port->divisor = (divisor - 1);
+	port->ibrd = (unsigned char) ibrd;
+	port->fbrd = (unsigned char) fbrd;
 
-	pr_debug("uap->ibrd=%d ibrd=%lu uap->fbrd=%d fbrd=%lu port->uartclk=%d per_clock=%lu uap->divisor=%lu divisor=%lu timer_load=%d cbr=%lu\n",
-		 uap->ibrd, ibrd, uap->fbrd, fbrd, port->uartclk, per_clock,
-		 uap->divisor, divisor, in_le32(uap->timer_base + TIMER_LOAD),
-		 (per_clock / divisor) * 4 / (64 * ibrd * fbrd));
+	if (port->divisor != in_le32(port->timer_base + TIMER_LOAD)) {
+		while (0 ==
+		       (in_le32((const volatile unsigned *)
+				(port->port.membase + UART01x_FR)) &
+			UART011_FR_TXFE))
+			;
+
+		while (0 !=
+		       (in_le32((const volatile unsigned *)
+				(port->port.membase + UART01x_FR)) &
+			UART01x_FR_BUSY))
+			;
+
+		out_le32((port->timer_base + TIMER_CONTROL), 0);
+		out_le32((port->timer_base + TIMER_LOAD), port->divisor);
+		out_le32((port->timer_base + TIMER_CONTROL),
+			 (TIMER_CONTROL_ENABLE |
+			  TIMER_CONTROL_MODE));
+	}
 
 	return 0;
 }
@@ -218,6 +214,21 @@ static int setup_clock_stuff(struct uart_acp_port *uap, int baud_rate)
 
 /*
   ------------------------------------------------------------------------------
+  acp_serial_wac
+
+  This was added to allow an easy debugging breakpoint.
+*/
+
+static void
+acp_serial_wac(u32 *address, int character, u32 line)
+{
+	out_le32(address, character);
+
+	return;
+}
+
+/*
+  ------------------------------------------------------------------------------
   acp_serial_tx_empty
 */
 
@@ -226,9 +237,7 @@ acp_serial_tx_empty(struct uart_port *port)
 {
 	struct uart_acp_port *uap = (struct uart_acp_port *) port;
 	unsigned int status =
-		in_le32((u32 *) (uap->port.membase + UART01x_FR));
-
-
+		in_le32((u32 *)(uap->port.membase + UART01x_FR));
 	return status &
 		(UART01x_FR_BUSY | UART01x_FR_TXFF) ? 0 : TIOCSER_TEMT;
 }
@@ -353,9 +362,8 @@ acp_serial_tx_chars(struct uart_acp_port *uap)
 	int count;
 
 	if (uap->port.x_char) {
-
-		out_le32((u32 *)(uap->port.membase + UART01x_DR),
-			 uap->port.x_char);
+		acp_serial_wac((u32 *)(uap->port.membase + UART01x_DR),
+				uap->port.x_char, __LINE__);
 		uap->port.icount.tx++;
 		uap->port.x_char = 0;
 		return;
@@ -367,8 +375,8 @@ acp_serial_tx_chars(struct uart_acp_port *uap)
 
 	count = uap->port.fifosize >> 1;
 	do {
-		out_le32((u32 *)(uap->port.membase + UART01x_DR),
-			 xmit->buf[xmit->tail]);
+		acp_serial_wac((u32 *) (uap->port.membase + UART01x_DR),
+				xmit->buf[xmit->tail], __LINE__);
 		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
 		uap->port.icount.tx++;
 		if (uart_circ_empty(xmit))
@@ -441,7 +449,7 @@ acp_serial_isr(int irq, void *dev_id)
 
 			status =
 				in_le32((u32 *)(uap->port.membase +
-						UART011_MIS));
+					UART011_MIS));
 		} while (status != 0);
 		handled = 1;
 	}
@@ -461,8 +469,6 @@ unsigned int acp_serial_get_mctrl(struct uart_port *port)
 	if (status & (uartbit))		 \
 		result |= (tiocmbit);    \
 } while (0);
-
-
 	TIOCMBIT(UART01x_FR_DCD, TIOCM_CAR);
 	TIOCMBIT(UART01x_FR_DSR, TIOCM_DSR);
 	TIOCMBIT(UART01x_FR_CTS, TIOCM_CTS);
@@ -493,7 +499,6 @@ void acp_serial_set_mctrl(struct uart_port *port, unsigned int mctrl)
 
 #undef TIOCMBIT
 
-	/*writew(cr, uap->port.membase + UART011_CR);*/
 	out_le32((u32 *)(uap->port.membase + UART011_CR), cr);
 }
 
@@ -512,6 +517,50 @@ void acp_serial_break_ctl(struct uart_port *port, int break_state)
 	out_le32((u32 *)(uap->port.membase + UART011_LCRH), lcr_h);
 	spin_unlock_irqrestore(&uap->port.lock, flags);
 }
+
+#ifdef CONFIG_CONSOLE_POLL
+
+/*
+  ----------------------------------------------------------------------
+  acp_serial_poll_get_char
+*/
+
+static int
+acp_serial_poll_get_char(struct uart_port *port)
+{
+	struct uart_acp_port *uap = (struct uart_acp_port *) port;
+	unsigned int status;
+
+	do {
+		status = in_le32((u32 *)
+				 (uap->port.membase + UART01x_FR));
+	} while (status & UART01x_FR_RXFE);
+
+	return in_le32((u32 *) (uap->port.membase + UART01x_DR));
+}
+
+/*
+  ----------------------------------------------------------------------
+  acp_serial_poll_put_char
+*/
+
+static void
+acp_serial_poll_put_char(struct uart_port *port, unsigned char ch)
+{
+	struct uart_acp_port *uap = (struct uart_acp_port *)port;
+
+	while (in_le32((u32 *) (uap->port.membase + UART01x_FR)) &
+	       UART01x_FR_TXFF) {
+		barrier();
+	}
+
+	acp_serial_wac((u32 *)(uap->port.membase + UART01x_DR), ch,
+			__LINE__);
+
+	return;
+}
+#endif /* CONFIG_CONSOLE_POLL */
+
 /*
   ----------------------------------------------------------------------
   acp_serial_startup
@@ -531,25 +580,28 @@ acp_serial_startup(struct uart_port *port)
 	uap->port.irq = irq_create_mapping(NULL, uap->hwirq);
 
 	if (NO_IRQ == uap->port.irq) {
-		pr_err("irq_create_mapping() failed!\n");
+		printk(KERN_ERR "irq_create_mapping() failed!\n");
 		goto clk_dis;
 	}
+
 	retval = irq_set_irq_type(uap->port.irq, IRQ_TYPE_LEVEL_HIGH);
-	if (retval) {
-		pr_err("set_irq_type(%d, 0x%x) failed!\n",
+
+	if (0 != retval) {
+		printk(KERN_ERR "set_irq_type(%d, 0x%x) failed!\n",
 			uap->port.irq, IRQ_TYPE_LEVEL_HIGH);
 		goto clk_dis;
 	}
+
 	retval = request_irq(uap->port.irq, acp_serial_isr,
 			     IRQF_DISABLED, "uart-pl011", uap);
 
 	if (retval) {
-		pr_err("request_irq(%d) failed!\n", uap->port.irq);
+		printk(KERN_ERR "request_irq(%d) failed!\n", uap->port.irq);
 		goto clk_dis;
 	}
+
 	out_le32((u32 *)(uap->port.membase + UART011_IFLS),
 		 UART011_IFLS_RX4_8|UART011_IFLS_TX4_8);
-
 
 	/*
 	 * Provoke TX FIFO interrupt into asserting.
@@ -559,19 +611,20 @@ acp_serial_startup(struct uart_port *port)
 	out_le32((u32 *)(uap->port.membase + UART011_FBRD), 0);
 	out_le32((u32 *)(uap->port.membase + UART011_IBRD), 1);
 	out_le32((u32 *)(uap->port.membase + UART011_LCRH), 0);
-	out_le32((u32 *) (uap->port.membase + UART01x_DR), 0);
+	acp_serial_wac((u32 *) (uap->port.membase + UART01x_DR), 0,
+			__LINE__);
 
 	while (in_le32((u32 *)(uap->port.membase + UART01x_FR)) &
 	       UART01x_FR_BUSY)
 		barrier();
 
 	cr = UART01x_CR_UARTEN | UART011_CR_RXE | UART011_CR_TXE;
-
 	out_le32((u32 *)(uap->port.membase + UART011_CR), cr);
 
 	/*
 	 * initialise the old status of the modem signals
 	 */
+
 	uap->old_status =
 		in_le32((u32 *)(uap->port.membase + UART01x_FR)) &
 		UART01x_FR_MODEM_ANY;
@@ -581,13 +634,15 @@ acp_serial_startup(struct uart_port *port)
 	 */
 	spin_lock_irq(&uap->port.lock);
 	uap->interrupt_mask = UART011_RXIM | UART011_RTIM;
-
 	out_le32((u32 *)(uap->port.membase + UART011_IMSC),
 		 uap->interrupt_mask);
 	spin_unlock_irq(&uap->port.lock);
+
 	return 0;
 
-clk_dis:
+ clk_dis:
+	/*clk_disable(uap->clk);*/
+/* out:*/
 	return retval;
 }
 
@@ -649,12 +704,8 @@ acp_serial_set_termios(struct uart_port *port, struct ktermios *termios,
 	 * Set up the clock, and calculate the divisors.
 	 */
 
-	baud = termios->c_ospeed;
-
-	if (baud == 0)
-		baud = 115200;
-
-	setup_clock_stuff(uap, baud);
+	baud = tty_termios_baud_rate(termios);
+	get_clock_stuff(uap, baud);
 
 	switch (termios->c_cflag & CSIZE) {
 	case CS5:
@@ -719,10 +770,8 @@ acp_serial_set_termios(struct uart_port *port, struct ktermios *termios,
 		acp_serial_enable_ms(port);
 
 	/* first, disable everything */
-	set_clock_disable(uap);
 	old_cr = in_le32((u32 *)(uap->port.membase + UART011_CR));
 	out_le32((u32 *)(uap->port.membase + UART011_CR), 0);
-
 
 	/* Set baud rate */
 	out_le32((u32 *)(uap->port.membase + UART011_FBRD), uap->fbrd);
@@ -735,7 +784,6 @@ acp_serial_set_termios(struct uart_port *port, struct ktermios *termios,
 	 */
 	out_le32((u32 *)(uap->port.membase + UART011_LCRH), lcr_h);
 	out_le32((u32 *)(uap->port.membase + UART011_CR), old_cr);
-	set_clock_enable(uap);
 
 	spin_unlock_irqrestore(&port->lock, flags);
 }
@@ -779,7 +827,6 @@ void acp_serial_config_port(struct uart_port *port, int flags)
 int acp_serial_verify_port(struct uart_port *port, struct serial_struct *ser)
 {
 	int ret = 0;
-
 	if (ser->type != PORT_UNKNOWN && ser->type != PORT_AMBA)
 		ret = -EINVAL;
 	if (ser->irq < 0 || ser->irq >= nr_irqs)
@@ -806,11 +853,15 @@ static struct uart_ops amba_acp_pops = {
 	.request_port	= acp_serial_request_port,
 	.config_port	= acp_serial_config_port,
 	.verify_port	= acp_serial_verify_port,
+#ifdef CONFIG_CONSOLE_POLL
+	.poll_get_char = acp_serial_poll_get_char,
+	.poll_put_char = acp_serial_poll_put_char,
+#endif
 };
 
 static struct uart_acp_port *acp_ports[2];
 
-#ifdef CONFIG_SERIAL_ARM_PL011_CONSOLE
+#ifdef CONFIG_SERIAL_ACP_CONSOLE
 
 /*
   ----------------------------------------------------------------------
@@ -827,7 +878,8 @@ acp_serial_console_putchar(struct uart_port *port, int ch)
 		barrier();
 	}
 
-	out_le32((u32 *)(uap->port.membase + UART01x_DR), ch);
+	acp_serial_wac((u32 *) (uap->port.membase + UART01x_DR), ch,
+			__LINE__);
 }
 
 void
@@ -836,7 +888,7 @@ acp_console_write(struct console *co, const char *s, unsigned int count)
 	struct uart_acp_port *uap = acp_ports[co->index];
 	unsigned int status, old_cr, new_cr;
 
-	clk_enable(uap->clk);
+	/*clk_enable(uap->clk);*/
 
 	/*
 	 *	First save the CR then disable the interrupts
@@ -858,14 +910,13 @@ acp_console_write(struct console *co, const char *s, unsigned int count)
 	} while (status & UART01x_FR_BUSY);
 	out_le32((u32 *)(uap->port.membase + UART011_CR), old_cr);
 
-	clk_disable(uap->clk);
+	/*clk_disable(uap->clk);*/
 }
 
 void __init
 acp_console_get_options(struct uart_acp_port *uap, int *baud,
 			int *parity, int *bits)
 {
-
 	if (in_le32((u32 *)(u32 *)(uap->port.membase + UART011_CR)) &
 	    UART01x_CR_UARTEN) {
 		unsigned int lcr_h, ibrd, fbrd;
@@ -890,15 +941,17 @@ acp_console_get_options(struct uart_acp_port *uap, int *baud,
 					      UART011_IBRD));
 		fbrd = in_le32((u32 *)(u32 *)(uap->port.membase +
 					      UART011_FBRD));
-
-		*baud = uap->port.uartclk * 4 / (64 * ibrd + fbrd);
+		*baud = (uap->port.uartclk * 4 / (64 * ibrd + fbrd));
+		*baud += 50;
+		*baud /= 10;
+		*baud *= 10;
 	}
 }
 
 int __init acp_console_setup(struct console *co, char *options)
 {
 	struct uart_acp_port *uap;
-	int baud = 115200;
+	int baud = 9600;
 	int bits = 8;
 	int parity = 'n';
 	int flow = 'n';
@@ -950,10 +1003,10 @@ console_initcall(acp_console_init);
 
 static struct uart_driver acp_serial_driver = {
 	.owner			= THIS_MODULE,
-	.driver_name		= "serialACP",
+	.driver_name		= "serial",
 	.dev_name		= "ttyS",
 	.major			= TTY_MAJOR,
-	.minor			= 68,
+	.minor			= 64,
 	.nr			= UART_NR,
 	.cons			= ACP_CONSOLE,
 };
@@ -963,15 +1016,16 @@ static struct uart_driver acp_serial_driver = {
   acp_serial_add_ports
 */
 
-static int acp_serial_add_ports(struct uart_driver *driver)
+static int
+acp_serial_add_ports(struct uart_driver *driver)
 {
 	struct uart_acp_port *uap;
-	int i, ret = 0;
+	int i, ret;
 	struct device_node *np = NULL;
 	u64 addr = 0;
 	const u32 *reg, *interrupts, *clk, *speed;
-	int baud_rate = 115200;
-	const u32 *enabled = NULL;
+	int baud_rate = 9600;
+	const int *enabled = NULL;
 
 	for (i = 0; i < ARRAY_SIZE(acp_ports); ++i) {
 		if (acp_ports[i] == NULL)
@@ -1000,20 +1054,19 @@ static int acp_serial_add_ports(struct uart_driver *driver)
 
 	if (!enabled) {
 		/*
-		 * FIXME: We end up here, meaning we have an:
-		 * Older LSI U-Boot package (prior to 4.8.1.36).
-		 * ???
-		 *
-		 * Only use UART0.  The timer registers are defined
-		 * differently in the device tree.
-		 */
+		  Older LSI U-Boot package (prior to 4.8.1.36).
+
+		  Only use UART0.  The timer registers are defined
+		  differently in the device tree.
+		*/
 		uap->timer_base = ioremap(0x002000408040ULL, 0x20);
 	} else {
 		/*
-		 * Newer LSI U-Boot package (4.8.1.36 on).
-		 *
-		 * Only use a serial port if it is enabled.
-		 */
+		  Newer LSI U-Boot package (4.8.1.36 on).
+
+		  Only use a serial port if it is enabled.
+		*/
+
 		if (!np || (0 == *enabled)) {
 			np = NULL;
 			np = of_find_node_by_type(np, "serial");
@@ -1021,17 +1074,15 @@ static int acp_serial_add_ports(struct uart_driver *driver)
 			while (np && !of_device_is_compatible(np, "acp-uart1"))
 				np = of_find_node_by_type(np, "serial");
 
-			if (np) {
+			if (np)
 				enabled = of_get_property(np, "enabled", NULL);
-				pr_info("uart1 *enabled=%d\n", *enabled);
-			}
 		}
 
 		if (np && (0 != *enabled)) {
 			reg = of_get_property(np, "clock-reg", NULL);
+
 			if (reg) {
 				addr = of_translate_address(np, reg);
-				pr_info("timer addr=0x%llx\n", addr);
 				if (addr == OF_BAD_ADDR)
 					addr = 0;
 			}
@@ -1039,7 +1090,7 @@ static int acp_serial_add_ports(struct uart_driver *driver)
 			if (addr)
 				uap->timer_base = ioremap(addr, reg[1]);
 			else {
-				pr_err("timer io address not found\n");
+				printk(KERN_ERR "timer io address not found\n");
 				ret = -ENOMEM;
 			}
 		}
@@ -1050,7 +1101,6 @@ static int acp_serial_add_ports(struct uart_driver *driver)
 
 		if (reg) {
 			addr = of_translate_address(np, reg);
-			pr_info("addr=0x%llx\n", addr);
 			if (addr == OF_BAD_ADDR)
 				addr = 0;
 		}
@@ -1058,61 +1108,51 @@ static int acp_serial_add_ports(struct uart_driver *driver)
 		if (addr)
 			uap->port.membase = ioremap(addr, reg[1]);
 		else {
-			pr_err("serial io address not found\n");
+			printk(KERN_ERR "serial io address not found\n");
 			ret = -ENOMEM;
 		}
 
 		interrupts = of_get_property(np, "interrupts", NULL);
 
-		if (interrupts) {
+		if (interrupts)
 			uap->hwirq = interrupts[0];
-		} else {
-			pr_err("serial irq not found\n");
+		else {
+			printk(KERN_ERR "serial irq not found\n");
 			uap->hwirq = 22;
 		}
 
-		/*
-		 * FIXME: Will be initialized in the setup_clock_stuff()
-		 * anyway so why bother here ???
-		 */
-
 		clk = of_get_property(np, "clock-frequency", NULL);
 
-		if (clk && *clk) {
+		if (clk && *clk)
 			uap->port.uartclk = *clk;
-		} else {
-			pr_err("serial clock frequency not found\n");
+		else {
+			printk(KERN_ERR "serial clock frequency not found\n");
 			uap->port.uartclk = 6500000;
 		}
 
 		speed = of_get_property(np, "current-speed", NULL);
-		if (speed && *speed) {
-			baud_rate = *speed;
-			/* FIXME: anything other than 115200 breaks serial */
-			baud_rate = 115200;
-		} else {
-			pr_err("current speed not found. Default: 115200\n");
-			baud_rate = 115200;
-		}
-		uap->clk = clk_get(NULL, "clk_per");
-		if (IS_ERR(uap->clk))
-			ret = -EFAULT;
-		else {
-			uap->port.iotype = UPIO_MEM;
-			uap->port.fifosize = 16;
-			uap->port.ops = &amba_acp_pops;
-			uap->port.flags = UPF_BOOT_AUTOCONF;
-			uap->port.line = i;
-			setup_clock_stuff(uap, baud_rate);
-			acp_ports[i] = uap;
-			ret = uart_add_one_port(driver, &uap->port);
-			set_clock_disable(uap);
-			set_clock_enable(uap);
-		}
-	} else
-	       ret = -EFAULT;
 
-	if (ret) {
+		if (speed && *speed)
+			baud_rate = *speed;
+		else {
+			printk(KERN_ERR "current speed not found\n");
+			baud_rate = 9600;
+		}
+	} else {
+		ret = -ENOMEM;
+	}
+
+	dt_baud_rate = baud_rate;
+	uap->port.iotype = UPIO_MEM;
+	uap->port.fifosize = 16;
+	uap->port.ops = &amba_acp_pops;
+	uap->port.flags = UPF_BOOT_AUTOCONF;
+	uap->port.line = i;
+	get_clock_stuff(uap, baud_rate);
+	acp_ports[i] = uap;
+	ret = uart_add_one_port(driver, &uap->port);
+
+	if (0 != ret) {
 		acp_ports[i] = NULL;
 		kfree(uap);
 	}
@@ -1151,33 +1191,6 @@ acp_serial_delete_ports(struct uart_driver *driver)
   ======================================================================
 */
 
-static ssize_t show_irqmask(struct device *d,
-			    struct device_attribute *attr,  char *buf)
-{
-	int i;
-	char *str = buf;
-	for (i = 0; i < ARRAY_SIZE(acp_ports); ++i) {
-		if (acp_ports[i]) {
-			str += sprintf(str,
-				       "acp_port[%d] interrupt_mask %8.8x virt %u\n",
-				       i, acp_ports[i]->interrupt_mask,
-				       acp_ports[i]->port.irq);
-		}
-	}
-	return str-buf;
-}
-static DEVICE_ATTR(irqmask, S_IRUGO, show_irqmask, NULL);
-
-static struct attribute *serial_sysfs_entries[] = {
-	&dev_attr_irqmask.attr,
-	NULL
-};
-
-static struct attribute_group serial_attribute_group = {
-	.name = NULL,		/* put in device directory */
-	.attrs = serial_sysfs_entries,
-};
-
 /*
   ----------------------------------------------------------------------
   acp_init
@@ -1188,6 +1201,8 @@ acp_serial_init(void)
 {
 	int ret;
 
+	printk(KERN_INFO "Serial: ACP Serial Driver\n");
+
 	/* Clear the ports array */
 	memset((void *) &acp_ports[0], 0,
 		sizeof(struct uart_acp_port *) * ARRAY_SIZE(acp_ports));
@@ -1196,7 +1211,7 @@ acp_serial_init(void)
 	ret = uart_register_driver(&acp_serial_driver);
 
 	if (0 != ret) {
-		pr_err(
+		printk(KERN_ERR
 		       "uart_register_driver() failed with %d\n", ret);
 		goto out;
 	}
@@ -1205,29 +1220,14 @@ acp_serial_init(void)
 	ret = acp_serial_add_ports(&acp_serial_driver);
 
 	if (0 != ret) {
-		pr_err(
+		printk(KERN_ERR
 			"acp_serial_add_ports() failed with %d\n", ret);
 		goto out;
-	}
-
-	serial_device = platform_device_register_simple("serial_debug",
-							-1, NULL, 0);
-	if (IS_ERR(serial_device)) {
-		pr_err("serial: platform_device_register failed.\n");
-		ret = PTR_ERR(serial_device);
-		goto out;
-	}
-
-	if (sysfs_create_group(&serial_device->dev.kobj,
-			       &serial_attribute_group)) {
-
-		pr_err("serial: failed to create sysfs device attributes.\n");
 	}
 
  out:
 	return ret;
 }
-
 module_init(acp_serial_init);
 
 /*
@@ -1238,12 +1238,9 @@ module_init(acp_serial_init);
 void __exit
 acp_serial_exit(void)
 {
-	sysfs_remove_group(&serial_device->dev.kobj, &serial_attribute_group);
-	platform_device_unregister(serial_device);
 	acp_serial_delete_ports(&acp_serial_driver);
 	uart_unregister_driver(&acp_serial_driver);
 }
-
 module_exit(acp_serial_exit);
 
 MODULE_AUTHOR("LSI Corporation");
