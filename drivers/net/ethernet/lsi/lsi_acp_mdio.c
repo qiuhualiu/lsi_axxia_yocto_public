@@ -174,6 +174,18 @@ acp_mdio_initialize(void)
 
 /*
   ------------------------------------------------------------------------------
+  acp_irq_create_mapping
+*/
+
+unsigned int
+acp_irq_create_mapping(struct irq_domain *host, irq_hw_number_t hwirq)
+{
+	return irq_create_mapping(host, hwirq);
+}
+EXPORT_SYMBOL(acp_irq_create_mapping);
+
+/*
+  ------------------------------------------------------------------------------
   acp_wrappers_init
 */
 
