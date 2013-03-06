@@ -52,7 +52,7 @@ obj-$(CONFIG_PPC4xx_MSI)	+= ppc4xx_msi.o
 obj-$(CONFIG_PPC4xx_CPM)	+= ppc4xx_cpm.o
 obj-$(CONFIG_PPC4xx_GPIO)	+= ppc4xx_gpio.o
 
-obj-$(CONFIG_ACP)		+= lsi_acp_ncr.o ncr_cd.o
+obj-$(CONFIG_ACP)		+= lsi_acpclock.o lsi_acp_ncr.o ncr_cd.o
 obj-$(CONFIG_ACP3400_GPIO)      += acp3400-gpio.o
 obj-$(CONFIG_PCA9554_GPIO)	+= dus_pca9554.o
 obj-$(CONFIG_ACP3400_I2C)       += acp3400-i2c.o
