@@ -14,58 +14,58 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 
-#define MAX_GPDMA_CHANNELS 4
-#define GPDMA_MAX_DESCRIPTORS 20
-#define GPDMA_MAGIC    (0xabcd1234UL)
+#define MAX_GPDMA_CHANNELS	4
+#define GPDMA_MAX_DESCRIPTORS	20
+#define GPDMA_MAGIC		(0xabcd1234UL)
 
-#define DMA_X_SRC_COUNT		0x00
-#define DMA_Y_SRC_COUNT		0x04
-#define DMA_X_MODIF_SRC		0x08
-#define DMA_Y_MODIF_SRC		0x0c
-#define DMA_SRC_CUR_ADDR	0x10
-#define DMA_SRC_ACCESS		0x14
-#define  DMA_SRC_ACCESS_BURST_TYPE		(1<<15)
-#define  DMA_SRC_ACCESS_TAIL_LENGTH(x)		(((x) & 0xF) << 11)
-#define  DMA_SRC_ACCESS_ROTATOR_LENGTH(x)	(((x) & 1F) << 6)
-#define  DMA_SRC_ACCESS_SRC_SIZE(x)		(((x) & 7) << 3)
-#define  DMA_SRC_ACCESS_SRC_BURST(x)		(((x) & 7) << 0)
-#define DMA_SRC_MASK		0x18
-#define DMA_X_DST_COUNT		0x1c
-#define DMA_Y_DST_COUNT		0x20
-#define DMA_X_MODIF_DST		0x24
-#define DMA_Y_MODIF_DST		0x28
-#define DMA_DST_CUR_ADDR	0x2C
-#define DMA_DST_ACCESS		0x30
-#define  DMA_DST_ACCESS_DST_SIZE(x)		(((x) & 7) << 3)
-#define  DMA_DST_ACCESS_DST_BURST(x)		(((x) & 7) << 0)
-#define DMA_NXT_DESCR		0x34
-#define DMA_CHANNEL_CONFIG	0x38
-#define  DMA_CONFIG_DST_SPACE(x)			(((x) & 7) << 26)
-#define  DMA_CONFIG_SRC_SPACE(x)			(((x) & 7) << 23)
-#define  DMA_CONFIG_EXT_PRIORITY			(1<<22)
-#define  DMA_CONFIG_PRIORITY_ROW			(1<<21)
-#define  DMA_CONFIG_PRIORITY			(1<<20)
-#define  DMA_CONFIG_CHANNEL_PRIORITY(x)		(((x) & 3) << 16)
-#define  DMA_CONFIG_LAST_BLOCK			(1<<15)
-#define  DMA_CONFIG_CLEAR_FIFO			(1<<14)
-#define  DMA_CONFIG_START_MEM_LOAD		(1<<13)
-#define  DMA_CONFIG_STOP_DST_EOB		(1<<11)
-#define  DMA_CONFIG_INT_DST_EOT			(1<<7)
-#define  DMA_CONFIG_INT_DST_EOB			(1<<6)
-#define  DMA_CONFIG_TX_EN			(1<<1)
-#define  DMA_CONFIG_CHAN_EN			(1<<0)
-#define DMA_STATUS		0x3C
-#define  DMA_STATUS_CH_PAUS_WR_EN               (1<<16)
-#define  DMA_STATUS_ERR_ACC_DST_DL              (1<<15)
-#define  DMA_STATUS_ERR_ACC_SRC_DL              (1<<14)
-#define  DMA_STATUS_ERR_ACC_DST                 (1<<13)
-#define  DMA_STATUS_ERR_ACC_SRC                 (1<<12)
-#define  DMA_STATUS_ERR_FLOW                    (1<<8)
-#define  DMA_STATUS_CH_PAUSE                    (1<<7)
-#define  DMA_STATUS_CH_WAITING                  (1<<5)
-#define  DMA_STATUS_CH_ACTIVE                   (1<<4)
-#define  DMA_STATUS_TR_COMPLETE                 (1<<3)
-#define  DMA_STATUS_BLK_COMPLETE                (1<<2)
+#define DMA_X_SRC_COUNT			0x00
+#define DMA_Y_SRC_COUNT			0x04
+#define DMA_X_MODIF_SRC			0x08
+#define DMA_Y_MODIF_SRC			0x0c
+#define DMA_SRC_CUR_ADDR		0x10
+#define DMA_SRC_ACCESS			0x14
+#define   DMA_SRC_ACCESS_BURST_TYPE		(1<<15)
+#define   DMA_SRC_ACCESS_TAIL_LENGTH(x)		(((x) & 0xF) << 11)
+#define   DMA_SRC_ACCESS_ROTATOR_LENGTH(x)	(((x) & 1F) << 6)
+#define   DMA_SRC_ACCESS_SRC_SIZE(x)		(((x) & 7) << 3)
+#define   DMA_SRC_ACCESS_SRC_BURST(x)		(((x) & 7) << 0)
+#define DMA_SRC_MASK			0x18
+#define DMA_X_DST_COUNT			0x1c
+#define DMA_Y_DST_COUNT			0x20
+#define DMA_X_MODIF_DST			0x24
+#define DMA_Y_MODIF_DST			0x28
+#define DMA_DST_CUR_ADDR		0x2C
+#define DMA_DST_ACCESS			0x30
+#define   DMA_DST_ACCESS_DST_SIZE(x)		(((x) & 7) << 3)
+#define   DMA_DST_ACCESS_DST_BURST(x)		(((x) & 7) << 0)
+#define DMA_NXT_DESCR			0x34
+#define DMA_CHANNEL_CONFIG		0x38
+#define   DMA_CONFIG_DST_SPACE(x)		(((x) & 7) << 26)
+#define   DMA_CONFIG_SRC_SPACE(x)		(((x) & 7) << 23)
+#define   DMA_CONFIG_EXT_PRIORITY		(1<<22)
+#define   DMA_CONFIG_PRIORITY_ROW		(1<<21)
+#define   DMA_CONFIG_PRIORITY			(1<<20)
+#define   DMA_CONFIG_CHANNEL_PRIORITY(x)	(((x) & 3) << 16)
+#define   DMA_CONFIG_LAST_BLOCK			(1<<15)
+#define   DMA_CONFIG_CLEAR_FIFO			(1<<14)
+#define   DMA_CONFIG_START_MEM_LOAD		(1<<13)
+#define   DMA_CONFIG_STOP_DST_EOB		(1<<11)
+#define   DMA_CONFIG_INT_DST_EOT		(1<<7)
+#define   DMA_CONFIG_INT_DST_EOB		(1<<6)
+#define   DMA_CONFIG_TX_EN			(1<<1)
+#define   DMA_CONFIG_CHAN_EN			(1<<0)
+#define DMA_STATUS			0x3C
+#define   DMA_STATUS_CH_PAUS_WR_EN		(1<<16)
+#define   DMA_STATUS_ERR_ACC_DST_DL		(1<<15)
+#define   DMA_STATUS_ERR_ACC_SRC_DL		(1<<14)
+#define   DMA_STATUS_ERR_ACC_DST		(1<<13)
+#define   DMA_STATUS_ERR_ACC_SRC		(1<<12)
+#define   DMA_STATUS_ERR_FLOW			(1<<8)
+#define   DMA_STATUS_CH_PAUSE			(1<<7)
+#define   DMA_STATUS_CH_WAITING			(1<<5)
+#define   DMA_STATUS_CH_ACTIVE			(1<<4)
+#define   DMA_STATUS_TR_COMPLETE		(1<<3)
+#define   DMA_STATUS_BLK_COMPLETE		(1<<2)
 
 #define DMA_STATUS_ERROR (			\
 		DMA_STATUS_ERR_ACC_DST_DL |	\
@@ -89,21 +89,21 @@
 		DMA_STATUS_TR_COMPLETE |	\
 		DMA_STATUS_BLK_COMPLETE)
 
-#define GEN_STAT       0x0
-#define GEN_CONFIG     0x4
-#define  GEN_CONFIG_EXT_MEM                     (1<<19)
-#define SOFT_RESET     0x8
+#define GEN_STAT		0x0
+#define GEN_CONFIG		0x4
+#define   GEN_CONFIG_EXT_MEM		(1<<19)
+#define SOFT_RESET		0x8
 
 #define GPDMA_GEN_STAT(__p) ((__p)->gbase + GEN_STAT)
 #define GPDMA_GEN_CONFIG(__p) ((__p)->gbase + GEN_CONFIG)
 #define GPDMA_SOFT_RESET(__p) ((__p)->gbase + SOFT_RESET)
 
-#define GPDMA_CH_IDLE                 0U
-#define GPDMA_CH_JOB_INIT             1U
-#define GPDMA_CH_TX_SUBMIT            2U
-#define GPDMA_CH_TX_QUEUED            3U
-#define GPDMA_CH_KICKED               4U
-#define GPDMA_CH_DONE                 5U
+#define GPDMA_CH_IDLE		0U
+#define GPDMA_CH_JOB_INIT	1U
+#define GPDMA_CH_TX_SUBMIT	2U
+#define GPDMA_CH_TX_QUEUED	3U
+#define GPDMA_CH_KICKED		4U
+#define GPDMA_CH_DONE		5U
 
 struct descriptor {
 	u16 src_x_ctr;
@@ -182,13 +182,13 @@ struct gpdma_engine {
 
 #if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ == 0)
 
-static __inline__ void __raw_out_le32(volatile u32 *addr, const u32 val)
+static inline void __raw_out_le32(volatile u32 *addr, const u32 val)
 {
 	__asm__ __volatile__ ("stwbrx %1,0,%2" \
 			      : "=m" (*addr) : "r" (val), \
 			      "r" (addr) : "memory");
 }
-static __inline__ u32 __raw_in_le32(const volatile u32 *addr)
+static inline u32 __raw_in_le32(const volatile u32 *addr)
 {
 	u32 val;
 
@@ -197,13 +197,13 @@ static __inline__ u32 __raw_in_le32(const volatile u32 *addr)
 			      "m" (*addr) : "memory");
 	return val;
 }
-static __inline__ void __raw_out_le16(volatile u16 *addr, const u32 val)
+static inline void __raw_out_le16(volatile u16 *addr, const u32 val)
 {
 	__asm__ __volatile__ ("sthbrx %1,0,%2" \
 			      : "=m" (*addr) : "r" (val), \
 			      "r" (addr) : "memory");
 }
-static __inline__ u32 __raw_in_le16(const volatile u16 *addr)
+static inline u32 __raw_in_le16(const volatile u16 *addr)
 {
 	u32 val;
 
@@ -214,12 +214,12 @@ static __inline__ u32 __raw_in_le16(const volatile u16 *addr)
 }
 
 #else
-static __inline__ void __raw_out_le32(volatile u32 *addr, const u32 val)
+static inline void __raw_out_le32(volatile u32 *addr, const u32 val)
 {
 	__asm__ __volatile__ ("stwbrx %1,%y0" \
 			      : "=Z" (*addr) : "r" (val) : "memory");
 }
-static __inline__ u32 __raw_in_le32(const volatile __u32 *addr)
+static inline u32 __raw_in_le32(const volatile __u32 *addr)
 {
 	u32 val;
 
@@ -227,12 +227,12 @@ static __inline__ u32 __raw_in_le32(const volatile __u32 *addr)
 			      : "=r" (val) : "Z" (*addr) : "memory");
 	return val;
 }
-static __inline__ void __raw_out_le16(volatile u16 *addr, const u32 val)
+static inline void __raw_out_le16(volatile u16 *addr, const u32 val)
 {
 	__asm__ __volatile__ ("sthbrx %1,%y0" \
 			      : "=Z" (*addr) : "r" (val) : "memory");
 }
-static __inline__ u32 __raw_in_le16(const volatile __u16 *addr)
+static inline u32 __raw_in_le16(const volatile __u16 *addr)
 {
 	u32 val;
 
