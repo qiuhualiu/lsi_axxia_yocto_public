@@ -245,14 +245,6 @@ static int vmfs_dir_open(struct inode *dir, struct file *file)
 
 	mutex_lock(&vmfs_mutex);
 
-	server = server_from_dentry(dentry);
-
-	if (server->opt.protocol < VMFS_PROTOCOL_LANMAN2) {
-		unsigned long age = jiffies - VMFS_I(dir)->oldmtime;
-		if (age > 2 * HZ)
-			vmfs_invalid_dir_cache(dir);
-	}
-#endif
 
 	if (!IS_ROOT(dentry))
 		error = vmfs_revalidate_inode(dentry);
