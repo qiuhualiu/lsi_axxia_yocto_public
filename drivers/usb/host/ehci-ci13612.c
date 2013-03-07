@@ -27,13 +27,12 @@
 #include "ehci-ci13612.h"
 
 
-/* Patch the code to fix the bugs in Bugzilla */
 static void ci13612_usb_setup(struct usb_hcd *hcd)
 {
 	int USB_TXFIFOTHRES, VUSB_HS_TX_BURST;
 
-	/* fix Bugzilla #31874 */
-	/* fix Bugzilla #32212 */
+	/* Fix a HW erratum where the USB core may overrun its transmit FIFO. */
+	/* Fix a HW erratum where the USB core may incorrectly fill its transmit FIFO. */
 	VUSB_HS_TX_BURST = inl(USB_HWTXBUF) & 0x0f;
 	USB_TXFIFOTHRES = (inl(USB_TXFILLTUNING) & 0x3f0000) >> 16;
 
@@ -94,7 +93,7 @@ static int ehci_run_fix(struct usb_hcd *hcd)
 	unsigned burst_size;
 	int retval;
 
-	/* fix Bugzilla 33669 */
+	/* Fix a HW erratum during the USB reset process. */
 	port_status = ehci_readl(ehci, &ehci->regs->port_status[0]);
 	printk(KERN_INFO "ehci_run: port_status = 0x%x\n", port_status);
 	if (port_status & 0x100) {
