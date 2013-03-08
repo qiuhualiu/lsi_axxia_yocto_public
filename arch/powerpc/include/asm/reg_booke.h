@@ -126,6 +126,7 @@
 #define SPRN_TLB2CFG	0x2B2	/* TLB 2 Config Register */
 #define SPRN_TLB3CFG	0x2B3	/* TLB 3 Config Register */
 #define SPRN_EPR	0x2BE	/* External Proxy Register */
+#define SPRN_MCSR_ACK	0x33C	/* Machine Check Status Register Acknowledge */
 #define SPRN_CCR1	0x378	/* Core Configuration Register 1 */
 #define SPRN_ZPR	0x3B0	/* Zone Protection Register (40x) */
 #define SPRN_MAS7	0x3B0	/* MMU Assist Register 7 */
