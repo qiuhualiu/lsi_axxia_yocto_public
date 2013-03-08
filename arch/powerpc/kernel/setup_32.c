@@ -157,16 +157,16 @@ extern u32 booke_wdt_period;
 notrace int __init early_parse_wdt(char *p)
 {
 	if (p && strncmp(p, "0", 1) != 0)
-	       booke_wdt_enabled = 1;
+		booke_wdt_enabled = 1;
 
 	return 0;
 }
 early_param("wdt", early_parse_wdt);
 
-int __init early_parse_wdt_period (char *p)
+int __init early_parse_wdt_period(char *p)
 {
 	if (p)
-		booke_wdt_period = simple_strtoul(p, NULL, 0);
+		booke_wdt_period = kstrtoul(p, 0, NULL);
 
 	return 0;
 }
@@ -177,7 +177,7 @@ early_param("wdt_period", early_parse_wdt_period);
 int __init ppc_setup_l2cr(char *str)
 {
 	if (cpu_has_feature(CPU_FTR_L2CR)) {
-		unsigned long val = simple_strtoul(str, NULL, 0);
+		unsigned long val = kstrtoul(str, 0, NULL);
 		printk(KERN_INFO "l2cr set to %lx\n", val);
 		_set_L2CR(0);		/* force invalidate by disable cache */
 		_set_L2CR(val);		/* and enable it */
@@ -190,7 +190,7 @@ __setup("l2cr=", ppc_setup_l2cr);
 int __init ppc_setup_l3cr(char *str)
 {
 	if (cpu_has_feature(CPU_FTR_L3CR)) {
-		unsigned long val = simple_strtoul(str, NULL, 0);
+		unsigned long val = kstrtoul(str, 0, NULL);
 		printk(KERN_INFO "l3cr set to %lx\n", val);
 		_set_L3CR(val);		/* and enable it */
 	}
@@ -240,9 +240,8 @@ int __init ppc_init(void)
 		ppc_md.progress("             ", 0xffff);
 
 	/* call platform init */
-	if (ppc_md.init != NULL) {
+	if (ppc_md.init != NULL)
 		ppc_md.init();
-	}
 	return 0;
 }
 
@@ -336,7 +335,8 @@ void __init setup_arch(char **cmdline_p)
 
 	/* set up the bootmem stuff with available memory */
 	do_init_bootmem();
-	if ( ppc_md.progress ) ppc_md.progress("setup_arch: bootmem", 0x3eab);
+	if (ppc_md.progress)
+		ppc_md.progress("setup_arch: bootmem", 0x3eab);
 
 #ifdef CONFIG_DUMMY_CONSOLE
 	conswitchp = &dummy_con;
@@ -344,7 +344,8 @@ void __init setup_arch(char **cmdline_p)
 
 	if (ppc_md.setup_arch)
 		ppc_md.setup_arch();
-	if ( ppc_md.progress ) ppc_md.progress("arch: exit", 0x3eab);
+	if (ppc_md.progress)
+		ppc_md.progress("arch: exit", 0x3eab);
 
 	paging_init();
 

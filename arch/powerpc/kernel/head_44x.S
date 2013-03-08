@@ -16,9 +16,9 @@
  *    Copyright 2000 MontaVista Software Inc.
  *	PPC405 modifications
  *      PowerPC 403GCX/405GP modifications.
- * 	Author: MontaVista Software, Inc.
- *         	frank_rowand@mvista.com or source@mvista.com
- * 	   	debbie_chu@mvista.com
+ *	Author: MontaVista Software, Inc.
+ *		frank_rowand@mvista.com or source@mvista.com
+ *		debbie_chu@mvista.com
  *    Copyright 2002-2005 MontaVista Software, Inc.
  *      PowerPC 44x support, Matt Porter <mporter@kernel.crashing.org>
  *
@@ -26,6 +26,8 @@
  * under  the terms of  the GNU General  Public License as published by the
  * Free Software Foundation;  either version 2 of the  License, or (at your
  * option) any later version.
+ *
+ * These patches add ACP3400 support signed-off-by: john.jacques@lsi.com
  */
 
 #include <linux/init.h>
@@ -75,7 +77,7 @@ _ENTRY(_start);
 	bl	0f				/* Get our runtime address */
 0:	mflr	r21				/* Make it accessible */
 	addis	r21,r21,(_stext - 0b)@ha
-	addi	r21,r21,(_stext - 0b)@l 	/* Get our current runtime base */
+	addi	r21,r21,(_stext - 0b)@l	/* Get current runtime base */
 
 	/*
 	 * We have the runtime (virutal) address of our base.
@@ -150,7 +152,8 @@ _ENTRY(_start);
 	 *	(kernstart_addr & 0xfffffff) = (stext.run & 0xfffffff)
 	 *
 	 * hence:
-	 *  virt_phys_offset = (KERNELBASE & ~0xfffffff) - (kernstart_addr & ~0xfffffff)
+	 *  virt_phys_offset = (KERNELBASE & ~0xfffffff) -
+	 *                     (kernstart_addr & ~0xfffffff)
 	 *
 	 */
 
@@ -217,8 +220,14 @@ _ENTRY(_start);
 	stw	r6, 0(r5)
 
 	/* Clear the Machine Check Syndrome Register */
+#ifdef CONFIG_PPC_47x
+	mfspr	r0,SPRN_MCSR
+	mtspr	SPRN_MCSR_ACK,r0
+	bl	init_cpu_features
+#else
 	li	r0,0
 	mtspr	SPRN_MCSR,r0
+#endif
 
 	/* Let's move on */
 	lis	r4,start_kernel@h
@@ -273,7 +282,8 @@ interrupt_base:
 #ifdef CONFIG_PPC_FPU
 	FP_UNAVAILABLE_EXCEPTION
 #else
-	EXCEPTION(0x2010, FloatingPointUnavailable, unknown_exception, EXC_XFER_EE)
+	EXCEPTION(0x2010, FloatingPointUnavailable, \
+		unknown_exception, EXC_XFER_EE)
 #endif
 	/* System Call Interrupt */
 	START_EXCEPTION(SystemCall)
@@ -281,7 +291,8 @@ interrupt_base:
 	EXC_XFER_EE_LITE(0x0c00, DoSyscall)
 
 	/* Auxiliary Processor Unavailable Interrupt */
-	EXCEPTION(0x2020, AuxillaryProcessorUnavailable, unknown_exception, EXC_XFER_EE)
+	EXCEPTION(0x2020, AuxillaryProcessorUnavailable, \
+		unknown_exception, EXC_XFER_EE)
 
 	/* Decrementer Interrupt */
 	DECREMENTER_EXCEPTION
@@ -300,13 +311,13 @@ interrupt_base:
 
 	/* Data TLB Error Interrupt */
 	START_EXCEPTION(DataTLBError44x)
-	mtspr	SPRN_SPRG_WSCRATCH0, r10		/* Save some working registers */
+	mtspr	SPRN_SPRG_WSCRATCH0, r10  /* Save some working registers */
 	mtspr	SPRN_SPRG_WSCRATCH1, r11
 	mtspr	SPRN_SPRG_WSCRATCH2, r12
 	mtspr	SPRN_SPRG_WSCRATCH3, r13
 	mfcr	r11
 	mtspr	SPRN_SPRG_WSCRATCH4, r11
-	mfspr	r10, SPRN_DEAR		/* Get faulting address */
+	mfspr	r10, SPRN_DEAR		  /* Get faulting address */
 
 	/* If we are faulting a kernel address, we have to use the
 	 * kernel page tables.
@@ -450,7 +461,7 @@ tlb_44x_patch_hwater_D:
 	li	r13,_PAGE_PRESENT | _PAGE_ACCESSED | _PAGE_EXEC
 
 	/* Compute pgdir/pmd offset */
-	rlwinm 	r12, r10, PPC44x_PGD_OFF_SHIFT, PPC44x_PGD_OFF_MASK_BIT, 29
+	rlwinm	r12, r10, PPC44x_PGD_OFF_SHIFT, PPC44x_PGD_OFF_MASK_BIT, 29
 	lwzx	r11, r12, r11		/* Get pgd/pmd entry */
 	rlwinm.	r12, r11, 0, 0, 20	/* Extract pt base address */
 	beq	2f			/* Bail if no table */
@@ -503,8 +514,8 @@ tlb_44x_patch_hwater_I:
 /*
  * Both the instruction and data TLB miss get to this
  * point to load the TLB.
- * 	r10 - EA of fault
- * 	r11 - PTE high word value
+ *	r10 - EA of fault
+ *	r11 - PTE high word value
  *	r12 - PTE low word value
  *	r13 - TLB index
  *	MMUCR - loaded with proper value when we get here
@@ -723,8 +734,8 @@ finish_tlb_load_44x:
 /*
  * Both the instruction and data TLB miss get to this
  * point to load the TLB.
- * 	r10 - free to use
- * 	r11 - PTE high word value
+ *	r10 - free to use
+ *	r11 - PTE high word value
  *	r12 - PTE low word value
  *      r13 - free to use
  *	MMUCR - loaded with proper value when we get here
@@ -826,6 +837,8 @@ _GLOBAL(init_cpu_state)
 	beq	head_start_47x
 	cmplwi	cr0,r3,PVR_476_ISS@h
 	beq	head_start_47x
+	cmplwi	cr0,r3,PVR_476X2@h
+	beq	head_start_47x
 #endif /* CONFIG_PPC_47x */
 
 /*
@@ -925,7 +938,7 @@ skpinv:	addi	r4,r4,1				/* Increment */
 	sync
 
 	/* pageid fields */
-	clrrwi	r3,r3,10		/* Mask off the effective page number */
+	clrrwi	r3,r3,10	/* Mask off the effective page number */
 	ori	r3,r3,PPC44x_TLB_VALID | PPC44x_TLB_256M
 
 	/* xlat fields */
@@ -1006,6 +1019,25 @@ skpinv:	addi	r4,r4,1				/* Increment */
 
 #ifdef CONFIG_PPC_47x
 
+/*
+ * per-processor initialization that depends on feature sections.
+ *
+ * We can't use the FTR_SECTION in init_cpu_state since early_init
+ * has not yet been called.
+ */
+_GLOBAL(init_cpu_features)
+BEGIN_FTR_SECTION
+	/* DD2 workaround, trap on icbi. Configure IOCR1 and enable
+	 * it in IOCCR.
+	 */
+	LOAD_REG_IMMEDIATE(r3, (31 << 26) | (982 << 16))	/* icbi */
+	lis r4,(IOCCR_IOCR1EN | IOCCR_IOCR1U)@h
+	mtspr	SPRN_IOCR1,r3
+	mtspr	SPRN_IOCCR,r4
+END_FTR_SECTION_IFSET(CPU_FTR_476_DD2)
+
+	blr
+
 #ifdef CONFIG_SMP
 
 /* Entry point for secondary 47x processors */
@@ -1013,6 +1045,7 @@ _GLOBAL(start_secondary_47x)
         mr      r24,r3          /* CPU number */
 
 	bl	init_cpu_state
+	bl	init_cpu_features
 
 	/* Now we need to bolt the rest of kernel memory which
 	 * is done in C code. We must be careful because our task
@@ -1034,6 +1067,10 @@ _GLOBAL(start_secondary_47x)
 	lis	r1,secondary_ti@ha
 	lwz	r1,secondary_ti@l(r1)
 	lwz	r2,TI_TASK(r1)
+
+	/* Clear the Machine Check Syndrome Register */
+	mfspr	r0,SPRN_MCSR
+	mtspr	SPRN_MCSR_ACK,r0
 
 	/* Current stack pointer */
 	addi	r1,r1,THREAD_SIZE-STACK_FRAME_OVERHEAD
@@ -1128,7 +1165,7 @@ clear_utlb_entry:
 	sync
 
 	/* Word 0 */
-	clrrwi	r3,r3,12		/* Mask off the effective page number */
+	clrrwi	r3,r3,12	/* Mask off the effective page number */
 	ori	r3,r3,PPC47x_TLB0_VALID | PPC47x_TLB0_256M
 
 	/* Word 1 - use r25.  RPN is the same as the original entry */
@@ -1174,6 +1211,7 @@ clear_utlb_entry:
 	tlbwe	r24,r23,2
 	isync                   /* Clear out the shadow TLB entries */
 
+#ifndef CONFIG_ACP
 #ifdef CONFIG_PPC_EARLY_DEBUG_44x
 	/* Add UART mapping for early debug. */
 
@@ -1200,6 +1238,56 @@ clear_utlb_entry:
 	/* Force context change */
 	isync
 #endif /* CONFIG_PPC_EARLY_DEBUG_44x */
+#endif /* CONFIG_ACP */
+
+#ifdef CONFIG_ACP
+	/* Add bolted entries for I/O. */
+
+#ifdef CONFIG_PPC_EARLY_DEBUG_AXXIA
+
+	/* Word 0 */
+	lis	r3,AXXIA_EARLY_DEBUG_VIRTADDR@h
+	ori	r3,r3,PPC47x_TLB0_VALID | PPC47x_TLB0_1M
+
+	/* Word 1 */
+	lis	r4,CONFIG_PPC_EARLY_DBG_AXXIA_PHYSLOW@h
+	ori	r4,r4,CONFIG_PPC_EARLY_DBG_AXXIA_PHYSHIGH
+
+	/* Word 2 */
+	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I | PPC47x_TLB2_G)
+
+	/* Bolted in way 0, bolt slot 4, we -hope- we don't hit the same
+	 * congruence class as the kernel, we need to make sure of it at
+	 * some point
+	 */
+        lis	r0,0x8d00
+	tlbwe	r3,r0,0
+	tlbwe	r4,r0,1
+	tlbwe	r5,r0,2
+#endif
+	/* Word 0 */
+	lis	r3,(0xf0100000)@h
+	ori	r3,r3,PPC47x_TLB0_VALID | PPC47x_TLB0_1M
+
+	/* Word 1 */
+	lis	r4,(0x00500000)@h
+	ori	r4,r4,0x20
+
+	/* Word 2 */
+	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I | PPC47x_TLB2_G)
+
+	/* Bolted in way 0, bolt slot 4, we -hope- we don't hit the same
+	 * congruence class as the kernel, we need to make sure of it at
+	 * some point
+	 */
+        lis	r0,0x8c00
+	tlbwe	r3,r0,0
+	tlbwe	r4,r0,1
+	tlbwe	r5,r0,2
+
+	/* Force context change */
+	isync
+#endif /* CONFIG_ACP */
 
 	/* Establish the interrupt vector offsets */
 	SET_IVOR(0,  CriticalInput);

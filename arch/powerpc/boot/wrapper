@@ -143,7 +143,7 @@ objflags=-S
 tmp=$tmpdir/zImage.$$.o
 ksection=.kernel:vmlinux.strip
 isection=.kernel:initrd
-link_address='0x400000'
+link_address='0x800000'
 make_space=y
 
 case "$platform" in
@@ -251,10 +251,18 @@ treeboot-currituck)
     ;;
 treeboot-iss4xx-mpic)
     platformo="$object/treeboot-iss4xx.o"
+    link_address='0x400000'
     ;;
 epapr)
     link_address='0x20000000'
     pie=-pie
+    ;;
+treeboot-iss476-amp1)
+    platformo="$object/treeboot-iss4xx.o"
+    ;;
+treeboot-iss476-amp2)
+    platformo="$object/treeboot-iss4xx-hi.o"
+    link_address='0x10400000'
     ;;
 esac
 

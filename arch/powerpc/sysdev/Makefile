@@ -42,11 +42,26 @@ obj-$(CONFIG_XILINX_VIRTEX)	+= xilinx_intc.o
 obj-$(CONFIG_XILINX_PCI)	+= xilinx_pci.o
 obj-$(CONFIG_OF_RTC)		+= of_rtc.o
 ifeq ($(CONFIG_PCI),y)
+ifeq ($(CONFIG_ACP),y)
+obj-$(CONFIG_ACP3400_PCI_4xx)	+= lsi_ppc4xx_pci.o
+else
 obj-$(CONFIG_4xx)		+= ppc4xx_pci.o
+endif
 endif
 obj-$(CONFIG_PPC4xx_MSI)	+= ppc4xx_msi.o
 obj-$(CONFIG_PPC4xx_CPM)	+= ppc4xx_cpm.o
 obj-$(CONFIG_PPC4xx_GPIO)	+= ppc4xx_gpio.o
+
+obj-$(CONFIG_ACP)		+= lsi_acpclock.o lsi_acp_ncr.o ncr_cd.o
+obj-$(CONFIG_ACP3400_GPIO)      += acp3400-gpio.o
+obj-$(CONFIG_PCA9554_GPIO)	+= dus_pca9554.o
+obj-$(CONFIG_ACP3400_I2C)       += acp3400-i2c.o
+obj-$(CONFIG_ACP3400_SSP)       += acp3400-ssp.o
+obj-$(CONFIG_ACP3400_RIO)	+= acp3400-rio.o acp3400-rio-hotplug.o acp3400-rio-irq.o acp3400-rio-sysfs.o
+
+ifeq ($(CONFIG_ACP3400_RIO_DEBUG),y)
+CFLAGS_acp3400-rio.o := -DDEBUG
+endif
 
 obj-$(CONFIG_CPM)		+= cpm_common.o
 obj-$(CONFIG_CPM2)		+= cpm2.o cpm2_pic.o

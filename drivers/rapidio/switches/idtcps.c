@@ -25,23 +25,31 @@ idtcps_route_add_entry(struct rio_mport *mport, u16 destid, u8 hopcount,
 		       u16 table, u16 route_destid, u8 route_port)
 {
 	u32 result;
+	int rc = 0;
 
 	if (route_port == RIO_INVALID_ROUTE)
 		route_port = CPS_DEFAULT_ROUTE;
 
 	if (table == RIO_GLOBAL_TABLE) {
-		rio_mport_write_config_32(mport, destid, hopcount,
-				RIO_STD_RTE_CONF_DESTID_SEL_CSR, route_destid);
+		rc = rio_mport_write_config_32(mport, destid, hopcount,
+					RIO_STD_RTE_CONF_DESTID_SEL_CSR,
+					route_destid);
+		if (rc < 0)
+			goto done;
 
-		rio_mport_read_config_32(mport, destid, hopcount,
-				RIO_STD_RTE_CONF_PORT_SEL_CSR, &result);
+		rc = rio_mport_read_config_32(mport, destid, hopcount,
+						RIO_STD_RTE_CONF_PORT_SEL_CSR,
+						&result);
+		if (rc < 0)
+			goto done;
 
 		result = (0xffffff00 & result) | (u32)route_port;
-		rio_mport_write_config_32(mport, destid, hopcount,
-				RIO_STD_RTE_CONF_PORT_SEL_CSR, result);
+		rc = rio_mport_write_config_32(mport, destid, hopcount,
+					       RIO_STD_RTE_CONF_PORT_SEL_CSR,
+					       result);
 	}
-
-	return 0;
+done:
+	return rc;
 }
 
 static int
@@ -72,21 +80,14 @@ idtcps_route_clr_table(struct rio_mport *mport, u16 destid, u8 hopcount,
 		       u16 table)
 {
 	u32 i;
-
-	if (table == RIO_GLOBAL_TABLE) {
-		for (i = 0x80000000; i <= 0x800000ff;) {
-			rio_mport_write_config_32(mport, destid, hopcount,
-				RIO_STD_RTE_CONF_DESTID_SEL_CSR, i);
-			rio_mport_write_config_32(mport, destid, hopcount,
-				RIO_STD_RTE_CONF_PORT_SEL_CSR,
-				(CPS_DEFAULT_ROUTE << 24) |
-				(CPS_DEFAULT_ROUTE << 16) |
-				(CPS_DEFAULT_ROUTE << 8) | CPS_DEFAULT_ROUTE);
-			i += 4;
-		}
+	int rc = 0;
+	for (i = 0; i <= RIO_ANY_DESTID(mport->sys_size); i++) {
+		rc = idtcps_route_add_entry(mport, destid, hopcount,
+					    table, i, RIO_INVALID_ROUTE);
+		if (rc)
+			break;
 	}
-
-	return 0;
+	return rc;
 }
 
 static int

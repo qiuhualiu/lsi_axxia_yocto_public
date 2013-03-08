@@ -12,6 +12,7 @@
 #include <asm/cache.h>
 #include <asm/errno.h>
 #include <asm/ppc_asm.h>
+#include <asm/cputable.h>
 
 #define COPY_16_BYTES		\
 	lwz	r7,4(r4);	\
@@ -98,7 +99,9 @@ _GLOBAL(cacheable_memzero)
 	bdnz	4b
 3:	mtctr	r9
 	li	r7,4
-10:	dcbz	r7,r6
+10:	PPC476_ERR_DCBx()
+	dcbz	r7,r6
+	PPC476_ERR_DCBx()
 	addi	r6,r6,CACHELINE_BYTES
 	bdnz	10b
 	clrlwi	r5,r8,32-LG_CACHELINE_BYTES
@@ -368,7 +371,9 @@ _GLOBAL(__copy_tofrom_user)
 	mtctr	r8
 
 53:	dcbt	r3,r4
+	PPC476_ERR_DCBx()
 54:	dcbz	r11,r6
+	PPC476_ERR_DCBx()
 	.section __ex_table,"a"
 	.align	2
 	.long	54b,105f

@@ -198,6 +198,17 @@ EXPORT_SYMBOL(local_flush_tlb_page);
  */
 #ifdef CONFIG_SMP
 
+static int amp;
+
+#ifdef CONFIG_44x
+void __init early_init_mmu_44x(void)
+{
+	unsigned long root = of_get_flat_dt_root();
+	if (of_flat_dt_is_compatible(root, "ibm,47x-AMP"))
+		amp = 1;
+}
+#endif /* CONFIG_44x */
+
 static DEFINE_RAW_SPINLOCK(tlbivax_lock);
 
 static int mm_is_core_local(struct mm_struct *mm)
@@ -277,7 +288,7 @@ void __flush_tlb_page(struct mm_struct *mm, unsigned long vmaddr,
 	cpu_mask = mm_cpumask(mm);
 	if (!mm_is_core_local(mm)) {
 		/* If broadcast tlbivax is supported, use it */
-		if (mmu_has_feature(MMU_FTR_USE_TLBIVAX_BCAST)) {
+		if (!amp && mmu_has_feature(MMU_FTR_USE_TLBIVAX_BCAST)) {
 			int lock = mmu_has_feature(MMU_FTR_LOCK_BCAST_INVAL);
 			if (lock)
 				raw_spin_lock(&tlbivax_lock);
@@ -292,7 +303,7 @@ void __flush_tlb_page(struct mm_struct *mm, unsigned long vmaddr,
 				.tsize = tsize,
 				.ind = ind,
 			};
-			/* Ignores smp_processor_id() even if set in cpu_mask */
+			/* Ignore smp_processor_id() even if set in cpu_mask */
 			smp_call_function_many(cpu_mask,
 					       do_flush_tlb_page_ipi, &p, 1);
 		}
@@ -380,7 +391,7 @@ void tlb_flush_pgtable(struct mmu_gather *tlb, unsigned long address)
 	if (book3e_htw_enabled) {
 		unsigned long start = address & PMD_MASK;
 		unsigned long end = address + PMD_SIZE;
-		unsigned long size = 1UL << mmu_psize_defs[mmu_pte_psize].shift;
+	       unsigned long size = 1UL << mmu_psize_defs[mmu_pte_psize].shift;
 
 		/* This isn't the most optimal, ideally we would factor out the
 		 * while preempt & CPU mask mucking around, or even the IPI but
@@ -496,7 +507,7 @@ static void setup_page_sizes(void)
 			"direct & indirect"
 		};
 		if (def->flags == 0) {
-			def->shift = 0;	
+			def->shift = 0;
 			continue;
 		}
 		pr_info("  %8ld KB as %s\n", 1ul << (def->shift - 10),
@@ -507,8 +518,8 @@ static void setup_page_sizes(void)
 static void __patch_exception(int exc, unsigned long addr)
 {
 	extern unsigned int interrupt_base_book3e;
- 	unsigned int *ibase = &interrupt_base_book3e;
- 
+	unsigned int *ibase = &interrupt_base_book3e;
+
 	/* Our exceptions vectors start with a NOP and -then- a branch
 	 * to deal with single stepping from userspace which stops on
 	 * the second instruction. Thus we need to patch the second
@@ -531,7 +542,7 @@ static void setup_mmu_htw(void)
 	 *   one dedicates to it
 	 *
 	 * - setting the global book3e_htw_enabled
-       	 */
+	 */
 	unsigned int tlb0cfg = mfspr(SPRN_TLB0CFG);
 
 	if ((tlb0cfg & TLBnCFG_IND) &&

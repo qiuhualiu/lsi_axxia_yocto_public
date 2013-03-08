@@ -235,7 +235,7 @@ irqreturn_t smp_ipi_demux(void)
 	mb();	/* order any irq clear */
 
 	do {
-		all = xchg(&info->messages, 0);
+		all = xchg_local(&info->messages, 0);
 
 #ifdef __BIG_ENDIAN
 		if (all & (1 << (24 - 8 * PPC_MSG_CALL_FUNCTION)))
@@ -387,6 +387,9 @@ int generic_cpu_disable(void)
 {
 	unsigned int cpu = smp_processor_id();
 
+#ifdef CONFIG_ACP
+	printk(KERN_INFO "%s:%d - cpu=%u\n", __FILE__, __LINE__, cpu);
+#endif
 	if (cpu == boot_cpuid)
 		return -EBUSY;
 
@@ -528,9 +531,15 @@ int __cpuinit __cpu_up(unsigned int cpu)
 	 * use this value that I found through experimentation.
 	 * -- Cort
 	 */
-	if (system_state < SYSTEM_RUNNING)
+	if (system_state < SYSTEM_RUNNING) {
+#ifndef CONFIG_ACPISS
 		for (c = 50000; c && !cpu_callin_map[cpu]; c--)
 			udelay(100);
+#else  /* CONFIG_ACPISS */
+		for (c = 500; c && !cpu_callin_map[cpu]; c--)
+			udelay(10);
+#endif /* CONFIG_ACPISS */
+	}
 #ifdef CONFIG_HOTPLUG_CPU
 	else
 		/*

@@ -101,7 +101,9 @@ int v2m_cfg_write(u32 devfn, u32 data)
 	/* Configuration interface broken? */
 	u32 val;
 
-	printk("%s: writing %08x to %08x\n", __func__, data, devfn);
+	printk(KERN_INFO
+	       "%s: writing %08x to %08x\n",
+	       __func__, data, devfn);
 
 	devfn |= SYS_CFG_START | SYS_CFG_WRITE;
 
@@ -297,7 +299,8 @@ static struct mmci_platform_data v2m_mmci_data = {
 };
 
 static AMBA_APB_DEVICE(aaci,  "mb:aaci",  0, V2M_AACI, IRQ_V2M_AACI, NULL);
-static AMBA_APB_DEVICE(mmci,  "mb:mmci",  0, V2M_MMCI, IRQ_V2M_MMCI, &v2m_mmci_data);
+static AMBA_APB_DEVICE(mmci,  "mb:mmci",  0, V2M_MMCI,
+		       IRQ_V2M_MMCI, &v2m_mmci_data);
 static AMBA_APB_DEVICE(kmi0,  "mb:kmi0",  0, V2M_KMI0, IRQ_V2M_KMI0, NULL);
 static AMBA_APB_DEVICE(kmi1,  "mb:kmi1",  0, V2M_KMI1, IRQ_V2M_KMI1, NULL);
 static AMBA_APB_DEVICE(uart0, "mb:uart0", 0, V2M_UART0, IRQ_V2M_UART0, NULL);
@@ -478,6 +481,7 @@ static void __init v2m_init(void)
 MACHINE_START(VEXPRESS, "ARM-Versatile Express")
 	.atag_offset	= 0x100,
 	.map_io		= v2m_map_io,
+	.nr_irqs	= NR_IRQS_LEGACY,
 	.init_early	= v2m_init_early,
 	.init_irq	= v2m_init_irq,
 	.timer		= &v2m_timer,
@@ -613,11 +617,12 @@ void __init v2m_dt_init_early(void)
 		u32 hbi = id & SYS_PROCIDx_HBI_MASK;
 
 		if (WARN_ON(dt_hbi != hbi))
-			pr_warning("vexpress: DT HBI (%x) is not matching "
-					"hardware (%x)!\n", dt_hbi, hbi);
+			pr_warning("vexpress: DT HBI (%x) is not matching hardware (%x)!\n",
+				   dt_hbi, hbi);
 	}
 
 	clkdev_add_table(v2m_dt_lookups, ARRAY_SIZE(v2m_dt_lookups));
+	versatile_sched_clock_init(v2m_sysreg_base + V2M_SYS_24MHZ, 24000000);
 }
 
 static  struct of_device_id vexpress_irq_match[] __initdata = {
@@ -674,7 +679,7 @@ static void __init v2m_dt_init(void)
 	pm_power_off = v2m_power_off;
 }
 
-const static char *v2m_dt_match[] __initconst = {
+static const char *v2m_dt_match[] __initconst = {
 	"arm,vexpress",
 	NULL,
 };

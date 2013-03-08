@@ -99,6 +99,10 @@
 #define PPC47x_TLB2_S_RW	(PPC47x_TLB2_SW | PPC47x_TLB2_SR)
 #define PPC47x_TLB2_IMG		(PPC47x_TLB2_I | PPC47x_TLB2_M | PPC47x_TLB2_G)
 
+#ifdef CONFIG_PPC_EARLY_DEBUG_AXXIA
+#define AXXIA_EARLY_DEBUG_VIRTADDR ASM_CONST(0xf0000000)
+#endif
+
 #ifndef __ASSEMBLY__
 
 extern unsigned int tlb_44x_hwater;

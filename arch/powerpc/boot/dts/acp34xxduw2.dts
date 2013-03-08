@@ -1,0 +1,653 @@
+// Product:     CAH1091889/2
+// Revision:    R1A01
+
+// 2010-11-23	PA1	ERANDIG		Initial attempts
+// 2010-11-25	PA2	ERANDIG		Updated with RAM map.
+// 2010-11-30	PA3	ERANDIG		Aliases semi areas added.
+// 2010-12-08	PA4	ERANDIG		New Flash Map
+// 2010-12-08	PA5	ERANDIG		Minor (name) changes
+// 2010-12-09	PA6	QPETMAR		Minor corrections
+// 2010-12-09	PA7	ERANDIG		Changed flash@# struct. Added aliases.
+// 2010-01-18	PA8	ERANDIG		Changed flash map. Added DCR-clock
+// 2010-01-18	PA9	ERANDIG		Updated after inspection.
+// 2010-01-18	PA10	EFRBJOR		Updated the flash config.
+// 2011-03-31	PA11	EFRBJOR		Merged in PCIE and changed the memory size.
+// 2011-04-12	PA12	EFRBJOR		Changed ranges and dma-ranges for PCIe0
+// 2011-09-08	PA13	QPETMAR		Added Vendor Credentials and DRAM size in kByte
+// 2011-11-11	PA14	QPETMAR		Changed DDR3 memory size to 2GByte
+// 2011-11-16	PA15	QPETMAR		Updated NAND parameters for CBM32 P2
+// 2011-12-06	PA16	QPETMAR		Copied to new product for CBM32
+// 2012-01-19	PA17	ERANDIG		Changed flash map and flash_config.
+// 2012-01-25	PA18	QPETMAR		Updated after inspection
+// 2012-04-25	PA19	ERALNPK		Updated for Multi Boot.
+//
+
+/dts-v1/;
+
+/memreserve/ 0x00100000 0x06400000;	// persistent memory. base + size.
+/memreserve/ 0x20000000 0x10800000;	// VP engines memory.
+/memreserve/ 0x3F680000 0x00980000;	// Uboot+DTB+BVL etc.
+
+
+/ {
+	#address-cells	= <2>;
+	#size-cells	= <1>;
+	model		= "ibm,acpx1-4xx";
+	compatible	= "ibm,acpx1-4xx", "acp34xxduw2";
+	dcr-parent	= <&{/cpus/cpu@0}>;
+	epapr-version	= "ePAPR-1.0";
+	revision_dts	= "CXC1731777_8-R3A01";	// UPDATE THIS!!!
+
+	aliases {
+		serial0 = &UART0;
+		serial1 = &UART1;
+		Backup_area =		"/LEP_nodes/flash@8";
+		Boot_par1_area =	"/LEP_nodes/flash@10";
+		Boot_par2_area =	"/LEP_nodes/flash@11";
+		BOS_area =		"/LEP_nodes/flash@14";
+		BVL_area =		"/LEP_nodes/flash@6";
+		DTB_area =		"/LEP_nodes/flash@4";
+		LR1_area =		"/LEP_nodes/flash@7";
+		HW_fault_log_area =	"/LEP_nodes/flash@12";
+		HW_repair_log_area =	"/LEP_nodes/flash@13";
+		HW_test_area =		"/LEP_nodes/flash@5";
+                Fallback_area =         "/LEP_nodes/flash@17";
+                GSM_boot_area =         "/LEP_nodes/flash@20";
+                rapidio0 = &rio0;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x00000000 0x00000000 0x80000000>;
+		//rt: upper-start-address=0 lower-start-address=0 size=2GB for CBM32 or later
+	};
+
+	chosen {
+		// original linux,stdout-path = "/plb/opb/serial@40000200";
+		// maybe bootargs = "/plb/opb/serial@40000200";	// or what?
+		linux,initrd_start	= <0>;	//Updated by Uboot
+		linux,initrd_end	= <0>;	//Updated by Uboot
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			model = "PowerPC,4xx"; // real CPU changed in sim
+			reg = <0>;
+			clock-frequency = <0x5f5e1000>; //clk_ppc 1600 MHz. Updated by Uboot
+			timebase-frequency = <0x5f5e100>; // Updated by Uboot
+			i-cache-line-size = <32>;
+			d-cache-line-size = <32>;
+			i-cache-size = <32768>;
+			d-cache-size = <32768>;
+			dcr-controller;
+			dcr-access-method = "native";
+			status = "okay";	//rt: was "ok".
+		};
+		cpu@1 {
+			device_type = "cpu";
+			model = "PowerPC,4xx"; // real CPU changed in sim
+			reg = <1>;
+			clock-frequency = <0x5f5e1000>;	//clk_ppc 1600 MHz. Updated by Uboot
+			timebase-frequency = <0x5f5e100>; // Updated by Uboot
+			i-cache-line-size = <32>;
+			d-cache-line-size = <32>;
+			i-cache-size = <32768>;
+			d-cache-size = <32768>;
+			dcr-controller;
+			dcr-access-method = "native";
+			status = "disabled";
+			enable-method = "spin-table";
+			cpu-release-addr = <0 0>; // Updated by Uboot
+		};
+		cpu@2 {
+			device_type = "cpu";
+			model = "PowerPC,4xx"; // real CPU changed in sim
+			reg = <2>;
+			clock-frequency = <0x5f5e1000>;	//clk_ppc 1600 MHz. Updated by Uboot
+			timebase-frequency = <0x5f5e100>; // Updated by Uboot
+			i-cache-line-size = <32>;
+			d-cache-line-size = <32>;
+			i-cache-size = <32768>;
+			d-cache-size = <32768>;
+			dcr-controller;
+			dcr-access-method = "native";
+			status = "disabled";
+			enable-method = "spin-table";
+			cpu-release-addr = <0 0>; // Updated by Uboot
+		};
+		cpu@3 {
+			device_type = "cpu";
+			model = "PowerPC,4xx"; // real CPU changed in sim
+			reg = <3>;
+			clock-frequency = <0x5f5e1000>;	//clk_ppc 1600 MHz. Updated by Uboot
+			timebase-frequency = <0x5f5e100>; // Updated by Uboot
+			i-cache-line-size = <32>;
+			d-cache-line-size = <32>;
+			i-cache-size = <32768>;
+			d-cache-size = <32768>;
+			dcr-controller;
+			dcr-access-method = "native";
+			status = "disabled";
+			enable-method = "spin-table";
+			cpu-release-addr = <0 0>; // Updated by Uboot
+		};
+	};
+
+	MPIC: interrupt-controller {
+		compatible = "chrp,open-pic";
+		interrupt-controller;		// Required.
+		dcr-reg = <0xffc00000 0x00030000>;
+		#address-cells = <0>;		// Shall be 0.
+		#size-cells = <0>;
+		#interrupt-cells = <2>;		// Shall be 2.
+
+	};
+
+	plb {
+		/* Could be PLB6, doesn't matter */
+		compatible = "ibm,plb-4xx", "ibm,plb4";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+		clock-frequency = <0>; // clk_ppc/2. Uppdated by Uboot
+
+		POB0: opb {
+			compatible = "ibm,opb-4xx", "ibm,opb";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			/* Wish there was a nicer way of specifying a full 32-bit
+			   range */
+			ranges = <0x00000000 0x00000020 0x00000000 0x80000000
+				  0x80000000 0x00000020 0x80000000 0x80000000>;
+			clock-frequency = <0>; // 200 MHz. Uppdated by Uboot
+			UART0: serial@00404000 {
+				device_type = "serial";
+				compatible = "acp-uart0";
+				reg = <0x00404000 0x100>;
+				clock-frequency = <0>;
+				current-speed = <9600>;
+				interrupt-parent = <&MPIC>;
+				interrupts = <22>;
+			};
+			UART1: serial@00405000 {
+				device_type = "serial";
+				compatible = "acp-uart1";
+				reg = <0x00405000 0x100>;
+				clock-frequency = <0>;
+				current-speed = <9600>;
+				interrupt-parent = <&MPIC>;
+				interrupts = <23>;
+			};
+                        GPIO0: gpio0@0,1 {
+				compatible = "acp,acp3400-gpio";
+				reg = <0x00400000 0xfff
+				       0x00401000 0xfff>;
+				gpio-controller;
+				gpio-base = <29>;
+				interrupt-parent = <&MPIC>;
+				interrupts = <19 4>;
+			};
+			SSP: ssp@0 {
+				compatible = "acp,acp3400-ssp";
+				reg = <0x00402000 0xfff>;
+			};
+			I2C: i2c@0 {
+	     			#address-cells = <1>;
+				#size-cells = <0>;
+				cell-index = <0>;
+				compatible = "acp,acp3400-i2c";
+				reg = <0x00403000 0xfff
+				       0x00408020 0x1c>;
+
+				gpio1: gpio@20 {
+					compatible = "nxp,pca9554";
+					reg = <0x20>;
+					#gpio-cells = <2>;
+					gpio-controller;
+					polarity = <0x00>;
+					gpio-base = <21>;
+				};
+
+				/* On-board temperature sensors */
+				ts0: ts0@48 {
+					compatible = "ad,adt75";
+					reg = <0x48>;
+				};
+				ts1: ts1@49 {
+					compatible = "ad,adt75";
+					reg = <0x49>;
+				};
+				ts2: ts2@4a {
+					compatible = "ad,adt75";
+					reg = <0x4a>;
+				};
+				ts3: ts3@4b {
+					compatible = "ad,adt75";
+					reg = <0x4b>;
+				};
+				ts4: ts4@4c {
+					compatible = "ad,adt75";
+					reg = <0x4c>;
+				};
+				ts5: ts5@4d {
+					compatible = "ad,adt75";
+					reg = <0x4d>;
+				};
+			};
+			DMA: dma@0 {
+                             	#address-cells = <1>;
+                        	#size-cells = <1>;
+                        	compatible = "gp-dma,acp-dma", "gp-dma,acp-gpdma";
+                        	reg = <0x004e0000 0x4
+				       0x0040C000 0x4>;
+
+                        	ranges = <0x0 0x004e0000 0x200>;
+                        	cell-index = <0>;
+                        	dma-channel@0 {
+					compatible = "gp-dma,acp-dma",
+						   "gp-dma,acp-gpdma";
+                                	reg = <0x0 0x40>;
+					cell-index = <0>;
+                                	interrupt-parent = <&MPIC>;
+                                	interrupts = <35 2>;
+                        	};
+                        	dma-channel@40 {
+					compatible = "gp-dma,acp-dma",
+						   "gp-dma,acp-gpdma";
+                                	reg = <0x40 0x40>;
+                                	cell-index = <1>;
+                                	interrupt-parent = <&MPIC>;
+                                	interrupts = <36 2>;
+                        	};
+                        	dma-channel@80 {
+					compatible = "gp-dma,acp-dma",
+						   "gp-dma,acp-gpdma";
+                                	reg = <0x80 0x40>;
+                                	cell-index = <2>;
+                                	interrupt-parent = <&MPIC>;
+                                	interrupts = <37 2>;
+                        	};
+                        	dma-channel@C0 {
+					compatible = "gp-dma,acp-dma",
+						   "gp-dma,acp-gpdma";
+                                       	reg = <0xC0 0x40>;
+                                	cell-index = <3>;
+                                	interrupt-parent = <&MPIC>;
+                                	interrupts = <38 2>;
+                        	};
+                	};
+			PKA: pka@0 {
+                             	#address-cells = <1>;
+                        	#size-cells = <1>;
+                        	compatible = "pka,acp-pka";
+                        	reg = <0x00540000 0x5000>;
+                        	ranges = <0x0 0x00540000 0x200>;
+                        	cell-index = <0>;
+				interrupt-parent = <&MPIC>;
+                               	interrupts = <40 2>;
+			};
+
+		};
+	};
+
+        CBF4: cbf4 {
+		compatible = "dus,cbf4-fpga";
+
+		CBF4IRQ: cbf4irq {
+			compatible = "rbs,rbs-irq-host";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			interrupts-num = <26>;
+		};
+	};
+
+	DUXI: duxi@0 {
+		compatible = "dus,duxi-fpga";
+		DUXIIRQ: duxiirq {
+			compatible = "rbs,rbs-irq-host";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			interrupt-parent = <&CBF4IRQ>;
+			interrupts-num = <21>;
+		};
+		BBIRQ: bbirq {
+			compatible = "rbs,rbs-irq-host";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			interrupt-parent = <&CBF4IRQ>;
+			interrupts-num = <21>;
+		};
+	};
+
+	PCIE0: pciex@f00c0000 {
+                compatible = "lsi,plb-pciex-476fp", "lsi,plb-pciex";
+		device_type = "pci";
+		primary;
+		port = <0>;
+		#interrupt-cells = <1>;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		/* config space access MPAGE7 registers*/
+		reg = < 0x0020 0x78000000 0x01000000
+			0x0020 0x004c0000 0x00008000 >;
+		bus-range = <0 0x0f>;
+		/* Outbound ranges */
+		/* < <3-cell PCI addr> <2-cell CPU (PLB) addr> <2-cell size> > */
+		ranges = <0x02000000 0x00000000 0x80000000 0x20
+			  0x40000000 0 0x10000000>;
+		/* Inbound ranges */
+		/* < <3-cell PCI addr> <2-cell CPU addr> <2-cell size> > */
+		dma-ranges = < 0x02000000 0x00000000 0x00000000 0
+			       0x00000000 0 0x40000000>;
+		interrupts = <0x1a 0x2>;
+		interrupt-map-mask = <0000 0 0 7>;
+		interrupt-map = <
+			/* <3-cell dev> <irq#> <prnt> <2-cell prnt IRQ/sense> */
+			0000 0 0 1 &MPIC 29 2
+			0000 0 0 2 &MPIC 29 2
+			0000 0 0 3 &MPIC 29 2
+			0000 0 0 4 &MPIC 29 2
+		>;
+	};
+
+	PCIE1: pciex@f00c8000 {
+                compatible = "lsi,plb-pciex-476fp", "lsi,plb-pciex";
+		device_type = "pci";
+		primary;
+		port = <1>;
+		#interrupt-cells = <1>;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		/* config space access MPAGE7 registers*/
+		reg = < 0x0020 0xf8000000 0x01000000
+			0x0020 0x004c8000 0x00008000 >;
+		bus-range = <0 0x0f>;
+		/* Outbound ranges */
+		/* < <3-cell PCI addr> <2-cell CPU (PLB) addr> <2-cell size> > */
+		ranges = <0x02000000 0x00000000 0x80000000 0x20
+			  0xc0000000 0 0x10000000>;
+		/* Inbound ranges */
+		/* < <3-cell PCI addr> <2-cell CPU addr> <2-cell size> > */
+		dma-ranges = < 0x02000000 0x00000000 0x00000000 0
+			       0x00000000 0 0x40000000>;
+		interrupts = <0x1a 0x2>;
+		interrupt-map-mask = <0000 0 0 7>;
+		interrupt-map = <
+			/* <3-cell dev> <irq#> <prnt> <2-cell prnt IRQ/sense> */
+			0000 0 0 1 &MPIC 72 2	/* Needs to be changed, check with LSI */
+			0000 0 0 2 &MPIC 72 2	/* Needs to be changed, check with LSI */
+			0000 0 0 3 &MPIC 72 2	/* Needs to be changed, check with LSI */
+			0000 0 0 4 &MPIC 72 2	/* Needs to be changed, check with LSI */
+		>;
+	};
+
+	PCIE2: pciex@f00d0000 {
+                compatible = "lsi,plb-pciex-476fp", "lsi,plb-pciex";
+		device_type = "pci";
+		primary;
+		port = <2>;
+		#interrupt-cells = <1>;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		/* config space access MPAGE7 registers*/
+		reg = < 0x0021 0x38000000 0x01000000
+			0x0020 0x004d0000 0x00008000 >;
+		bus-range = <0 0x0f>;
+		/* Outbound ranges */
+		/* < <3-cell PCI addr> <2-cell CPU (PLB) addr> <2-cell size> > */
+		ranges = <0x02000000 0x00000000 0x80000000 0x00000021
+			  0x00000000 0x00000000 0x10000000>;
+		/* Inbound ranges */
+		/* < <3-cell PCI addr> <2-cell CPU addr> <2-cell size> > */
+		dma-ranges = < 0x02000000 0x00000000 0x00000000 0x00000000
+			       0x00000000 0x00000000 0x40000000>;
+		interrupts = <0x1a 0x2>;
+		interrupt-map-mask = <0000 0 0 7>;
+		interrupt-map = <
+			/* <3-cell dev> <irq#> <prnt> <2-cell prnt IRQ/sense> */
+			0000 0 0 1 &MPIC 73 2
+			0000 0 0 2 &MPIC 73 2
+			0000 0 0 3 &MPIC 73 2
+			0000 0 0 4 &MPIC 73 2
+		>;
+	};
+
+        rio0: rapidio@f0020000 {
+                #address-cells = <2>;
+                #size-cells = <2>;
+                compatible = "acp,rapidio-delta";
+                reg = <0x0020 0x00420000 0x1000>;
+                ranges = <0x0 0x0 0x0020 0x80000000 0x0 0x40000000>;
+                interrupt-parent = <&MPIC>;
+                interrupts = <30 0x2 /* NCP_INTR_MPIC_SRC_AXIS_SRIO */>;
+        };
+
+// Items below added for TP1
+
+	LEP_nodes {
+
+		DCR_frequency	= <200000000>;	// Clock frequency for DCR (200 MHz here)
+
+		BootCount	= <0x001EF000>;	// Location of BootCount in dram
+
+		BootCountLimit	= <3>;	// After 3 attempts the Backup shall be loaded
+
+		RestartRequest	= <0x001EF008>;	// Location of RestartRequest from OS
+
+		RestartReason	= <0x001EF00C>;	// Location of RestartReason to OS
+
+		DTB_start	= <0x3F7E0000>;	// Location of DTB in dram
+
+		BVL_start	= <0x3F7A0000>;	// Location of BVL in dram
+
+		LR1_start	= <0x3F7C0000>;	// Location of LR1 in dram
+
+		HW_test_start	= <0x3F680000>;	// Location of HW test vectors in dram
+
+		BFS_start	= <0x3D680000>;	// Location of BFS in dram
+
+		RAM_size	= <0x00200000>;	// Size of RAM in kByte
+
+		BOOTMAILBOX {
+			base = <0x001EF000>;
+			size = <0x00001000>;	// 4 kB
+		};
+
+		spin-table {
+			base = <0x3F7FF000>;
+			size = <0x00001000>;
+		};
+
+		flash_config {
+			base = <0>;
+			block_size = <0x20000>;		// 128kB
+			no_of_blocks = <0x1000>;	// 4096 blocks
+			page_size = <0x800>;		// 2kB
+			spare_area_size = <0x40>;
+			scrub_alg = <0x01>;			//New info on how to scrub
+			scrub_start = <0xFF0>;			//scrub start block no
+			scrub_noof_block = <0x8>;		//number of scrub blocks
+		};
+
+		flash@0 {
+			base_block = <0>;	// start offset in number of blocks
+			no_of_blocks = <32>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <28>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "U-Boot A";	// partition name
+		};
+
+		flash@1 {
+			base_block = <71>;	// start offset in number of blocks
+			no_of_blocks = <5>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "Environment_variables";	// partition name
+		};
+
+		flash@2 {
+			base_block = <76>;	// start offset in number of blocks
+			no_of_blocks = <5>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "Redundant_environment_variables";	// partition name
+		};
+
+		flash@3 {
+			base_block = <81>;	// start offset in number of blocks
+			no_of_blocks = <20>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <16>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "Standalone_programs"; // partition name
+		};
+
+		flash@4 {
+			base_block = <101>;	// start offset in number of blocks
+			no_of_blocks = <5>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "DTB";	// partition name
+		};
+
+		flash@5 {
+			base_block = <106>;	// start offset in number of blocks
+			no_of_blocks = <12>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <8>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "HW_test_vectors";	// partition name
+		};
+
+		flash@6 {
+			base_block = <118>;	// start offset in number of blocks
+			no_of_blocks = <5>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "BVL_image";	// partition name
+		};
+
+		flash@7 {
+			base_block = <123>;	// start offset in number of blocks
+			no_of_blocks = <5>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "LR1_image";	// partition name
+		};
+
+		flash@8 {
+			base_block = <128>;	// start offset in number of blocks
+			no_of_blocks = <282>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <256>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "BackupOS";	// partition name
+		};
+
+		flash@9 {
+			base_block = <410>;	// start offset in number of blocks
+			no_of_blocks = <5>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly or redundant
+			area_name = "Certificate";	// partition name
+		};
+
+		flash@10 {
+			base_block = <415>;	// start offset in number of blocks
+			no_of_blocks = <5>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1>;	// nr of blocks for user data
+			type = "normal";		// normal, readonly or redundant
+			area_name = "Boot_parameters_1";	// partition name
+		};
+
+		flash@11 {
+			base_block = <420>;	// start offset in number of blocks
+			no_of_blocks = <5>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1>;	// nr of blocks for user data
+			type = "normal";		// normal, readonly or redundant
+			area_name = "Boot_parameters_2";	// partition name
+		};
+
+		flash@12 {
+			base_block = <425>;	// start offset in number of blocks
+			no_of_blocks = <6>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <2>;	// nr of blocks for user data
+			type = "redundant";		// normal, readonly or redundant
+			area_name = "HW_fault_log";	// partition name
+		};
+
+		flash@13 {
+			base_block = <431>;	// start offset in number of blocks
+			no_of_blocks = <6>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <2>;	// nr of blocks for user data
+			type = "redundant";	        // normal, readonly or redundant
+			area_name = "HW_repair_log";	// partition name
+		};
+
+		flash@14 {
+			base_block = <437>;	// start offset in number of blocks
+			no_of_blocks = <282>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <256>;	// nr of blocks for user data
+			type = "normal";	// normal, readonly or redundant
+			area_name = "BasicOS";	// partition name
+		};
+
+		flash@15 {
+			base_block = <719>;	// start offset in number of blocks
+			no_of_blocks = <5>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly or redundant
+			area_name = "Vendor_credentials";	// partition name
+		};
+
+		flash@16 {
+			base_block = <32>;	// start offset in number of blocks
+			no_of_blocks = <32>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <28>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "U-Boot B";	// partition name
+		};
+
+		flash@17 {
+			base_block = <736>;	// start offset in number of blocks
+			no_of_blocks = <282>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <256>;	// nr of blocks for user data
+			type = "normal";	// normal, readonly, rmw or redundant
+			area_name = "Linux_fallback";	// partition name
+		};
+
+		flash@18 {
+			base_block = <1018>;	// start offset in number of blocks
+			no_of_blocks = <12>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <8>;	// nr of blocks for user data
+			type = "normal";	// normal, readonly, rmw or redundant
+			area_name = "GSM_diag_log";	// partition name
+		};
+
+		flash@19 {
+			base_block = <1030>;	// start offset in number of blocks
+			no_of_blocks = <141>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <128>;	// nr of blocks for user data
+			type = "normal";	// normal, readonly, rmw or redundant
+			area_name = "GSM_appl";	// partition name
+		};
+
+		flash@20 {
+			base_block = <1171>;	// start offset in number of blocks
+			no_of_blocks = <877>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <800>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "GSM_boot";	// partition name
+		};
+
+		flash@21 {
+			base_block = <2048>;	// start offset in number of blocks
+			no_of_blocks = <1792>;	// total nr of blocks (incl. spare blocks)
+			data_blocks = <1628>;	// nr of blocks for user data
+			type = "readonly";	// normal, readonly, rmw or redundant
+			area_name = "AI_image";	// partition name
+		};
+
+	};
+};

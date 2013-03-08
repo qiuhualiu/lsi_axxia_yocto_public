@@ -240,6 +240,15 @@ config PPC_EARLY_DEBUG_WSP
 	depends on PPC_WSP
 	select PPC_UDBG_16550
 
+config PPC_EARLY_DEBUG_AXXIA
+	bool "Early serial debugging for LSI/Axxia 3400 476 CPUs"
+	depends on ACP
+	help
+	  Select this to enable early debugging for Axxia 3400 chips via the
+	  built in serial port.  If you enable this, ensure you set
+          PPC_EARLY_DBG_AXXIA_PHYSLOW and PPC_EARLY_DBG_AXXIA_PHYSHIGH
+	  below to suit your target board.
+
 config PPC_EARLY_DEBUG_PS3GELIC
 	bool "Early debugging through the PS3 Ethernet port"
 	depends on PPC_PS3
@@ -331,4 +340,15 @@ config STRICT_DEVMEM
 
 	  If you are unsure, say Y.
 
+config PPC_EARLY_DBG_AXXIA_PHYSLOW
+	hex "Low 32 bits of early debug physical address"
+	depends on PPC_EARLY_DEBUG_AXXIA
+	default "0x00400000"
+	help
+	  This specifies the peripheral bus base address.
+
+config PPC_EARLY_DBG_AXXIA_PHYSHIGH
+	hex "EPRN of early debug physical address"
+	depends on PPC_EARLY_DEBUG_AXXIA
+	default "0x20"
 endmenu

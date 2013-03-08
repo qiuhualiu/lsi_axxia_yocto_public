@@ -71,7 +71,7 @@ config MTD_NAND_DENALI
         help
           Enable the driver for NAND flash on Intel Moorestown, using the
           Denali NAND controller core.
- 
+
 config MTD_NAND_DENALI_SCRATCH_REG_ADDR
         hex "Denali NAND size scratch register address"
         default "0xFF108018"
@@ -526,5 +526,18 @@ config MTD_NAND_FSMC
 	help
 	  Enables support for NAND Flash chips on the ST Microelectronics
 	  Flexible Static Memory Controller (FSMC)
+
+config MTD_NAND_EP501X
+	bool "Driver for Eureka EP501/EP501G1/EP501G3 Controllers"
+	depends on MTD_NAND
+	help
+		Enables NAND flash support for the Eureka EP501, EP501G1
+		and EP501G3 controllers.
+
+config MTD_NAND_EP501X_UBOOTENV
+       bool "U-Boot Environment Access for LSI's APP and ACP"
+       depends on ( MTD_NAND_EP501X && CRC32 )
+       help
+		Add U-Boot environment access on LSI's APP/ACP boards.
 
 endif # MTD_NAND

@@ -128,8 +128,8 @@ start:
  THUMB(		adr	r12, BSYM(1f)	)
  THUMB(		bx	r12		)
 
-		.word	0x016f2818		@ Magic numbers to help the loader
-		.word	start			@ absolute load/run zImage address
+		.word	0x016f2818		@ Magic nums to help the loader
+		.word	start			@ absolute load/run zImage addr
 		.word	_edata			@ zImage end address
  THUMB(		.thumb			)
 1:		mov	r7, r1			@ save architecture ID
@@ -625,7 +625,7 @@ __armv4_mmu_cache_on:
 		mcr	p15, 0, r0, c7, c10, 4	@ drain write buffer
 		mcr	p15, 0, r0, c8, c7, 0	@ flush I,D TLBs
 		mrc	p15, 0, r0, c1, c0, 0	@ read control reg
-		orr	r0, r0, #0x5000		@ I-cache enable, RR cache replacement
+		orr	r0, r0, #0x5000		@ I-cache enable, RR cache repl
 		orr	r0, r0, #0x0030
 #ifdef CONFIG_CPU_ENDIAN_BE8
 		orr	r0, r0, #1 << 25	@ big-endian page tables
@@ -649,7 +649,7 @@ __armv7_mmu_cache_on:
 #endif
 		mrc	p15, 0, r0, c1, c0, 0	@ read control reg
 		bic	r0, r0, #1 << 28	@ clear SCTLR.TRE
-		orr	r0, r0, #0x5000		@ I-cache enable, RR cache replacement
+		orr	r0, r0, #0x5000		@ I-cache enaable, RR cache repl
 		orr	r0, r0, #0x003c		@ write buffer
 #ifdef CONFIG_MMU
 #ifdef CONFIG_CPU_ENDIAN_BE8
@@ -795,7 +795,7 @@ proc_types:
 		W(b)	__armv3_mpu_cache_on
 		W(b)	__armv3_mpu_cache_off
 		W(b)	__armv3_mpu_cache_flush
-		
+
 		.word	0x41009400		@ ARM94x
 		.word	0xff00ff00
 		W(b)	__armv4_mpu_cache_on
@@ -1022,7 +1022,7 @@ __armv4_mpu_cache_flush:
 		mcrne	p15, 0, ip, c7, c5, 0	@ invalidate I cache
 		mcr	p15, 0, ip, c7, c10, 4	@ drain WB
 		mov	pc, lr
-		
+
 __fa526_cache_flush:
 		mov	r1, #0
 		mcr	p15, 0, r1, c7, c14, 0	@ clean and invalidate D cache
@@ -1051,31 +1051,31 @@ hierarchical:
 		mrc	p15, 1, r0, c0, c0, 1	@ read clidr
 		ands	r3, r0, #0x7000000	@ extract loc from clidr
 		mov	r3, r3, lsr #23		@ left align loc bit field
-		beq	finished		@ if loc is 0, then no need to clean
+		beq	finished		@ if loc is 0, then don't cln
 		mov	r10, #0			@ start clean at cache level 0
 loop1:
-		add	r2, r10, r10, lsr #1	@ work out 3x current cache level
-		mov	r1, r0, lsr r2		@ extract cache type bits from clidr
-		and	r1, r1, #7		@ mask of the bits for current cache only
-		cmp	r1, #2			@ see what cache we have at this level
-		blt	skip			@ skip if no cache, or just i-cache
-		mcr	p15, 2, r10, c0, c0, 0	@ select current cache level in cssr
+		add	r2, r10, r10, lsr #1	@ work out 3x cur cache level
+		mov	r1, r0, lsr r2		@ ext cache type bits from clidr
+		and	r1, r1, #7		@ mask of bits - cur cache only
+		cmp	r1, #2			@ chk cache we have at this lev
+		blt	skip			@ sk if no cache, or jst i-cache
+		mcr	p15, 2, r10, c0, c0, 0	@ select cur cache level in cssr
 		mcr	p15, 0, r10, c7, c5, 4	@ isb to sych the new cssr&csidr
 		mrc	p15, 1, r1, c0, c0, 0	@ read the new csidr
-		and	r2, r1, #7		@ extract the length of the cache lines
+		and	r2, r1, #7		@ extract the len of cache lines
 		add	r2, r2, #4		@ add 4 (line length offset)
 		ldr	r4, =0x3ff
-		ands	r4, r4, r1, lsr #3	@ find maximum number on the way size
-		clz	r5, r4			@ find bit position of way size increment
+		ands	r4, r4, r1, lsr #3	@ find max nm on the way size
+		clz	r5, r4			@ find bit pos of way sz inc
 		ldr	r7, =0x7fff
-		ands	r7, r7, r1, lsr #13	@ extract max number of the index size
+		ands	r7, r7, r1, lsr #13	@ extract max nm of the idx size
 loop2:
-		mov	r9, r4			@ create working copy of max way size
+		mov	r9, r4			@ create wk copy of max way size
 loop3:
- ARM(		orr	r11, r10, r9, lsl r5	) @ factor way and cache number into r11
+ ARM(		orr	r11, r10, r9, lsl r5	) @ factor way&cache nm into r11
  ARM(		orr	r11, r11, r7, lsl r2	) @ factor index number into r11
  THUMB(		lsl	r6, r9, r5		)
- THUMB(		orr	r11, r10, r6		) @ factor way and cache number into r11
+ THUMB(		orr	r11, r10, r6		) @ factor way&cache nm into r11
  THUMB(		lsl	r6, r7, r2		)
  THUMB(		orr	r11, r11, r6		) @ factor index number into r11
 		mcr	p15, 0, r11, c7, c14, 2	@ clean & invalidate by set/way
@@ -1090,7 +1090,7 @@ skip:
 finished:
 		ldmfd	sp!, {r0-r7, r9-r11}
 		mov	r10, #0			@ swith back to cache level 0
-		mcr	p15, 2, r10, c0, c0, 0	@ select current cache level in cssr
+		mcr	p15, 2, r10, c0, c0, 0	@ select curr cache lvl in cssr
 iflush:
 		mcr	p15, 0, r10, c7, c10, 4	@ DSB
 		mcr	p15, 0, r10, c7, c5, 0	@ invalidate I+BTB

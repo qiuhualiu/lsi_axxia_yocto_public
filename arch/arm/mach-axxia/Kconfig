@@ -1,0 +1,20 @@
+menu "Axxia platform type"
+	depends on ARCH_AXXIA
+
+config ARCH_AXXIA_DT
+	bool "Device Tree support for LSI Axxia platforms"
+	select ARM_GIC
+	select ARM_PATCH_PHYS_VIRT
+	select AUTO_ZRELADDR
+	select CPU_V7
+	select HAVE_SMP
+	select MIGHT_HAVE_CACHE_L2X0
+	select USE_OF
+	help
+	  The LSI Axxia platforms require a Flattened Device Tree to be passed
+	  to the kernel.
+
+	  If your bootloader supports Flattened Device Tree based booting,
+	  say Y here.
+
+endmenu

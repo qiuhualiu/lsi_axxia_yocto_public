@@ -62,13 +62,13 @@ static struct addr_range prep_kernel(void)
 		 * to an area allocated with malloc() (somewhere past _end).
 		 */
 		if ((unsigned long)_start < ei.loadsize)
-			fatal("Insufficient memory for kernel at address 0!"
-			       " (_start=%p, uncompressed size=%08lx)\n\r",
+			fatal(
+			      "Insufficient memory for kernel at address 0! (_start=%p, uncompressed size=%08lx)\n\r",
 			       _start, ei.loadsize);
 
 		if ((unsigned long)_end < ei.memsize)
-			fatal("The final kernel image would overwrite the "
-					"device tree\n\r");
+			fatal(
+			      "The final kernel image would overwrite the device tree\n\r");
 	}
 
 	/* Finally, gunzip the kernel */
@@ -104,7 +104,7 @@ static struct addr_range prep_initrd(struct addr_range vmlinux, void *chosen,
 	}
 
 	/* If there's no initrd at all, we're done */
-	if (! initrd_size)
+	if (!initrd_size)
 		return (struct addr_range){0, 0};
 
 	/*
@@ -118,9 +118,9 @@ static struct addr_range prep_initrd(struct addr_range vmlinux, void *chosen,
 		printf("Allocating 0x%lx bytes for initrd ...\n\r",
 		       initrd_size);
 		initrd_addr = (unsigned long)malloc(initrd_size);
-		if (! initrd_addr)
-			fatal("Can't allocate memory for initial "
-			       "ramdisk !\n\r");
+		if (!initrd_addr)
+			fatal(
+			      "Can't allocate memory for initial ramdisk !\n\r");
 		printf("Relocating initrd 0x%lx <- 0x%p (0x%lx bytes)\n\r",
 		       initrd_addr, old_addr, initrd_size);
 		memmove((void *)initrd_addr, old_addr, initrd_size);

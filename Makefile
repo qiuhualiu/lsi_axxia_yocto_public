@@ -162,7 +162,7 @@ export srctree objtree VPATH
 # SUBARCH tells the usermode build what the underlying arch is.  That is set
 # first, and if a usermode build is happening, the "ARCH=um" on the command
 # line overrides the setting of ARCH below.  If a native build is happening,
-# then ARCH is assigned, getting whatever value it gets normally, and 
+# then ARCH is assigned, getting whatever value it gets normally, and
 # SUBARCH is subsequently ignored.
 
 SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
@@ -289,7 +289,7 @@ export KBUILD_CHECKSRC KBUILD_SRC KBUILD_EXTMOD
 #         cmd_cc_o_c       = $(CC) $(c_flags) -c -o $@ $<
 #
 # If $(quiet) is empty, the whole command will be printed.
-# If it is set to "quiet_", only the short version will be printed. 
+# If it is set to "quiet_", only the short version will be printed.
 # If it is set to "silent_", nothing will be printed at all, since
 # the variable $(silent_cmd_cc_o_c) doesn't exist.
 #
@@ -853,7 +853,7 @@ endef
 # First command is ':' to allow us to use + in front of this rule
 cmd_ksym_ld = $(cmd_vmlinux__)
 define rule_ksym_ld
-	: 
+	:
 	+$(call cmd,vmlinux_version)
 	$(call cmd,vmlinux__)
 	$(Q)echo 'cmd_$@ := $(cmd_vmlinux__)' > $(@D)/.$(@F).cmd
@@ -932,7 +932,13 @@ modpost-init := $(filter-out init/built-in.o, $(vmlinux-init))
 vmlinux.o: $(modpost-init) $(vmlinux-main) FORCE
 	$(call if_changed_rule,vmlinux-modpost)
 
-# The actual objects are generated when descending, 
+vmlinux.bin: vmlinux
+	$(OBJCOPY) -O binary -R .note -R .comment -S vmlinux vmlinux.bin
+
+vmlinux.srec: vmlinux
+	$(OBJCOPY) -O srec -R .note -R .comment -S vmlinux vmlinux.srec
+
+# The actual objects are generated when descending,
 # make sure no implicit rule kicks in
 $(sort $(vmlinux-init) $(vmlinux-main)) $(vmlinux-lds): $(vmlinux-dirs) ;
 
@@ -1175,7 +1181,7 @@ MRPROPER_FILES += .config .config.old .version .old_version             \
 #
 clean: rm-dirs  := $(CLEAN_DIRS)
 clean: rm-files := $(CLEAN_FILES)
-clean-dirs      := $(addprefix _clean_, . $(vmlinux-alldirs) Documentation samples)
+clean-dirs      := $(addprefix _clean_, . $(vmlinux-alldirs) Documentation)
 
 PHONY += $(clean-dirs) clean archclean
 $(clean-dirs):
@@ -1208,6 +1214,16 @@ distclean: mrproper
 		-o -name '.*.rej' \
 		-o -name '*%' -o -name '.*.cmd' -o -name 'core' \) \
 		-type f -print | xargs rm -f
+	@rm -f linux.img vmlinux.bin vmlinux.strip.gz
+	@rm -f arch/powerpc/boot/ramdisk.image.gz
+	@rm -f  scripts/dtc/dtc-lexer.lex.c \
+		scripts/dtc/dtc-parser.tab.c \
+		scripts/dtc/dtc-parser.tab.h
+	@rm -f  scripts/genksyms/keywords.hash.c \
+		scripts/genksyms/lex.lex.c \
+		scripts/genksyms/parse.tab.c \
+		scripts/genksyms/parse.tab.h
+	@rm -f arch/arm/boot/dts/*.dtb
 
 
 # Packaging of the kernel to various formats
@@ -1416,6 +1432,16 @@ clean: $(clean-dirs)
 		-o -name '*.symtypes' -o -name 'modules.order' \
 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
 		-o -name '*.gcno' \) -type f -print | xargs rm -f
+	@rm -f linux.img
+	@rm -f arch/powerpc/boot/ramdisk.image.gz
+	@rm -f  scripts/dtc/dtc-lexer.lex.c \
+		scripts/dtc/dtc-parser.tab.c \
+		scripts/dtc/dtc-parser.tab.h
+	@rm -f  scripts/genksyms/keywords.hash.c \
+		scripts/genksyms/lex.lex.c \
+		scripts/genksyms/parse.tab.c \
+		scripts/genksyms/parse.tab.h
+	@rm -f arch/arm/boot/dts/*.dtb
 
 # Generate tags for editors
 # ---------------------------------------------------------------------------
@@ -1522,7 +1548,7 @@ endif
 	$(build)=$(build-dir) $(@:.ko=.o)
 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
 
-# FIXME Should go into a make.lib or something 
+# FIXME Should go into a make.lib or something
 # ===========================================================================
 
 quiet_cmd_rmdirs = $(if $(wildcard $(rm-dirs)),CLEAN   $(wildcard $(rm-dirs)))

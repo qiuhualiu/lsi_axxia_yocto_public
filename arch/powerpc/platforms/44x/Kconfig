@@ -5,7 +5,7 @@ config PPC_47x
 	select MPIC
 	help
 	  This option enables support for the 47x family of processors and is
-	  not currently compatible with other 44x or 46x varients
+	  not currently compatible with other 44x or 46x variants
 
 config BAMBOO
 	bool "Bamboo"
@@ -197,6 +197,14 @@ config CURRITUCK
 	help
 	  This option enables support for the IBM Currituck (476fpe) evaluation board
 
+config ELPASO
+	bool "Support for LSI's ACP ElPaso Evaluation board"
+	depends on (44x || 40x)
+	default n
+	select ACP
+	select PPC_CLOCK
+	select DEFAULT_UIMAGE
+
 config ICON
 	bool "Icon"
 	depends on 44x
@@ -207,6 +215,101 @@ config ICON
 	select PPC4xx_PCI_EXPRESS
 	help
 	  This option enables support for the AMCC PPC440SPe evaluation board.
+
+config ACP
+	bool "Support for LSI's ACP Platform"
+	depends on (44x || 40x)
+	select PPC4xx_PCI_EXPRESS
+	default n
+	select 440GP
+	select PPC_FPU
+	select HAS_RAPIDIO
+
+config ACPISS
+	bool "ACP on the ISS 4xx Simulator"
+	depends on ACP
+	default n
+	select OF_RTC
+	help
+	  This option enables support for the ACP on the IBM ISS
+	  simulation environment
+
+config ACP3400_DUS
+	bool "Ericsson ACP3400 DUS"
+	depends on (44x || 40x)
+	default n
+	select DEFAULT_UIMAGE
+	select ACP
+	select PPC_CLOCK
+	select ACP_PCIE_HOTPLUG
+	select RAPIDIO
+	select RAPIDIO_HOTPLUG
+	select ACP_RIO_16B_ID
+	select RBS_ACP34XX
+
+config ACP3400_DUS_TB
+	bool "Ericsson ACP3400 DUS TB"
+	depends on (44x || 40x)
+	default n
+	select DEFAULT_UIMAGE
+	select ACP
+	select PPC_CLOCK
+	select ACP_PCIE_HOTPLUG
+	select RAPIDIO
+	select RAPIDIO_HOTPLUG
+	select ACP_RIO_16B_ID
+	select RBS_ACP34XX
+
+config ACP3400_DUW2
+	bool "Ericsson ACP3400 DUWv2 - KDU 127 174/4R2A"
+	depends on (44x || 40x)
+	default n
+	select DEFAULT_UIMAGE
+	select ACP
+	select PPC_CLOCK
+	select ACP_PCIE_HOTPLUG
+	select RAPIDIO
+	select RAPIDIO_HOTPLUG
+	select ACP_RIO_16B_ID
+	select RBS_ACP34XX
+
+config ACP3400_TP1
+	bool "Ericsson ACP3400 TP1"
+	depends on (44x || 40x)
+	default n
+	select DEFAULT_UIMAGE
+	select ACP
+	select PPC_CLOCK
+	select ACP_PCIE_HOTPLUG
+	select RAPIDIO
+	select RAPIDIO_HOTPLUG
+	select RBS_ACP34XX
+
+config ACP3400_TP5
+	bool "Ericsson ACP3400 DUWv2 (TP5) - INX 106 0694/1P1B"
+	depends on (44x || 40x)
+	default n
+	select DEFAULT_UIMAGE
+	select ACP
+	select PPC_CLOCK
+	select ACP_PCIE_HOTPLUG
+	select RAPIDIO
+	select RAPIDIO_HOTPLUG
+	select ACP_RIO_16B_ID
+	select RBS_ACP34XX
+
+config ACP3400_DUW31
+	bool "Ericsson ACP3400 DUW31"
+	depends on (44x || 40x)
+	default n
+	select DEFAULT_UIMAGE
+	select ACP
+	select PPC_CLOCK
+	select ACP_PCIE_HOTPLUG
+	select RAPIDIO
+	select RAPIDIO_HOTPLUG
+	select ACP_RIO_16B_ID
+	select RBS_ACP34XX
 
 config XILINX_VIRTEX440_GENERIC_BOARD
 	bool "Generic Xilinx Virtex 5 FXT board support"
@@ -249,6 +352,54 @@ config PPC4xx_GPIO
 	select GENERIC_GPIO
 	help
 	  Enable gpiolib support for ppc440 based boards
+
+config ACP3400_GPIO
+	bool "ACP3400 GPIO support"
+	depends on ACP
+	default n
+	select ARCH_WANT_OPTIONAL_GPIOLIB
+	select GENERIC_GPIO
+	select GPIOLIB
+	help
+	  Enable gpiolib support for acp476 based boards
+
+config PCA9554_GPIO
+	bool "PCA9554 GPIO expander"
+	depends on ACP
+	default n
+	select ARCH_WANT_OPTIONAL_GPIOLIB
+	select GENERIC_GPIO
+	select GPIOLIB
+	select I2C
+	select OF_I2C
+	help
+	  GPIO expander driver for PCA9554
+
+config ACP3400_I2C
+	bool "ACP3400 I2C support"
+	depends on ACP
+	default n
+	select I2C
+	select OF_I2C
+	help
+	  I2C adapter for acp476 based boards
+
+config ACP3400_SSP
+	bool "ACP3400 SSP support"
+	depends on ACP
+	default n
+	help
+	  Synchronous Serial Port support for acp476 based boards
+
+config ACP_PCIE_HOTPLUG
+	bool "PCIE Hotplug enabler in LSI Axxia 3400"
+	depends on ACP3400_PCI_4xx
+	default no
+
+config RBS_ACP34XX
+       bool "Support for acp34xx RBS board types"
+       depends on (ACP3400_DUS || ACP3400_DUW2 || ACP3400_TP1 || ACP3400_DUS_TB)
+       default no
 
 # 44x specific CPU modules, selected based on the board above.
 config 440EP

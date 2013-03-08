@@ -24,6 +24,9 @@
 #include <asm/dcr.h>
 #include <asm/dcr-regs.h>
 #include <asm/reg.h>
+#ifdef CONFIG_ACP
+#include <asm/mpic.h>
+#endif
 
 static u32 dcrbase_l2c;
 
@@ -60,7 +63,7 @@ static irqreturn_t l2c_error_handler(int irq, void *dev)
 	}
 
 	/* Clear parity errors */
-	if (sr & (L2C_SR_CPE | L2C_SR_TPE)){
+	if (sr & (L2C_SR_CPE | L2C_SR_TPE)) {
 		mtdcr(dcrbase_l2c + DCRN_L2C0_ADDR, 0);
 		mtdcr(dcrbase_l2c + DCRN_L2C0_CMD, L2C_CMD_CCP | L2C_CMD_CTE);
 	} else {
@@ -116,14 +119,14 @@ static int __init ppc4xx_l2c_probe(void)
 
 	/* Install error handler */
 	if (request_irq(irq, l2c_error_handler, 0, "L2C", 0) < 0) {
-		printk(KERN_ERR "Cannot install L2C error handler"
-		       ", cache is not enabled\n");
+		printk(KERN_ERR
+		       "Cannot install L2C error handler, cache is not enabled\n");
 		of_node_put(np);
 		return -ENODEV;
 	}
 
 	local_irq_save(flags);
-	asm volatile ("sync" ::: "memory");
+	asm volatile ("sync" : : : "memory");
 
 	/* Disable SRAM */
 	mtdcr(dcrbase_isram + DCRN_SRAM0_DPC,
@@ -164,14 +167,15 @@ static int __init ppc4xx_l2c_probe(void)
 	r |= 0x80000000 | L2C_SNP_SSR_32G | L2C_SNP_ESR;
 	mtdcr(dcrbase_l2c + DCRN_L2C0_SNP1, r);
 
-	asm volatile ("sync" ::: "memory");
+	asm volatile ("sync" : : : "memory");
 
 	/* Enable ICU/DCU ports */
 	r = mfdcr(dcrbase_l2c + DCRN_L2C0_CFG);
 	r &= ~(L2C_CFG_DCW_MASK | L2C_CFG_PMUX_MASK | L2C_CFG_PMIM
 	       | L2C_CFG_TPEI | L2C_CFG_CPEI | L2C_CFG_NAM | L2C_CFG_NBRM);
-	r |= L2C_CFG_ICU | L2C_CFG_DCU | L2C_CFG_TPC | L2C_CFG_CPC | L2C_CFG_FRAN
-		| L2C_CFG_CPIM | L2C_CFG_TPIM | L2C_CFG_LIM | L2C_CFG_SMCM;
+	r |= L2C_CFG_ICU | L2C_CFG_DCU | L2C_CFG_TPC |
+	     L2C_CFG_CPC | L2C_CFG_FRAN | L2C_CFG_CPIM |
+	     L2C_CFG_TPIM | L2C_CFG_LIM | L2C_CFG_SMCM;
 
 	/* Check for 460EX/GT special handling */
 	if (of_device_is_compatible(np, "ibm,l2-cache-460ex") ||
@@ -180,7 +184,7 @@ static int __init ppc4xx_l2c_probe(void)
 
 	mtdcr(dcrbase_l2c + DCRN_L2C0_CFG, r);
 
-	asm volatile ("sync; isync" ::: "memory");
+	asm volatile ("sync; isync" : : : "memory");
 	local_irq_restore(flags);
 
 	printk(KERN_INFO "%dk L2-cache enabled\n", l2_size >> 10);
@@ -189,6 +193,46 @@ static int __init ppc4xx_l2c_probe(void)
 	return 0;
 }
 arch_initcall(ppc4xx_l2c_probe);
+
+#ifdef CONFIG_ACP
+
+/*
+ * Issue a "core" reset.
+ */
+
+void
+acp_jump_to_boot_loader(void *input)
+{
+	mpic_teardown_this_cpu(0);
+	/* This is only valid in the "core" reset case, so 0x10000000. */
+	mtspr(SPRN_DBCR0, mfspr(SPRN_DBCR0) | 0x10000000);
+
+	while (1)
+		;		/* Just in case the jump fails. */
+}
+
+/*
+ * Get all other cores to run "acp_jump_to_boot_loader()" then go
+ * there as well.
+ */
+
+void
+acp_reset_cores(void)
+{
+	int cpu;
+
+	for_each_possible_cpu(cpu) {
+		if (cpu != smp_processor_id())
+			smp_call_function_single(cpu, acp_jump_to_boot_loader,
+						 NULL, 0);
+	}
+
+	acp_jump_to_boot_loader(NULL);
+}
+
+
+#endif
+
 
 /*
  * Apply a system reset. Alternatively a board specific value may be
@@ -214,7 +258,36 @@ void ppc4xx_reset_system(char *cmd)
 			reset_type = prop[0] << 28;
 	}
 
+#ifdef CONFIG_ACP
+	if (DBCR0_RST_CORE == reset_type) {
+		acp_reset_cores();
+	} else {
+		/*
+		  In this case, reset_type is either chip or system.
+
+		  On the AXM2500 (PVR=0x7ff520c1), writing to DBCR0
+		  will occasionally stall the system.  As a
+		  work-around, write to the system control register.
+		*/
+
+		u32 pvr_value;
+
+		asm volatile ("mfpvr    %0" : "=r"(pvr_value));
+
+		if (0x7ff520c1 == pvr_value) {
+			u32 value;
+
+			value = mfdcrx(0xd00);
+			value |= 0xab;
+			mtdcrx(0xd00, value);
+			mtdcrx(0x1700, reset_type);
+		} else {
+			mtspr(SPRN_DBCR0, mfspr(SPRN_DBCR0) | reset_type);
+		}
+	}
+#else
 	mtspr(SPRN_DBCR0, mfspr(SPRN_DBCR0) | reset_type);
+#endif
 
 	while (1)
 		;	/* Just in case the reset doesn't work */

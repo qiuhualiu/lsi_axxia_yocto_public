@@ -43,26 +43,36 @@ struct nand_flash_dev nand_flash_ids[] = {
 
 	{"NAND 16MiB 1,8V 8-bit",	0x33, 512, 16, 0x4000, 0},
 	{"NAND 16MiB 3,3V 8-bit",	0x73, 512, 16, 0x4000, 0},
-	{"NAND 16MiB 1,8V 16-bit",	0x43, 512, 16, 0x4000, NAND_BUSWIDTH_16},
-	{"NAND 16MiB 3,3V 16-bit",	0x53, 512, 16, 0x4000, NAND_BUSWIDTH_16},
+	{"NAND 16MiB 1,8V 16-bit",	0x43, 512, 16, 0x4000,
+						NAND_BUSWIDTH_16},
+	{"NAND 16MiB 3,3V 16-bit",	0x53, 512, 16, 0x4000,
+						NAND_BUSWIDTH_16},
 
 	{"NAND 32MiB 1,8V 8-bit",	0x35, 512, 32, 0x4000, 0},
 	{"NAND 32MiB 3,3V 8-bit",	0x75, 512, 32, 0x4000, 0},
-	{"NAND 32MiB 1,8V 16-bit",	0x45, 512, 32, 0x4000, NAND_BUSWIDTH_16},
-	{"NAND 32MiB 3,3V 16-bit",	0x55, 512, 32, 0x4000, NAND_BUSWIDTH_16},
+	{"NAND 32MiB 1,8V 16-bit",	0x45, 512, 32, 0x4000,
+						NAND_BUSWIDTH_16},
+	{"NAND 32MiB 3,3V 16-bit",	0x55, 512, 32, 0x4000,
+						NAND_BUSWIDTH_16},
 
 	{"NAND 64MiB 1,8V 8-bit",	0x36, 512, 64, 0x4000, 0},
 	{"NAND 64MiB 3,3V 8-bit",	0x76, 512, 64, 0x4000, 0},
-	{"NAND 64MiB 1,8V 16-bit",	0x46, 512, 64, 0x4000, NAND_BUSWIDTH_16},
-	{"NAND 64MiB 3,3V 16-bit",	0x56, 512, 64, 0x4000, NAND_BUSWIDTH_16},
+	{"NAND 64MiB 1,8V 16-bit",	0x46, 512, 64, 0x4000,
+						NAND_BUSWIDTH_16},
+	{"NAND 64MiB 3,3V 16-bit",	0x56, 512, 64, 0x4000,
+						NAND_BUSWIDTH_16},
 
 	{"NAND 128MiB 1,8V 8-bit",	0x78, 512, 128, 0x4000, 0},
 	{"NAND 128MiB 1,8V 8-bit",	0x39, 512, 128, 0x4000, 0},
 	{"NAND 128MiB 3,3V 8-bit",	0x79, 512, 128, 0x4000, 0},
-	{"NAND 128MiB 1,8V 16-bit",	0x72, 512, 128, 0x4000, NAND_BUSWIDTH_16},
-	{"NAND 128MiB 1,8V 16-bit",	0x49, 512, 128, 0x4000, NAND_BUSWIDTH_16},
-	{"NAND 128MiB 3,3V 16-bit",	0x74, 512, 128, 0x4000, NAND_BUSWIDTH_16},
-	{"NAND 128MiB 3,3V 16-bit",	0x59, 512, 128, 0x4000, NAND_BUSWIDTH_16},
+	{"NAND 128MiB 1,8V 16-bit",	0x72, 512, 128, 0x4000,
+						NAND_BUSWIDTH_16},
+	{"NAND 128MiB 1,8V 16-bit",	0x49, 512, 128, 0x4000,
+						NAND_BUSWIDTH_16},
+	{"NAND 128MiB 3,3V 16-bit",	0x74, 512, 128, 0x4000,
+						NAND_BUSWIDTH_16},
+	{"NAND 128MiB 3,3V 16-bit",	0x59, 512, 128, 0x4000,
+						NAND_BUSWIDTH_16},
 
 	{"NAND 256MiB 3,3V 8-bit",	0x71, 512, 256, 0x4000, 0},
 
@@ -70,7 +80,8 @@ struct nand_flash_dev nand_flash_ids[] = {
 	 * These are the new chips with large page size. The pagesize and the
 	 * erasesize is determined from the extended id bytes
 	 */
-#define LP_OPTIONS (NAND_SAMSUNG_LP_OPTIONS | NAND_NO_READRDY | NAND_NO_AUTOINCR)
+#define LP_OPTIONS (NAND_SAMSUNG_LP_OPTIONS | NAND_NO_READRDY | \
+		    NAND_NO_AUTOINCR)
 #define LP_OPTIONS16 (LP_OPTIONS | NAND_BUSWIDTH_16)
 
 	/* 512 Megabit */
@@ -115,6 +126,7 @@ struct nand_flash_dev nand_flash_ids[] = {
 	{"NAND 2GiB 3,3V 8-bit",	0xD5, 0, 2048, 0, LP_OPTIONS},
 	{"NAND 2GiB 1,8V 16-bit",	0xB5, 0, 2048, 0, LP_OPTIONS16},
 	{"NAND 2GiB 3,3V 16-bit",	0xC5, 0, 2048, 0, LP_OPTIONS16},
+	{"NAND 2GiB 3,3V 16-bit",	0x48, 0, 2048, 0, LP_OPTIONS},
 
 	/* 32 Gigabit */
 	{"NAND 4GiB 1,8V 8-bit",	0xA7, 0, 4096, 0, LP_OPTIONS},
@@ -157,12 +169,13 @@ struct nand_flash_dev nand_flash_ids[] = {
 	 * writes possible, but not implemented now
 	 */
 	{"AND 128MiB 3,3V 8-bit",	0x01, 2048, 128, 0x4000,
-	 NAND_IS_AND | NAND_NO_AUTOINCR |NAND_NO_READRDY | NAND_4PAGE_ARRAY |
+	 NAND_IS_AND | NAND_NO_AUTOINCR | NAND_NO_READRDY | NAND_4PAGE_ARRAY |
 	 BBT_AUTO_REFRESH
 	},
 
 	{NULL,}
 };
+EXPORT_SYMBOL(nand_flash_ids);
 
 /*
 *	Manufacturer ID list
@@ -180,9 +193,7 @@ struct nand_manufacturers nand_manuf_ids[] = {
 	{NAND_MFR_MACRONIX, "Macronix"},
 	{0x0, "Unknown"}
 };
-
 EXPORT_SYMBOL(nand_manuf_ids);
-EXPORT_SYMBOL(nand_flash_ids);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Thomas Gleixner <tglx@linutronix.de>");
