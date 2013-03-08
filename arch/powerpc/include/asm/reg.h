@@ -28,7 +28,7 @@
 
 #define MSR_SF_LG	63              /* Enable 64 bit mode */
 #define MSR_ISF_LG	61              /* Interrupt 64b mode valid on 630 */
-#define MSR_HV_LG 	60              /* Hypervisor state */
+#define MSR_HV_LG	60              /* Hypervisor state */
 #define MSR_VEC_LG	25	        /* Enable AltiVec */
 #define MSR_VSX_LG	23		/* Enable VSX */
 #define MSR_POW_LG	18		/* Enable Power Management */
@@ -43,16 +43,16 @@
 #define MSR_FE0_LG	11		/* Floating Exception mode 0 */
 #define MSR_SE_LG	10		/* Single Step */
 #define MSR_BE_LG	9		/* Branch Trace */
-#define MSR_DE_LG	9 		/* Debug Exception Enable */
+#define MSR_DE_LG	9		/* Debug Exception Enable */
 #define MSR_FE1_LG	8		/* Floating Exception mode 1 */
 #define MSR_IP_LG	6		/* Exception prefix 0x000/0xFFF */
-#define MSR_IR_LG	5 		/* Instruction Relocate */
-#define MSR_DR_LG	4 		/* Data Relocate */
+#define MSR_IR_LG	5		/* Instruction Relocate */
+#define MSR_DR_LG	4		/* Data Relocate */
 #define MSR_PE_LG	3		/* Protection Enable */
 #define MSR_PX_LG	2		/* Protection Exclusive Mode */
 #define MSR_PMM_LG	2		/* Performance monitor */
 #define MSR_RI_LG	1		/* Recoverable Exception */
-#define MSR_LE_LG	0 		/* Little Endian */
+#define MSR_LE_LG	0		/* Little Endian */
 
 #ifdef __ASSEMBLY__
 #define __MASK(X)	(1<<(X))
@@ -62,8 +62,9 @@
 
 #ifdef CONFIG_PPC64
 #define MSR_SF		__MASK(MSR_SF_LG)	/* Enable 64 bit mode */
-#define MSR_ISF		__MASK(MSR_ISF_LG)	/* Interrupt 64b mode valid on 630 */
-#define MSR_HV 		__MASK(MSR_HV_LG)	/* Hypervisor state */
+#define MSR_ISF		__MASK(MSR_ISF_LG)	/* Interrupt 64b mode */
+						/* valid on 630 */
+#define MSR_HV		__MASK(MSR_HV_LG)	/* Hypervisor state */
 #else
 /* so tests for these bits fail on 32-bit */
 #define MSR_SF		0
@@ -75,11 +76,11 @@
 #define MSR_VSX		__MASK(MSR_VSX_LG)	/* Enable VSX */
 #define MSR_POW		__MASK(MSR_POW_LG)	/* Enable Power Management */
 #define MSR_WE		__MASK(MSR_WE_LG)	/* Wait State Enable */
-#define MSR_TGPR	__MASK(MSR_TGPR_LG)	/* TLB Update registers in use */
+#define MSR_TGPR	__MASK(MSR_TGPR_LG)	/* TLB Update reg in use */
 #define MSR_CE		__MASK(MSR_CE_LG)	/* Critical Interrupt Enable */
 #define MSR_ILE		__MASK(MSR_ILE_LG)	/* Interrupt Little Endian */
 #define MSR_EE		__MASK(MSR_EE_LG)	/* External Interrupt Enable */
-#define MSR_PR		__MASK(MSR_PR_LG)	/* Problem State / Privilege Level */
+#define MSR_PR		__MASK(MSR_PR_LG)	/* Problem State / Priv Level */
 #define MSR_FP		__MASK(MSR_FP_LG)	/* Floating Point enable */
 #define MSR_ME		__MASK(MSR_ME_LG)	/* Machine Check Enable */
 #define MSR_FE0		__MASK(MSR_FE0_LG)	/* Floating Exception mode 0 */
@@ -87,7 +88,7 @@
 #define MSR_BE		__MASK(MSR_BE_LG)	/* Branch Trace */
 #define MSR_DE		__MASK(MSR_DE_LG)	/* Debug Exception Enable */
 #define MSR_FE1		__MASK(MSR_FE1_LG)	/* Floating Exception mode 1 */
-#define MSR_IP		__MASK(MSR_IP_LG)	/* Exception prefix 0x000/0xFFF */
+#define MSR_IP		__MASK(MSR_IP_LG)	/* Exc prefix 0x000/0xFFF */
 #define MSR_IR		__MASK(MSR_IR_LG)	/* Instruction Relocate */
 #define MSR_DR		__MASK(MSR_DR_LG)	/* Data Relocate */
 #define MSR_PE		__MASK(MSR_PE_LG)	/* Protection Enable */
@@ -173,7 +174,7 @@
 #define SPEFSCR_FDBZE	0x00000010	/* Embedded FP div by zero enable */
 #define SPEFSCR_FUNFE	0x00000008	/* Embedded FP underflow enable */
 #define SPEFSCR_FOVFE	0x00000004	/* Embedded FP overflow enable */
-#define SPEFSCR_FRMC 	0x00000003	/* Embedded FP rounding mode control */
+#define SPEFSCR_FRMC	0x00000003	/* Embedded FP rounding mode control */
 
 /* Special Purpose Registers (SPRNs)*/
 
@@ -318,7 +319,7 @@
 #define HID0_TBEN	(1<<26)		/* Timebase enable - 745x */
 #define HID0_ECLK	(1<<25)
 #define HID0_PAR	(1<<24)
-#define HID0_STEN	(1<<24)		/* Software table search enable - 745x */
+#define HID0_STEN	(1<<24)		/* SW table search enable - 745x */
 #define HID0_HIGH_BAT	(1<<23)		/* Enable high BATs - 7455 */
 #define HID0_DOZE	(1<<23)
 #define HID0_NAP	(1<<22)
@@ -382,8 +383,8 @@
 #define   TSC_CELL_DEC_ENABLE_1	0x200000 /* Decrementer Interrupt */
 #define   TSC_CELL_EE_ENABLE	0x100000 /* External Interrupt */
 #define   TSC_CELL_EE_BOOST	0x080000 /* External Interrupt Boost */
-#define SPRN_TSC 	0x3FD	/* Thread switch control on others */
-#define SPRN_TST 	0x3FC	/* Thread switch timeout on others */
+#define SPRN_TSC	0x3FD	/* Thread switch control on others */
+#define SPRN_TST	0x3FC	/* Thread switch timeout on others */
 #if !defined(SPRN_IAC1) && !defined(SPRN_IAC2)
 #define SPRN_IAC1	0x3F4		/* Instruction Address Compare 1 */
 #define SPRN_IAC2	0x3F5		/* Instruction Address Compare 2 */
@@ -463,7 +464,7 @@
 #define L3CR_L3HWF		0x00000800	/* L3 hardware flush */
 #define L3CR_L3I		0x00000400	/* L3 global invalidate */
 #define L3CR_L3RT		0x00000300	/* L3 SRAM type */
-#define L3CR_L3NIRCA		0x00000080	/* L3 non-integer ratio clock adj. */
+#define L3CR_L3NIRCA		0x00000080	/* L3 non-int ratio clock adj */
 #define L3CR_L3DO		0x00000040	/* L3 data only mode */
 #define L3CR_PMEN		0x00000004	/* L3 private memory enable */
 #define L3CR_PMSIZ		0x00000001	/* L3 private memory size */
@@ -529,7 +530,8 @@
 #define SPRN_SVR	0x11E	/* System Version Register */
 #endif
 #define SPRN_THRM1	0x3FC		/* Thermal Management Register 1 */
-/* these bits were defined in inverted endian sense originally, ugh, confusing */
+/* these bits were defined in inverted endian */
+/* sense originally, ugh, confusing */
 #define THRM1_TIN	(1 << 31)
 #define THRM1_TIV	(1 << 30)
 #define THRM1_THRES(x)	((x&0x7f)<<23)
@@ -578,8 +580,9 @@
 #define   MMCR0_PMC1CE	0x00008000UL /* PMC1 count enable*/
 #define   MMCR0_PMCjCE	0x00004000UL /* PMCj count enable*/
 #define   MMCR0_TRIGGER	0x00002000UL /* TRIGGER enable */
-#define   MMCR0_PMAO	0x00000080UL /* performance monitor alert has occurred, set to 0 after handling exception */
-#define   MMCR0_SHRFC	0x00000040UL /* SHRre freeze conditions between threads */
+#define   MMCR0_PMAO	0x00000080UL /* perf monitor alert has occurred, */
+				     /* set to 0 after handling exception */
+#define   MMCR0_SHRFC	0x00000040UL /* SHRre freeze conditions between thrds */
 #define   MMCR0_FCTI	0x00000008UL /* freeze counters in tags inactive mode */
 #define   MMCR0_FCTA	0x00000004UL /* freeze counters in tags active mode */
 #define   MMCR0_FCWAIT	0x00000002UL /* freeze counter in WAIT state */
@@ -809,9 +812,9 @@
  *
  */
 #ifdef CONFIG_PPC64
-#define SPRN_SPRG_PACA 		SPRN_SPRG1
+#define SPRN_SPRG_PACA		SPRN_SPRG1
 #else
-#define SPRN_SPRG_THREAD 	SPRN_SPRG3
+#define SPRN_SPRG_THREAD	SPRN_SPRG3
 #endif
 
 #ifdef CONFIG_PPC_BOOK3S_64
@@ -956,6 +959,7 @@
 #define PVR_403GCX	0x00201400
 #define PVR_405GP	0x40110000
 #define PVR_476		0x11a52000
+#define PVR_476X2	0x11b22080
 #define PVR_476FPE	0x7ff50000
 #define PVR_STB03XXX	0x40310000
 #define PVR_NP405H	0x41410000
