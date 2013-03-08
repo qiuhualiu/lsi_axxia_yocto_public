@@ -34,6 +34,11 @@
 
 BSS_STACK(4096);
 
+static void iss_4xx_fixups(void)
+{
+	ibm4xx_sdram_fixup_memsize();
+}
+
 /*
  * Quick and dirty hack for loading a kernel at fixed address 0x10000000
  */
