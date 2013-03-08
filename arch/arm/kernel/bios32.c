@@ -21,7 +21,8 @@ static int debug_pci;
  * We can't use pci_find_device() here since we are
  * called from interrupt context.
  */
-static void pcibios_bus_report_status(struct pci_bus *bus, u_int status_mask, int warn)
+static void pcibios_bus_report_status(struct pci_bus *bus,
+				      u_int status_mask, int warn)
 {
 	struct pci_dev *dev;
 
@@ -46,12 +47,14 @@ static void pcibios_bus_report_status(struct pci_bus *bus, u_int status_mask, in
 		pci_write_config_word(dev, PCI_STATUS, status & status_mask);
 
 		if (warn)
-			printk("(%s: %04X) ", pci_name(dev), status);
+			printk(KERN_WARNING
+			       "(%s: %04X) ", pci_name(dev), status);
 	}
 
 	list_for_each_entry(dev, &bus->devices, bus_list)
 		if (dev->subordinate)
-			pcibios_bus_report_status(dev->subordinate, status_mask, warn);
+			pcibios_bus_report_status(dev->subordinate,
+						  status_mask, warn);
 }
 
 void pcibios_report_status(u_int status_mask, int warn)
@@ -82,7 +85,8 @@ static void __devinit pci_fixup_83c553(struct pci_dev *dev)
 	/*
 	 * Set memory region to start at address 0, and enable IO
 	 */
-	pci_write_config_dword(dev, PCI_BASE_ADDRESS_0, PCI_BASE_ADDRESS_SPACE_MEMORY);
+	pci_write_config_dword(dev, PCI_BASE_ADDRESS_0,
+			       PCI_BASE_ADDRESS_SPACE_MEMORY);
 	pci_write_config_word(dev, PCI_COMMAND, PCI_COMMAND_IO);
 
 	dev->resource[0].end -= dev->resource[0].start;
@@ -127,14 +131,16 @@ static void __devinit pci_fixup_83c553(struct pci_dev *dev)
 	pci_write_config_word(dev, 0x44, 0xb000);
 	outb(0x08, 0x4d1);
 }
-DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_WINBOND, PCI_DEVICE_ID_WINBOND_83C553, pci_fixup_83c553);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_WINBOND,
+			 PCI_DEVICE_ID_WINBOND_83C553, pci_fixup_83c553);
 
 static void __devinit pci_fixup_unassign(struct pci_dev *dev)
 {
 	dev->resource[0].end -= dev->resource[0].start;
 	dev->resource[0].start = 0;
 }
-DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_WINBOND2, PCI_DEVICE_ID_WINBOND2_89C940F, pci_fixup_unassign);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_WINBOND2,
+			 PCI_DEVICE_ID_WINBOND2_89C940F, pci_fixup_unassign);
 
 /*
  * Prevent the PCI layer from seeing the resources allocated to this device
@@ -155,7 +161,8 @@ static void __devinit pci_fixup_dec21285(struct pci_dev *dev)
 		}
 	}
 }
-DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_DEC, PCI_DEVICE_ID_DEC_21285, pci_fixup_dec21285);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_DEC,
+			 PCI_DEVICE_ID_DEC_21285, pci_fixup_dec21285);
 
 /*
  * PCI IDE controllers use non-standard I/O port decoding, respect it.
@@ -185,7 +192,8 @@ static void __devinit pci_fixup_dec21142(struct pci_dev *dev)
 {
 	pci_write_config_dword(dev, 0x40, 0x80000000);
 }
-DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_DEC, PCI_DEVICE_ID_DEC_21142, pci_fixup_dec21142);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_DEC,
+			 PCI_DEVICE_ID_DEC_21142, pci_fixup_dec21142);
 
 /*
  * The CY82C693 needs some rather major fixups to ensure that it does
@@ -251,7 +259,8 @@ static void __devinit pci_fixup_cy82c693(struct pci_dev *dev)
 		pci_write_config_byte(dev, 0x45, 0x03);
 	}
 }
-DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CONTAQ, PCI_DEVICE_ID_CONTAQ_82C693, pci_fixup_cy82c693);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CONTAQ,
+			 PCI_DEVICE_ID_CONTAQ_82C693, pci_fixup_cy82c693);
 
 static void __init pci_fixup_it8152(struct pci_dev *dev)
 {
@@ -268,7 +277,8 @@ static void __init pci_fixup_it8152(struct pci_dev *dev)
 		}
 	}
 }
-DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_ITE, PCI_DEVICE_ID_ITE_8152, pci_fixup_it8152);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_ITE,
+			 PCI_DEVICE_ID_ITE_8152, pci_fixup_it8152);
 
 
 
@@ -300,7 +310,9 @@ static inline int pdev_bad_for_parity(struct pci_dev *dev)
 void pcibios_fixup_bus(struct pci_bus *bus)
 {
 	struct pci_dev *dev;
-	u16 features = PCI_COMMAND_SERR | PCI_COMMAND_PARITY | PCI_COMMAND_FAST_BACK;
+	u16 features = PCI_COMMAND_SERR |
+		       PCI_COMMAND_PARITY |
+		       PCI_COMMAND_FAST_BACK;
 
 	/*
 	 * Walk the devices on this bus, working out what we can
@@ -326,15 +338,20 @@ void pcibios_fixup_bus(struct pci_bus *bus)
 		switch (dev->class >> 8) {
 		case PCI_CLASS_BRIDGE_PCI:
 			pci_read_config_word(dev, PCI_BRIDGE_CONTROL, &status);
-			status |= PCI_BRIDGE_CTL_PARITY|PCI_BRIDGE_CTL_MASTER_ABORT;
-			status &= ~(PCI_BRIDGE_CTL_BUS_RESET|PCI_BRIDGE_CTL_FAST_BACK);
+			status |= PCI_BRIDGE_CTL_PARITY |
+				  PCI_BRIDGE_CTL_MASTER_ABORT;
+			status &= ~(PCI_BRIDGE_CTL_BUS_RESET |
+				    PCI_BRIDGE_CTL_FAST_BACK);
 			pci_write_config_word(dev, PCI_BRIDGE_CONTROL, status);
 			break;
 
 		case PCI_CLASS_BRIDGE_CARDBUS:
-			pci_read_config_word(dev, PCI_CB_BRIDGE_CONTROL, &status);
-			status |= PCI_CB_BRIDGE_CTL_PARITY|PCI_CB_BRIDGE_CTL_MASTER_ABORT;
-			pci_write_config_word(dev, PCI_CB_BRIDGE_CONTROL, status);
+			pci_read_config_word(dev,
+					     PCI_CB_BRIDGE_CONTROL, &status);
+			status |= PCI_CB_BRIDGE_CTL_PARITY |
+				  PCI_CB_BRIDGE_CTL_MASTER_ABORT;
+			pci_write_config_word(dev,
+					      PCI_CB_BRIDGE_CONTROL, status);
 			break;
 		}
 	}
@@ -386,8 +403,9 @@ static u8 __devinit pcibios_swizzle(struct pci_dev *dev, u8 *pin)
 		slot = sys->swizzle(dev, pin);
 
 	if (debug_pci)
-		printk("PCI: %s swizzling pin %d => pin %d slot %d\n",
-			pci_name(dev), oldpin, *pin, slot);
+		printk(KERN_DEBUG
+		       "PCI: %s swizzling pin %d => pin %d slot %d\n",
+		       pci_name(dev), oldpin, *pin, slot);
 
 	return slot;
 }
@@ -404,7 +422,7 @@ static int pcibios_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 		irq = sys->map_irq(dev, slot, pin);
 
 	if (debug_pci)
-		printk("PCI: %s mapping slot %d pin %d => irq %d\n",
+		printk(KERN_DEBUG "PCI: %s mapping slot %d pin %d => irq %d\n",
 			pci_name(dev), slot, pin, irq);
 
 	return irq;
@@ -564,8 +582,9 @@ int pcibios_enable_device(struct pci_dev *dev, int mask)
 
 		r = dev->resource + idx;
 		if (!r->start && r->end) {
-			printk(KERN_ERR "PCI: Device %s not available because"
-			       " of resource collisions\n", pci_name(dev));
+			printk(KERN_ERR
+			       "PCI: Device %s not available because of resource collisions\n",
+			       pci_name(dev));
 			return -EINVAL;
 		}
 		if (r->flags & IORESOURCE_IO)
@@ -594,11 +613,10 @@ int pci_mmap_page_range(struct pci_dev *dev, struct vm_area_struct *vma,
 	struct pci_sys_data *root = dev->sysdata;
 	unsigned long phys;
 
-	if (mmap_state == pci_mmap_io) {
+	if (mmap_state == pci_mmap_io)
 		return -EINVAL;
-	} else {
+	else
 		phys = vma->vm_pgoff + (root->mem_offset >> PAGE_SHIFT);
-	}
 
 	/*
 	 * Mark this as IO

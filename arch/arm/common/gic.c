@@ -117,7 +117,7 @@ static inline void gic_set_base_accessor(struct gic_chip_data *data,
 #else
 #define gic_data_dist_base(d)	((d)->dist_base.common_base)
 #define gic_data_cpu_base(d)	((d)->cpu_base.common_base)
-#define gic_set_base_accessor(d,f)
+#define gic_set_base_accessor(d, f)
 #endif
 
 static inline void __iomem *gic_dist_base(struct irq_data *d)
@@ -145,7 +145,8 @@ static void gic_mask_irq(struct irq_data *d)
 	u32 mask = 1 << (gic_irq(d) % 32);
 
 	raw_spin_lock(&irq_controller_lock);
-	writel_relaxed(mask, gic_dist_base(d) + GIC_DIST_ENABLE_CLEAR + (gic_irq(d) / 32) * 4);
+	writel_relaxed(mask, gic_dist_base(d) +
+		       GIC_DIST_ENABLE_CLEAR + (gic_irq(d) / 32) * 4);
 	if (gic_arch_extn.irq_mask)
 		gic_arch_extn.irq_mask(d);
 	raw_spin_unlock(&irq_controller_lock);
@@ -158,7 +159,8 @@ static void gic_unmask_irq(struct irq_data *d)
 	raw_spin_lock(&irq_controller_lock);
 	if (gic_arch_extn.irq_unmask)
 		gic_arch_extn.irq_unmask(d);
-	writel_relaxed(mask, gic_dist_base(d) + GIC_DIST_ENABLE_SET + (gic_irq(d) / 32) * 4);
+	writel_relaxed(mask, gic_dist_base(d) +
+		       GIC_DIST_ENABLE_SET + (gic_irq(d) / 32) * 4);
 	raw_spin_unlock(&irq_controller_lock);
 }
 
@@ -206,15 +208,18 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	 * As recommended by the spec, disable the interrupt before changing
 	 * the configuration
 	 */
-	if (readl_relaxed(base + GIC_DIST_ENABLE_SET + enableoff) & enablemask) {
-		writel_relaxed(enablemask, base + GIC_DIST_ENABLE_CLEAR + enableoff);
+	if (readl_relaxed(base + GIC_DIST_ENABLE_SET + enableoff)
+			  & enablemask) {
+		writel_relaxed(enablemask, base +
+			       GIC_DIST_ENABLE_CLEAR + enableoff);
 		enabled = true;
 	}
 
 	writel_relaxed(val, base + GIC_DIST_CONFIG + confoff);
 
 	if (enabled)
-		writel_relaxed(enablemask, base + GIC_DIST_ENABLE_SET + enableoff);
+		writel_relaxed(enablemask, base +
+			       GIC_DIST_ENABLE_SET + enableoff);
 
 	raw_spin_unlock(&irq_controller_lock);
 
@@ -233,7 +238,8 @@ static int gic_retrigger(struct irq_data *d)
 static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 			    bool force)
 {
-	void __iomem *reg = gic_dist_base(d) + GIC_DIST_TARGET + (gic_irq(d) & ~3);
+	void __iomem *reg = gic_dist_base(d) +
+			    GIC_DIST_TARGET + (gic_irq(d) & ~3);
 	unsigned int shift = (gic_irq(d) % 4) * 8;
 	unsigned int cpu = cpumask_any_and(mask_val, cpu_online_mask);
 	u32 val, mask, bit;
@@ -380,7 +386,8 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	 * as these enables are banked registers.
 	 */
 	for (i = 32; i < gic_irqs; i += 32)
-		writel_relaxed(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
+		writel_relaxed(0xffffffff, base +
+			       GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
 
 	writel_relaxed(1, base + GIC_DIST_CTRL);
 }
@@ -402,7 +409,8 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 	 * Set priority on PPI and SGI interrupts
 	 */
 	for (i = 0; i < 32; i += 4)
-		writel_relaxed(0xa0a0a0a0, dist_base + GIC_DIST_PRI + i * 4 / 4);
+		writel_relaxed(0xa0a0a0a0, dist_base +
+			       GIC_DIST_PRI + i * 4 / 4);
 
 	writel_relaxed(0xf0, base + GIC_CPU_PRIMASK);
 	writel_relaxed(1, base + GIC_CPU_CTRL);
@@ -617,7 +625,8 @@ static int gic_irq_domain_map(struct irq_domain *d, unsigned int irq,
 static int gic_irq_domain_xlate(struct irq_domain *d,
 				struct device_node *controller,
 				const u32 *intspec, unsigned int intsize,
-				unsigned long *out_hwirq, unsigned int *out_type)
+				unsigned long *out_hwirq,
+				unsigned int *out_type)
 {
 	if (d->of_node != controller)
 		return -EINVAL;
@@ -665,9 +674,12 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 		}
 
 		for_each_possible_cpu(cpu) {
-			unsigned long offset = percpu_offset * cpu_logical_map(cpu);
-			*per_cpu_ptr(gic->dist_base.percpu_base, cpu) = dist_base + offset;
-			*per_cpu_ptr(gic->cpu_base.percpu_base, cpu) = cpu_base + offset;
+			unsigned long offset =
+				percpu_offset * cpu_logical_map(cpu);
+			*per_cpu_ptr(gic->dist_base.percpu_base, cpu) =
+				dist_base + offset;
+			*per_cpu_ptr(gic->cpu_base.percpu_base, cpu) =
+				cpu_base + offset;
 		}
 
 		gic_set_base_accessor(gic, gic_get_percpu_base);
@@ -746,12 +758,13 @@ void gic_raise_softirq(const struct cpumask *mask, unsigned int irq)
 	dsb();
 
 	/* this always happens on GIC0 */
-	writel_relaxed(map << 16 | irq, gic_data_dist_base(&gic_data[0]) + GIC_DIST_SOFTINT);
+	writel_relaxed(map << 16 | irq, gic_data_dist_base(&gic_data[0])
+		       + GIC_DIST_SOFTINT);
 }
 #endif
 
 #ifdef CONFIG_OF
-static int gic_cnt __initdata = 0;
+static int gic_cnt __initdata;
 
 int __init gic_of_init(struct device_node *node, struct device_node *parent)
 {

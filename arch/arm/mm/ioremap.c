@@ -190,13 +190,13 @@ remap_area_supersections(unsigned long virt, unsigned long pfn,
 }
 #endif
 
-void __iomem * __arm_ioremap_pfn_caller(unsigned long pfn,
+void __iomem *__arm_ioremap_pfn_caller(unsigned long pfn,
 	unsigned long offset, size_t size, unsigned int mtype, void *caller)
 {
 	const struct mem_type *type;
 	int err;
 	unsigned long addr;
- 	struct vm_struct * area;
+	struct vm_struct *area;
 
 #ifndef CONFIG_ARM_LPAE
 	/*
@@ -227,7 +227,8 @@ void __iomem * __arm_ioremap_pfn_caller(unsigned long pfn,
 		if ((area->flags & VM_ARM_MTYPE_MASK) != VM_ARM_MTYPE(mtype))
 			continue;
 		if (__phys_to_pfn(area->phys_addr) > pfn ||
-		    __pfn_to_phys(pfn) + size-1 > area->phys_addr + area->size-1)
+		    __pfn_to_phys(pfn) + size-1 >
+		    area->phys_addr + area->size-1)
 			continue;
 		/* we can drop the lock here as we know *area is static */
 		read_unlock(&vmlist_lock);
@@ -244,9 +245,10 @@ void __iomem * __arm_ioremap_pfn_caller(unsigned long pfn,
 		return NULL;
 
 	area = get_vm_area_caller(size, VM_IOREMAP, caller);
- 	if (!area)
- 		return NULL;
- 	addr = (unsigned long)area->addr;
+	if (!area)
+		return NULL;
+
+	addr = (unsigned long)area->addr;
 
 #if !defined(CONFIG_SMP) && !defined(CONFIG_ARM_LPAE)
 	if (DOMAIN_IO == 0 &&
@@ -264,9 +266,9 @@ void __iomem * __arm_ioremap_pfn_caller(unsigned long pfn,
 					 __pgprot(type->prot_pte));
 
 	if (err) {
- 		vunmap((void *)addr);
- 		return NULL;
- 	}
+		vunmap((void *)addr);
+		return NULL;
+	}
 
 	flush_cache_vmap(addr, addr + size);
 	return (void __iomem *) (offset + addr);
@@ -276,12 +278,12 @@ void __iomem *__arm_ioremap_caller(unsigned long phys_addr, size_t size,
 	unsigned int mtype, void *caller)
 {
 	unsigned long last_addr;
- 	unsigned long offset = phys_addr & ~PAGE_MASK;
- 	unsigned long pfn = __phys_to_pfn(phys_addr);
+	unsigned long offset = phys_addr & ~PAGE_MASK;
+	unsigned long pfn = __phys_to_pfn(phys_addr);
 
- 	/*
- 	 * Don't allow wraparound or zero size
-	 */
+	/*
+	 * Don't allow wraparound or zero size
+	*/
 	last_addr = phys_addr + size - 1;
 	if (!size || last_addr < phys_addr)
 		return NULL;
@@ -375,6 +377,7 @@ void __iounmap(volatile void __iomem *io_addr)
 
 	vunmap(addr);
 }
+EXPORT_SYMBOL(__iounmap);
 
 void (*arch_iounmap)(volatile void __iomem *) = __iounmap;
 
