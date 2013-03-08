@@ -122,11 +122,11 @@ notrace void __init machine_init(u64 dt_ptr)
 {
 	lockdep_init();
 
-	/* Do some early initialization based on the flat device tree */
-	early_init_devtree(__va(dt_ptr));
-
 	/* Enable early debugging if any specified (see udbg.h) */
 	udbg_early_init();
+
+	/* Do some early initialization based on the flat device tree */
+	early_init_devtree(__va(dt_ptr));
 
 	early_init_mmu();
 
