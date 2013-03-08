@@ -25,6 +25,7 @@ static struct {
 
 enum {
 	CSD_FLAG_LOCK		= 0x01,
+	CSD_FLAG_NOWAIT		= 0x02,
 };
 
 struct call_function_data {
@@ -263,6 +264,8 @@ void generic_smp_call_function_single_interrupt(void)
 
 	while (!list_empty(&list)) {
 		struct call_single_data *data;
+		void (*func)(void *);
+		void *info;
 
 		data = list_entry(list.next, struct call_single_data, list);
 		list_del(&data->list);
@@ -273,12 +276,21 @@ void generic_smp_call_function_single_interrupt(void)
 		 * so save them away before making the call:
 		 */
 		data_flags = data->flags;
-
-		data->func(data->info);
+		func = data->func;
+		info = data->info;
 
 		/*
+		 * Unlock before calling func so that func never has
+		 * to return.
+		 *
 		 * Unlocked CSDs are valid through generic_exec_single():
 		 */
+		if ((data_flags & CSD_FLAG_LOCK) &&
+		    (data_flags & CSD_FLAG_NOWAIT))
+			csd_unlock(data);
+
+		func(info);
+
 		if (data_flags & CSD_FLAG_LOCK)
 			csd_unlock(data);
 	}
@@ -331,6 +343,9 @@ int smp_call_function_single(int cpu, smp_call_func_t func, void *info,
 				data = &__get_cpu_var(csd_data);
 
 			csd_lock(data);
+
+			if (!wait)
+				data->flags |= CSD_FLAG_NOWAIT;
 
 			data->func = func;
 			data->info = info;
