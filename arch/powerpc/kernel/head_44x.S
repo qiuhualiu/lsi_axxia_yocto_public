@@ -77,7 +77,7 @@ _ENTRY(_start);
 	bl	0f				/* Get our runtime address */
 0:	mflr	r21				/* Make it accessible */
 	addis	r21,r21,(_stext - 0b)@ha
-	addi	r21,r21,(_stext - 0b)@l		/* Get current runtime base */
+	addi	r21,r21,(_stext - 0b)@l	/* Get current runtime base */
 
 	/*
 	 * We have the runtime (virutal) address of our base.
@@ -220,11 +220,13 @@ _ENTRY(_start);
 	stw	r6, 0(r5)
 
 	/* Clear the Machine Check Syndrome Register */
+#ifdef CONFIG_PPC_47x
+	mfspr	r0,SPRN_MCSR
+	mtspr	SPRN_MCSR_ACK,r0
+	bl	init_cpu_features
+#else
 	li	r0,0
 	mtspr	SPRN_MCSR,r0
-
-#ifdef CONFIG_PPC_47x
-	bl	init_cpu_features
 #endif
 
 	/* Let's move on */
@@ -835,6 +837,8 @@ _GLOBAL(init_cpu_state)
 	beq	head_start_47x
 	cmplwi	cr0,r3,PVR_476_ISS@h
 	beq	head_start_47x
+	cmplwi	cr0,r3,PVR_476X2@h
+	beq	head_start_47x
 #endif /* CONFIG_PPC_47x */
 
 /*
@@ -1064,6 +1068,10 @@ _GLOBAL(start_secondary_47x)
 	lwz	r1,secondary_ti@l(r1)
 	lwz	r2,TI_TASK(r1)
 
+	/* Clear the Machine Check Syndrome Register */
+	mfspr	r0,SPRN_MCSR
+	mtspr	SPRN_MCSR_ACK,r0
+
 	/* Current stack pointer */
 	addi	r1,r1,THREAD_SIZE-STACK_FRAME_OVERHEAD
 	li	r0,0
@@ -1203,6 +1211,7 @@ clear_utlb_entry:
 	tlbwe	r24,r23,2
 	isync                   /* Clear out the shadow TLB entries */
 
+#ifndef CONFIG_ACP
 #ifdef CONFIG_PPC_EARLY_DEBUG_44x
 	/* Add UART mapping for early debug. */
 
@@ -1229,6 +1238,7 @@ clear_utlb_entry:
 	/* Force context change */
 	isync
 #endif /* CONFIG_PPC_EARLY_DEBUG_44x */
+#endif /* CONFIG_ACP */
 
 #ifdef CONFIG_ACP
 	/* Add bolted entries for I/O. */
