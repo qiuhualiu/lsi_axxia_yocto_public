@@ -202,10 +202,6 @@ static int ai2c_bus_block_read8_axm5500_internal(
 		goto ai2c_return;
 
 	/* target slave address */
-	if ((msg->addr & 0x1f) == 0x1e)
-		lTenBitMode = TRUE;
-	else
-		lTenBitMode = FALSE;
 	if (lTenBitMode) {
 		u32 a1 = (0x1e << 3) |
 			(((msg->addr >> 8) & 0x3) << 1) |
@@ -349,11 +345,15 @@ int ai2c_bus_block_read8_axm5500(
 
 	for (bytesRead = 0; count > bytesRead;) {
 		u32 thisXfr = MIN(count - bytesRead, thisLim);
+		int tempStop = stop;
+
+		if ((count+thisXfr) < bytesRead)
+			tempStop = 0;
 
 		ai2cStatus = ai2c_bus_block_read8_axm5500_internal(priv,
 			regionId,
 			msg, buffer, thisXfr,
-			stop, &actCount);
+			tempStop, &actCount);
 		if (ai2cStatus)
 			goto ai2c_return;
 
@@ -425,11 +425,6 @@ static int ai2c_bus_block_write8_axm5500_internal(
 		goto ai2c_return;
 
 	/* target slave address */
-	if ((msg->addr & 0x1f) == 0x1e)
-		lTenBitMode = TRUE;
-	else
-		lTenBitMode = FALSE;
-
 	if (lTenBitMode) {
 		u32 a1 = (0x1e << 3) |
 			(((msg->addr >> 8) & 0x3) << 1) |
@@ -453,11 +448,11 @@ static int ai2c_bus_block_write8_axm5500_internal(
 		AI2C_LOG(AI2C_MSG_DEBUG,
 			"write8_i(%d):T: r %x/%x ma1 0x%08x ma2 0x%08x\n",
 			__LINE__, regionId, AI2C_TARGET_ID(regionId),
-			(a1 >> 7) | 0x0, a2);
+			a1 | 0x0, a2);
 
 	} else {
 
-		u32 a1 = (((msg->addr >> 1) & 0x7f) << 1) |
+		u32 a1 = ((msg->addr & 0x7f) << 1) |
 			0x0;
 		u32 a2 = 0x00000000;
 		ai2cStatus = ai2c_dev_write32(priv,
@@ -478,7 +473,7 @@ static int ai2c_bus_block_write8_axm5500_internal(
 		AI2C_LOG(AI2C_MSG_DEBUG,
 			"write8_i(%d): r %x/%x ma1 0x%08x ma2 0x%08x\n",
 			__LINE__, regionId, AI2C_TARGET_ID(regionId),
-			(a1 >> 7) | 0x0, a2);
+			a1 | 0x0, a2);
 	}
 
 	/* Queue up the data */
@@ -594,6 +589,10 @@ static int ai2c_bus_block_write8_axm5500(
 		u32   actWid = 0;
 		u8    inOutTxd[AI2C_I2CPROT_MAX_BUF_SIZE];
 		u32   k;
+		int   tempStop = stop;
+
+		if (thisWid < countRem)
+			tempStop = 0;
 
 		for (k = 0; k < thisWid; k++)
 			inOutTxd[k] = msg->buf[countUsed+k];
@@ -602,7 +601,7 @@ static int ai2c_bus_block_write8_axm5500(
 			ai2c_bus_block_write8_axm5500_internal(priv,
 				regionId, msg,
 				&inOutTxd[0], thisXfr,
-				stop, &actWid);
+				tempStop, &actWid);
 		if (ai2cStatus)
 			goto ai2c_return;
 
