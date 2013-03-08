@@ -80,7 +80,8 @@ static void reset_channel(struct gpdma_engine *gpdma, int ch)
 	while (__raw_in_le32(base + DMA_CHANNEL_CONFIG)) {
 		wait++;
 		if (wait >= 1000) {
-			dev_warn(gpdma->dev, "%s - clear channel %d FIFO when channel not idle\n",
+			dev_warn(gpdma->dev,
+				 "%s - clear channel %d FIFO when channel not idle\n",
 				 __func__, ch);
 			break;
 		}
@@ -90,7 +91,8 @@ static void reset_channel(struct gpdma_engine *gpdma, int ch)
 	while (__raw_in_le32(base + DMA_CHANNEL_CONFIG)) {
 		wait++;
 		if (wait >= 1000) {
-			dev_warn(gpdma->dev, "%s - clear channel %d FIFO fails\n",
+			dev_warn(gpdma->dev,
+				 "%s - clear channel %d FIFO fails\n",
 				 __func__, ch);
 			break;
 		}
@@ -104,6 +106,7 @@ static void soft_reset(struct gpdma_engine *gpdma)
 	 * Reset GPDMA by writing Magic Number to reset reg
 	 */
 	__raw_out_le32(GPDMA_SOFT_RESET(gpdma), GPDMA_MAGIC);
+
 	/**
 	 *  Set has to be done twice???
 	 *  Yep! According to LSI code it has to be done twice,
@@ -357,6 +360,7 @@ purge_job_queue:
 			job->prio++;
 			continue;
 		} /* else pick job with match addr-hbits */
+
 		/* init gpreg */
 		dev_dbg(engine->dev,
 			"%s init gpreg old %08x new %08x\n",
@@ -370,7 +374,7 @@ purge_job_queue:
 		__kick_channel(engine, job);
 		break;
 	}
-	/* se if we can squeeze some more in there */
+	/* See if we can squeeze some more in there */
 	loop++;
 	goto purge_job_queue;
 }
@@ -592,8 +596,9 @@ static void reset_engine(struct gpdma_engine *engine)
 
 	clear_bit(GPDMA_INIT, &engine->state);
 	__asm__ __volatile__(PPC_MBAR);
+
 	/**
-	 * wait till all channels are out of chritical regions
+	 * Wait until all channels are out of critical regions
 	 */
 	for (i = 0; i < MAX_GPDMA_CHANNELS; i++)
 		free_irq(engine->channel[i].irq, &engine->channel[i]);
@@ -603,10 +608,10 @@ static void reset_engine(struct gpdma_engine *engine)
 
 	/* Reset HW */
 	soft_reset(engine);
+
 	/**
-	 * flush queues before accepting new jobs
+	 * Flush queues before accepting new jobs
 	 */
-	/* flush_all_jobs(engine); */
 	for (i = 0; i < MAX_GPDMA_CHANNELS; i++) {
 		if (request_irq(engine->channel[i].irq, gpdma_isr,
 				IRQF_SHARED, "lsi-dma", &engine->channel[i]))
@@ -628,6 +633,7 @@ static void terminate_channel_job(struct gpdma_channel *dmac, int tmo)
 
 	tasklet_enable(&engine->job_task);
 }
+
 static int gpdma_device_control(struct dma_chan *dchan,
 				enum dma_ctrl_cmd cmd, unsigned long arg)
 {
@@ -654,6 +660,7 @@ static int gpdma_device_control(struct dma_chan *dchan,
 
 	return 0;
 }
+
 static void gpdma_engine_release(struct kref *kref)
 {
 	struct gpdma_engine *engine = container_of(kref,
@@ -668,6 +675,7 @@ void gpdma_engine_put(struct gpdma_engine *engine)
 	if (engine)
 		kref_put(&engine->kref, gpdma_engine_release);
 }
+
 struct gpdma_engine *gpdma_engine_get(struct gpdma_engine *engine)
 {
 	if (engine)
@@ -698,7 +706,7 @@ static int gpdma_of_remove(struct platform_device *op)
 	for (i = 0; i < MAX_GPDMA_CHANNELS; i++) {
 		struct gpdma_channel *dmac = &engine->channel[i];
 
-		if (dmac->channel == i) /* initialized ok */
+		if (dmac->channel == i) /* Initialized ok */
 			free_irq(dmac->irq, dmac);
 	}
 	free_desc_table(&engine->desc);
@@ -745,8 +753,9 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 	INIT_LIST_HEAD(&engine->job);
 	INIT_LIST_HEAD(&engine->pending);
 	spin_lock_init(&engine->lock);
+
 	/**
-	 * NB! Should get these from dtb!
+	 * FIXME! Should get these from dtb! (update from LSI coming soon)
 	 */
 	engine->base = ioremap(0x20004e0000ull, 0x40 * MAX_GPDMA_CHANNELS);
 	engine->gbase = ioremap(0x20004e0400ull, 0xc);
@@ -794,7 +803,8 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 			INIT_LIST_HEAD(&dmac->job.node);
 			set_bit(GPDMA_CH_IDLE, &dmac->job.state);
 			dmac->chan.device = &engine->dma_device;
-			/* find the IRQ line, if it exists in the dev tree */
+
+			/* Find the IRQ line, if it exists in the dev tree */
 			dmac->irq = irq_of_parse_and_map(child, 0);
 			dev_dbg(engine->dev,
 				"channel %d, irq %d\n",
@@ -807,6 +817,7 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 					rc);
 				goto err_init;
 			}
+
 			/* Add the channel to the DMAC list */
 			list_add_tail(&dmac->chan.device_node,
 				      &engine->dma_device.channels);
@@ -847,6 +858,7 @@ static struct platform_driver gpdma_of_driver = {
 	.probe = gpdma_of_probe,
 	.remove = gpdma_of_remove,
 };
+
 /**
  * acp_gpdma_reset_engine
  *
@@ -870,7 +882,8 @@ void acp_gpdma_reset_engine(void)
 		module_put(THIS_MODULE);
 		return;
 	}
-	/* reset all */
+
+	/* Reset all */
 	spin_lock_irqsave(&engine->lock, flags);
 	reset_engine(engine);
 	spin_unlock_irqrestore(&engine->lock, flags);

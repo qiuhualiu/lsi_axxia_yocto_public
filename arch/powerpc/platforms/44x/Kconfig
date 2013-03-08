@@ -216,6 +216,24 @@ config ICON
 	help
 	  This option enables support for the AMCC PPC440SPe evaluation board.
 
+config ACP
+	bool "Support for LSI's ACP Platform"
+	depends on (44x || 40x)
+	select PPC4xx_PCI_EXPRESS
+	default n
+	select 440GP
+	select PPC_FPU
+	select HAS_RAPIDIO
+
+config ACPISS
+	bool "ACP on the ISS 4xx Simulator"
+	depends on ACP
+	default n
+	select OF_RTC
+	help
+	  This option enables support for the ACP on the IBM ISS
+	  simulation environment
+
 config ACP3400_DUS
 	bool "Ericsson ACP3400 DUS"
 	depends on (44x || 40x)
@@ -445,13 +463,6 @@ config APM821xx
 	select PPC_FPU
 	select IBM_EMAC_EMAC4
 	select IBM_EMAC_TAH
-
-config ACP
-	bool
-	select PPC4xx_PCI_EXPRESS
-	select 440GP
-	select PPC_FPU
-	select HAS_RAPIDIO
 
 # 44x errata/workaround config symbols, selected by the CPU models above
 config IBM440EP_ERR42

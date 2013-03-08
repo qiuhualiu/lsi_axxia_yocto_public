@@ -1,5 +1,5 @@
 /*
- * drivers/lsi/acp/wrappers.c
+ * drivers/net/ethernet/lsi/lsi_acp_mdio.c
  *
  * Copyright (C) 2010 LSI
  *
@@ -19,11 +19,11 @@
  */
 
 #include <linux/module.h>
-#include <linux/spinlock.h>
-#include <linux/sched.h>
 #include <linux/of.h>
 #include <asm/irq.h>
-#include <asm/io.h>
+#include <linux/io.h>
+
+#include <asm/lsi/acp_ncr.h>
 
 /*
   ==============================================================================
@@ -35,11 +35,10 @@
 
 #ifndef CONFIG_ACPISS
 
-#undef BZ33327_WA
 #define BZ33327_WA
 
 static unsigned long mdio_base;
-DEFINE_SPINLOCK(mdio_lock);
+static DEFINE_SPINLOCK(mdio_lock);
 
 #define MDIO_CONTROL_RD_DATA ((void *)(mdio_base + 0x0))
 #define MDIO_STATUS_RD_DATA  ((void *)(mdio_base + 0x4))
@@ -52,8 +51,7 @@ DEFINE_SPINLOCK(mdio_lock);
 */
 
 int
-acp_mdio_read(unsigned long address,
-	      unsigned long offset,
+acp_mdio_read(unsigned long address, unsigned long offset,
 	      unsigned short *value)
 {
 	unsigned long command = 0;
@@ -66,12 +64,12 @@ acp_mdio_read(unsigned long address,
 	status = in_le32(MDIO_STATUS_RD_DATA);
 	status |= 0x40000000;
 	out_le32(MDIO_STATUS_RD_DATA, status);
-#endif /* BZ33327_WA */
+#endif				/* BZ33327_WA */
 
-	/* Write the command.*/
+	/* Write the command. */
 	command |= 0x10000000;	/* op_code: read */
-	command |= (address & 0x1f) << 16; /* port_addr (target device) */
-	command |= (offset & 0x1f) << 21; /* device_addr (target register) */
+	command |= (address & 0x1f) << 16;	/* port_addr (target device) */
+	command |= (offset & 0x1f) << 21;/* device_addr (target register) */
 	out_le32(MDIO_CONTROL_RD_DATA, command);
 
 #if defined(BZ33327_WA)
@@ -86,7 +84,7 @@ acp_mdio_read(unsigned long address,
 	} while (0 != (command & 0x80000000));
 
 	*value = (unsigned short)(command & 0xffff);
-#endif /* BZ33327_WA */
+#endif				/* BZ33327_WA */
 	spin_unlock_irqrestore(&mdio_lock, flags);
 
 	return 0;
@@ -99,8 +97,7 @@ EXPORT_SYMBOL(acp_mdio_read);
 */
 
 int
-acp_mdio_write(unsigned long address,
-	       unsigned long offset,
+acp_mdio_write(unsigned long address, unsigned long offset,
 	       unsigned short value)
 {
 	unsigned long command = 0;
@@ -119,13 +116,13 @@ acp_mdio_write(unsigned long address,
 	status = in_le32(MDIO_STATUS_RD_DATA);
 	status |= 0x40000000;
 	out_le32(MDIO_STATUS_RD_DATA, status);
-#endif /* BZ33327_WA */
+#endif				/* BZ33327_WA */
 
 	/* Write the command. */
 	command = 0x08000000;	/* op_code: write */
-	command |= (address & 0x1f) << 16; /* port_addr (target device) */
-	command |= (offset & 0x1f) << 21; /* device_addr (target register) */
-	command |= (value & 0xffff); /* value */
+	command |= (address & 0x1f) << 16;	/* port_addr (target device) */
+	command |= (offset & 0x1f) << 21;/* device_addr (target register) */
+	command |= (value & 0xffff);	/* value */
 	out_le32(MDIO_CONTROL_RD_DATA, command);
 
 #if defined(BZ33327_WA)
@@ -133,7 +130,7 @@ acp_mdio_write(unsigned long address,
 	do {
 		status = in_le32(MDIO_STATUS_RD_DATA);
 	} while (0 != (status & 0x40000000));
-#endif /* BZ33327_WA */
+#endif				/* BZ33327_WA */
 
 	/* Wait for the mdio_busy (control) bit to clear. */
 	do {
@@ -154,13 +151,18 @@ EXPORT_SYMBOL(acp_mdio_write);
 static int
 acp_mdio_initialize(void)
 {
-	out_le32(MDIO_CLK_OFFSET, 0x10);
-	out_le32(MDIO_CLK_PERIOD, 0x2c);
+	if (is_asic()) {
+		out_le32(MDIO_CLK_OFFSET, 0x10);
+		out_le32(MDIO_CLK_PERIOD, 0x2c);
+	} else {
+		out_le32(MDIO_CLK_OFFSET, 0x05);
+		out_le32(MDIO_CLK_PERIOD, 0x0c);
+	}
 
 	return 0;
 }
 
-#endif /* CONFIG_ACPISS */
+#endif /* ! CONFIG_ACPISS */
 
 /*
   ==============================================================================
@@ -183,98 +185,6 @@ acp_irq_create_mapping(struct irq_domain *host, irq_hw_number_t hwirq)
 EXPORT_SYMBOL(acp_irq_create_mapping);
 
 /*
-  ==============================================================================
-  ==============================================================================
-  Spin Locks
-  ==============================================================================
-  ==============================================================================
-*/
-
-/*
-  ------------------------------------------------------------------------------
-  acp_spin_lock_init
-*/
-
-void
-acp_spin_lock_init(spinlock_t *lock)
-{
-	spin_lock_init(lock);
-}
-EXPORT_SYMBOL(acp_spin_lock_init);
-
-/*
-  ------------------------------------------------------------------------------
-  acp_spin_lock
-*/
-
-void
-acp_spin_lock(spinlock_t *lock)
-{
-	spin_lock(lock);
-}
-EXPORT_SYMBOL(acp_spin_lock);
-
-/*
-  ------------------------------------------------------------------------------
-  acp_spin_unlock
-*/
-
-void
-acp_spin_unlock(spinlock_t *lock)
-{
-	spin_unlock(lock);
-}
-EXPORT_SYMBOL(acp_spin_unlock);
-
-/*
-  ------------------------------------------------------------------------------
-  acp_spin_lock_bh
-*/
-
-void
-acp_spin_lock_bh(spinlock_t *lock)
-{
-	spin_lock_bh(lock);
-}
-EXPORT_SYMBOL(acp_spin_lock_bh);
-
-/*
-  ------------------------------------------------------------------------------
-  acp_spin_unlock_bh
-*/
-
-void
-acp_spin_unlock_bh(spinlock_t *lock)
-{
-	spin_unlock_bh(lock);
-}
-EXPORT_SYMBOL(acp_spin_unlock_bh);
-
-/*
-  ------------------------------------------------------------------------------
-  acp_spin_lock_irqsave
-*/
-
-void
-acp_spin_lock_irqsave(spinlock_t *lock, unsigned long flags)
-{
-	spin_lock_irqsave(lock, flags);
-}
-EXPORT_SYMBOL(acp_spin_lock_irqsave);
-
-/*
-  ------------------------------------------------------------------------------
-  acp_spin_unlock_irqrestore
-*/
-
-void
-acp_spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)
-{
-	spin_unlock_irqrestore(lock, flags);
-}
-EXPORT_SYMBOL(acp_spin_unlock_irqrestore);
-
-/*
   ------------------------------------------------------------------------------
   acp_wrappers_init
 */
@@ -282,17 +192,56 @@ EXPORT_SYMBOL(acp_spin_unlock_irqrestore);
 int __init
 acp_wrappers_init(void)
 {
-	int rc = 0;
+	int rc = -1;
+	struct device_node *np = NULL;
+	const u32 *field;
+	u64 mdio_phys_address;
+	u32 mdio_size;
 
 	printk(KERN_INFO "Initializing ACP Wrappers.\n");
+
 #ifndef CONFIG_ACPISS
-	mdio_base = (unsigned long) ioremap(0x002000409000ULL, 0x1000);
+
+	np = of_find_node_by_type(np, "network");
+
+	while (np && !of_device_is_compatible(np, "acp-femac"))
+		np = of_find_node_by_type(np, "network");
+
+	if (np) {
+		field = of_get_property(np, "enabled", NULL);
+
+		if (!field || (field && (0 == *field))) {
+			printk(KERN_WARNING "Networking is Not Enabled.\n");
+			goto acp_wrappers_init_done;
+		}
+
+		field = of_get_property(np, "mdio-reg", NULL);
+
+		if (!field) {
+			printk(KERN_ERR
+			       "Couldn't get \"mdio-reg\" property.\n");
+		} else {
+			mdio_phys_address = of_translate_address(np, field);
+			mdio_size = field[1];
+			rc = 0;
+		}
+	}
+
+	if (0 != rc) {
+		mdio_phys_address = 0x002000409000ULL;
+		mdio_size = 0x1000;
+		printk(KERN_WARNING
+		       "** MDIO Address Not Specified in Device Tree.\n");
+	}
+
+	mdio_base = (unsigned long)ioremap(mdio_phys_address, mdio_size);
 	rc = acp_mdio_initialize();
 #endif
 
 	if (0 != rc)
 		printk(KERN_ERR "MDIO Initiailzation Failed!\n");
 
+acp_wrappers_init_done:
 	return 0;
 }
 module_init(acp_wrappers_init);

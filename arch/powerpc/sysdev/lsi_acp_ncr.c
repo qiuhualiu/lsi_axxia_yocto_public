@@ -20,14 +20,14 @@
  * MA 02111-1307 USA
  */
 
-#include <linux/export.h>
-#include <linux/stat.h>
+#include <linux/io.h>
 #include <linux/module.h>
-#include <asm/io.h>
 
-#include <asm/ncr.h>
+#include <asm/lsi/acp_ncr.h>
 
-#define NCA 0xf0120000
+static void *nca_reg;
+
+#define NCA  nca_reg
 
 typedef union {
 	unsigned long raw;
@@ -40,15 +40,15 @@ typedef union {
 		unsigned long cfg_cmpl_int_enable:1;
 		unsigned long cmd_type:4;
 		unsigned long dbs:16;
-	} __attribute__ ((packed)) bits;
-} __attribute__ ((packed)) command_data_register_0_t;
+	} __packed bits;
+} __packed command_data_register_0_t;
 
 typedef union {
 	unsigned long raw;
 	struct {
 		unsigned long target_address:32;
-	} __attribute__ ((packed)) bits;
-} __attribute__ ((packed)) command_data_register_1_t;
+	} __packed bits;
+} __packed command_data_register_1_t;
 
 typedef union {
 	unsigned long raw;
@@ -56,20 +56,20 @@ typedef union {
 		unsigned long unused:16;
 		unsigned long target_node_id:8;
 		unsigned long target_id_address_upper:8;
-	} __attribute__ ((packed)) bits;
-} __attribute__ ((packed)) command_data_register_2_t;
+	} __packed bits;
+} __packed command_data_register_2_t;
 
 /*
   ----------------------------------------------------------------------
   ncr_register_read
 */
 
-static __inline__ unsigned long
+static inline unsigned long
 ncr_register_read(unsigned *address)
 {
 	unsigned long value;
 
-	value = in_be32((void *) address);
+	value = in_be32(address);
 
 	return value;
 }
@@ -79,7 +79,7 @@ ncr_register_read(unsigned *address)
   ncr_register_write
 */
 
-static __inline__ void
+static inline void
 ncr_register_write(const unsigned value, unsigned *address)
 {
 	out_be32(address, value);
@@ -99,8 +99,7 @@ ncr_register_write(const unsigned value, unsigned *address)
 */
 
 int
-ncr_read(unsigned long region, unsigned long address, int number,
-	 void *buffer)
+ncr_read(unsigned long region, unsigned long address, int number, void *buffer)
 {
 	command_data_register_0_t cdr0;
 	command_data_register_1_t cdr1;
@@ -148,7 +147,7 @@ ncr_read(unsigned long region, unsigned long address, int number,
 	  Copy data words to the buffer.
 	*/
 
-	address = (NCA + 0x1000);
+	address = (unsigned long)(NCA + 0x1000);
 	while (4 <= number) {
 		*((unsigned long *) buffer) =
 			ncr_register_read((unsigned *) address);
@@ -157,14 +156,33 @@ ncr_read(unsigned long region, unsigned long address, int number,
 	}
 
 	if (0 < number) {
-		unsigned long temp =
-			ncr_register_read((unsigned *) address);
+		unsigned long temp = ncr_register_read((unsigned *) address);
 		memcpy((void *) buffer, &temp, number);
 	}
 
 	return 0;
 }
 EXPORT_SYMBOL(ncr_read);
+/*
+  ------------------------------------------------------------------------------
+  is_asic
+*/
+
+int
+is_asic(void)
+{
+#ifdef CONFIG_ACPISS
+	return 0;
+#else
+	unsigned long nca_config;
+
+	if (0 == ncr_read(NCP_REGION_ID(0x16, 0xff), 0x10, 4, &nca_config))
+		return (0 == (nca_config & 0x80000000));
+
+	return -1;
+#endif
+}
+EXPORT_SYMBOL(is_asic);
 
 /*
   ----------------------------------------------------------------------
@@ -172,8 +190,7 @@ EXPORT_SYMBOL(ncr_read);
 */
 
 int
-ncr_write(unsigned long region, unsigned long address, int number,
-	  void *buffer)
+ncr_write(unsigned long region, unsigned long address, int number, void *buffer)
 {
 	command_data_register_0_t cdr0;
 	command_data_register_1_t cdr1;
@@ -198,7 +215,7 @@ ncr_write(unsigned long region, unsigned long address, int number,
 	  Copy from buffer to the data words.
 	*/
 
-	data_word_base = (NCA + 0x1000);
+	data_word_base = (unsigned long)(NCA + 0x1000);
 
 	while (4 <= number) {
 		ncr_register_write(*((unsigned long *) buffer),
@@ -236,7 +253,7 @@ ncr_write(unsigned long region, unsigned long address, int number,
 
 	/* TODO: Handle failure cases. */
 	while (0x80000000 ==
-	       (ncr_register_read((unsigned *) (NCA + 0xf0)) & 0x80000000))
+		(ncr_register_read((unsigned *) (NCA + 0xf0)) & 0x80000000))
 		;
 
 	return 0;
@@ -245,19 +262,25 @@ EXPORT_SYMBOL(ncr_write);
 
 /*
   ----------------------------------------------------------------------
- ncr_init
+  ncr_init
 */
 
-int ncr_init(void)
+int
+ncr_init(void)
 {
-	/*
-	 * We need this to be a module so that the functions can be exported
+	/* We need this to be a module so that the functions can be exported
 	 * as module symbols.
 	 */
+	nca_reg = ioremap(0x2000520000ull, 0x2000);
+	if (!nca_reg) {
+		pr_err("Can't iomap for nca registers\n");
+		return -1;
+	}
+
 	return 0;
 }
 
-module_init(ncr_init);
+postcore_initcall(ncr_init);
 
 /*
   ----------------------------------------------------------------------
@@ -267,6 +290,7 @@ module_init(ncr_init);
 void __exit
 ncr_exit(void)
 {
+	iounmap(nca_reg);
 }
 
 module_exit(ncr_exit);

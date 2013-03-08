@@ -6,9 +6,9 @@
 #include <linux/slab.h>		/* kmalloc() */
 #include <linux/errno.h>	/* error codes */
 #include <linux/types.h>	/* size_t */
-#include <asm/uaccess.h>	/* copy_from/to_user */
-#include <asm/io.h>
-#include <asm/ncr.h>
+#include <linux/uaccess.h>	/* copy_from/to_user */
+#include <linux/io.h>
+#include <asm/lsi/acp_ncr.h>
 #include "ncr_cd.h"
 
 

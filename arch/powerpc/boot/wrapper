@@ -143,7 +143,7 @@ objflags=-S
 tmp=$tmpdir/zImage.$$.o
 ksection=.kernel:vmlinux.strip
 isection=.kernel:initrd
-link_address='0x400000'
+link_address='0x800000'
 make_space=y
 
 case "$platform" in
@@ -251,6 +251,7 @@ treeboot-currituck)
     ;;
 treeboot-iss4xx-mpic)
     platformo="$object/treeboot-iss4xx.o"
+    link_address='0x400000'
     ;;
 epapr)
     link_address='0x20000000'
@@ -295,9 +296,8 @@ if [ "$make_space" = "y" ]; then
 	link_addr=$(printf "%d" $link_address)
 
 	if [ $link_addr -lt $strip_size ]; then
-	    echo "INFO: Uncompressed kernel (size 0x$(printf "%x\n" \
-			$strip_size))" "overlaps the address of the \
-			wrapper($link_address)"
+	    echo "INFO: Uncompressed kernel (size 0x$(printf "%x\n" $strip_size))" \
+			"overlaps the address of the wrapper($link_address)"
 	    echo "INFO: Fixing the link_address of wrapper to ($round_size)"
 	    link_address=$round_size
 	fi

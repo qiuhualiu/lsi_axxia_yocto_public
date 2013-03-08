@@ -169,6 +169,19 @@
 #define MCHECK_EXCEPTION_PROLOG \
 		EXC_LEVEL_EXCEPTION_PROLOG(MC, SPRN_MCSRR0, SPRN_MCSRR1)
 
+/* Fixme: Comment
+ */
+#ifdef CONFIG_PPC_47x
+#define        MCHECK_EXCEPTION_PROLOG_EXT			\
+	       .long 0x7c00078c;				\
+               isync;						\
+               .long 0x7c00038c;				\
+               msync;
+#else
+#define        MCHECK_EXCEPTION_PROLOG_EXT
+#endif
+
+
 /*
  * Exception vectors.
  */
@@ -198,6 +211,7 @@ label:
 #define MCHECK_EXCEPTION(n, label, hdlr)			\
 	START_EXCEPTION(label);					\
 	MCHECK_EXCEPTION_PROLOG;				\
+	MCHECK_EXCEPTION_PROLOG_EXT;				\
 	mfspr	r5,SPRN_ESR;					\
 	stw	r5,_ESR(r11);					\
 	addi	r3,r1,STACK_FRAME_OVERHEAD;			\

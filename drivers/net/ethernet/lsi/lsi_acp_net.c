@@ -1,5 +1,5 @@
 /*
- * drivers/lsi/acp/net.c
+ * drivers/net/ethernet/lsi/lsi_acp_net.c
  *
  * Copyright (C) 2009 LSI
  *
@@ -41,8 +41,8 @@
 #include <linux/of.h>
 #include <linux/dma-mapping.h>
 
-#include <asm/uaccess.h>
-#include <asm/io.h>
+#include <linux/uaccess.h>
+#include <linux/io.h>
 #include <asm/dma.h>
 
 #include <asm/acp3400-version.h>
@@ -65,7 +65,6 @@ static void *dma_base;
   =====================================================================
 */
 
-#undef LSINET_COUNTS
 #define LSINET_COUNTS
 
 #ifdef LSINET_COUNTS
@@ -78,7 +77,7 @@ unsigned long lsinet_counts[] = {
 };
 EXPORT_SYMBOL(lsinet_counts);
 
-#define LSINET_COUNTS_INC(index) {++lsinet_counts[(index)];}
+#define LSINET_COUNTS_INC(index) { ++lsinet_counts[(index)]; }
 
 #else  /* LSINET_DEBUG_COUNTS */
 
@@ -112,62 +111,11 @@ EXPORT_SYMBOL(lsinet_counts);
   ====================================================================
   ====================================================================
   ====================================================================
-  Profile/Trace/Debug/Warn/Error Macros
+  Trace/Debug/Warn/Error Macros
   ====================================================================
   ====================================================================
   ====================================================================
 */
-
-/* -- Profile ------------------------------------------------------ */
-
-/*#define __APPNIC_C_PROFILE__*/
-#ifdef __APPNIC_C_PROFILE__
-#include <asm/arch/timers.h>
-unsigned long time_in_rx_max_ = 0;
-unsigned long time_in_rx_min_ = 0xffffffff;
-unsigned long long total_rx_time_ = 0;
-unsigned long max_rx_packets_handled_ = 0;
-unsigned long total_rx_packets_handled_ = 0;
-unsigned long total_rx_interrupts_ = 0;
-unsigned long rx_packet_size_max_ = 0;
-unsigned long rx_packet_size_min_ = 0xffffffff;
-unsigned long total_rx_bytes_ = 0;
-unsigned long time_in_tx_max_ = 0;
-unsigned long time_in_tx_min_ = 0xffffffff;
-unsigned long long total_tx_time_ = 0;
-unsigned long total_tx_packets_ = 1;
-unsigned long jiffies_changed_ = 0;
-unsigned long total_polls_ = 0;
-
-unsigned long recv_t1_min_ = 0xffffffff;
-unsigned long recv_t2_min_ = 0xffffffff;
-unsigned long recv_t3_min_ = 0xffffffff; mw.l 06000000 ffffffff 3200000
-unsigned long recv_t1_max_ = 0;
-unsigned long recv_t2_max_ = 0;
-unsigned long recv_t3_max_ = 0;
-unsigned long long recv_t1_tot_ = 0;
-unsigned long long recv_t2_tot_ = 0;
-unsigned long long recv_t3_tot_ = 0;
-unsigned long total_rx_packets_sent_up_ = 1;
-
-#define app3xx_profile_time_calc(_beg_t_, _end_t_,			 \
-				 _min_t_, _max_t_, _tot_t_) 		 \
-	do {								 \
-		unsigned long _this_t_;					 \
-		if (_end_t_ > _beg_t_)					 \
-			_this_t_ = _end_t_ - _beg_t_;			 \
-		else							 \
-			_this_t_ = _end_t_ + (0xffffffff - _beg_t_) + 1; \
-		tot_t_ += _this_t_;					 \
-		if (_this_t_ > _max_t_)					 \
-			_max_t_ = _this_t_; }				 \
-		if (_this_t_ < _min_t_)					 \
-			_min_t_ = _this_t_; }				 \
-	} while (0);
-
-#define profile_time_fmt(t, d)		((1000*t)/d)
-#define profile_avg_fmt(t, c, d)	((1000*(t/c))/d)
-#endif /* __APPNIC_C_PROFILE__ */
 
 /* -- TRACE -------------------------------------------------------- */
 
@@ -196,7 +144,7 @@ unsigned long total_rx_packets_sent_up_ = 1;
 #undef DEBUG
 /*#define DEBUG*/
 #if defined(DEBUG)
-#define DEBUG_PRINT(format, args...) 					\
+#define DEBUG_PRINT(format, args...)					\
 	do {								\
 		printk(KERN_DEBUG "appnic:%d - DEBUG - ", __LINE__);	\
 		printk(KERN_DEBUG format, ##args);			\
@@ -208,7 +156,7 @@ unsigned long total_rx_packets_sent_up_ = 1;
 #undef PHY_DEBUG
 /*#define PHY_DEBUG*/
 #if defined(PHY_DEBUG)
-#define PHY_DEBUG_PRINT(format, args...) 				\
+#define PHY_DEBUG_PRINT(format, args...)				\
 	do {								\
 		printk(KERN_DEBUG "net:%d - PHY_DEBUG - ", __LINE__);	\
 		printk(KERN_DEBUG format, ##args);			\
@@ -222,7 +170,7 @@ unsigned long total_rx_packets_sent_up_ = 1;
 #undef WARN
 #define WARN
 #if defined(WARN)
-#define WARN_PRINT(format, args...) 					\
+#define WARN_PRINT(format, args...)					\
 	do {								\
 		printk(KERN_DEBUG "appnic:%d - WARN - ", __LINE__);	\
 		printk(KERN_DEBUG format, ##args);			\
@@ -233,7 +181,7 @@ unsigned long total_rx_packets_sent_up_ = 1;
 
 /* -- ERROR --------------------------------------------------------- */
 
-#define ERROR_PRINT(format, args...) 					\
+#define ERROR_PRINT(format, args...)					\
 	do {								\
 		printk(KERN_ERR "%s:%s:%d - ERROR - ",			\
 		       __FILE__, __func__, __LINE__);			\
@@ -841,7 +789,7 @@ typedef struct {
 #define APPNIC_TX_CONF_PAD_ENABLE	0x0002
 #define APPNIC_TX_CONF_ENABLE		0x0001
 
-#define TX_CONF_SET_IFG(tx_configuration_, ifg_) 		\
+#define TX_CONF_SET_IFG(tx_configuration_, ifg_)		\
 	do {							\
 		(tx_configuration_) &= ~APPNIC_TX_CONF_IFG;	\
 		(tx_configuration_) |= ((ifg_ & 0x1f) << 4);	\
@@ -1187,57 +1135,6 @@ static unsigned long receive_interrupts_ = 0;
 static void appnic_timer_handler_(unsigned long);
 static struct timer_list appnic_timer_;
 #endif /* PHYLESS */
-
-/*
-  ======================================================================
-  ======================================================================
-  ======================================================================
-
-  Locking...
-
-  ======================================================================
-  ======================================================================
-  ======================================================================
-*/
-
-#ifdef CONFIG_SMP
-/*
- * On SMP we have the following problem:
- *
- *	A = smc_hard_start_xmit()
- *	B = smc_interrupt()
- *
- * A and B can never be executed simultaneously.  However, at least on UP,
- * it is possible (and even desirable) for C to interrupt execution of
- * A or B in order to have better RX reliability and avoid overruns.
- * C, just like A and B, must have exclusive access to the chip and
- * each of them must lock against any other concurrent access.
- * Unfortunately this is not possible to have C suspend execution of A or
- * B taking place on another CPU. On UP this is no an issue since A and B
- * are run from softirq context and C from hard IRQ context, and there is
- * no other CPU where concurrent access can happen.
- * If ever there is a way to force at least B and C to always be executed
- * on the same CPU then we could use read/write locks to protect against
- * any other concurrent access and C would always interrupt B. But life
- * isn't that easy in a SMP world...
- */
-
-#define appnic_special_trylock(lock) (			\
-	{						\
-	int __ret;					\
-	local_irq_disable();		   		\
-	__ret = spin_trylock(lock);			\
-	if (!__ret)					\
-		local_irq_enable();			\
-	__ret;						\
-	})
-#define appnic_special_lock(lock)		spin_lock_irq(lock)
-#define appnic_special_unlock(lock)		spin_unlock_irq(lock)
-#else
-#define appnic_special_trylock(lock)		(1)
-#define appnic_special_lock(lock)		(do { } while (0))
-#define appnic_special_unlock(lock)		(do { } while (0))
-#endif
 
 /*
   ======================================================================
@@ -1894,15 +1791,6 @@ lsinet_rx_packet(struct net_device *device)
 	int return_code_;
 	unsigned long ok_, overflow_, crc_, align_;
 
-#ifdef __APPNIC_C_PROFILE__
-	unsigned long ts0_ = 0;
-	unsigned long ts1_ = 0;
-	unsigned long ts2_ = 0;
-	unsigned long ts3_ = 0;
-	int sent_up = 0;
-	ts0_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
-#endif /* __APPNIC_C_PROFILE__ */
-
 	/*
 	 * TEMP HACK:
 	 * should use down_interruptible
@@ -1924,10 +1812,6 @@ lsinet_rx_packet(struct net_device *device)
 		spin_unlock(&adapter->extra_lock);
 		return;
 	}
-
-#ifdef __APPNIC_C_PROFILE__
-	ts1_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
-#endif /* __APPNIC_C_PROFILE__ */
 
 	ok_ = read_mac_(APPNIC_RX_STAT_PACKET_OK);
 	overflow_ = read_mac_(APPNIC_RX_STAT_OVERFLOW);
@@ -1984,8 +1868,8 @@ lsinet_rx_packet(struct net_device *device)
 		if (0 == error_) {
 			struct ethhdr *ethhdr_ =
 				(struct ethhdr *) sk_buff_->data;
-			unsigned char broadcast_[] =
-				{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+			unsigned char broadcast_[] = { 0xff, 0xff, 0xff,
+						       0xff, 0xff, 0xff };
 			unsigned char multicast_[] = { 0x01, 0x00 };
 
 			LSINET_COUNTS_INC(LSINET_COUNTS_RX_GOOD);
@@ -2002,22 +1886,6 @@ lsinet_rx_packet(struct net_device *device)
 					(const void *) &(multicast_[0]),
 					sizeof(multicast_)))) {
 
-#ifdef __APPNIC_C_PROFILE__
-				if (bytes_copied_ > rx_packet_size_max_) {
-					rx_packet_size_max_ = bytes_copied_;
-				} else if (bytes_copied_ <
-					rx_packet_size_min_) {
-					rx_packet_size_min_ = bytes_copied_;
-				}
-				total_rx_bytes_ += bytes_copied_;
-
-				total_rx_packets_sent_up_++;
-				sent_up = 1;
-
-				ts2_ = (0xffffffff -
-					readl((TIMER7_BASE + TIMER_n_VALUE)));
-#endif /* __APPNIC_C_PROFILE__ */
-
 				adapter->stats.rx_bytes += bytes_copied_;
 				++adapter->stats.rx_packets;
 				sk_buff_->dev = device;
@@ -2033,7 +1901,8 @@ LSINET_COUNTS_INC(LSINET_COUNTS_RX_SENT);
 
 				if (NET_RX_DROP == return_code_) {
 					++dropped_by_stack_;
-					LSINET_COUNTS_INC(LSINET_COUNTS_RX_DRPD);
+					LSINET_COUNTS_INC
+						(LSINET_COUNTS_RX_DRPD);
 				}
 			} else {
 				dev_kfree_skb(sk_buff_);
@@ -2056,23 +1925,6 @@ LSINET_COUNTS_INC(LSINET_COUNTS_RX_SENT);
 		    adapter->rx_head.raw, adapter->rx_tail->raw,
 		    adapter->rx_tail_copy.raw);
 	TRACE_ENDING();
-
-#ifdef __APPNIC_C_PROFILE__
-	app3xx_profile_time_calc(ts0_, ts1_, recv_t1_min_,
-				 recv_t1_max_, recv_t1_tot_);
-
-	/*
-	 * only calculate stats for packets that were sent up to the stack
-	 */
-	if (sent_up) {
-		ts3_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
-
-		app3xx_profile_time_calc(ts1_, ts2_, recv_t2_min_,
-					 recv_t2_max_, recv_t2_tot_);
-		app3xx_profile_time_calc(ts2_, ts3_, recv_t3_min_,
-					 recv_t3_max_, recv_t3_tot_);
-	}
-#endif /* __APPNIC_C_PROFILE__ */
 
 	/* TEMP */
 	spin_unlock(&adapter->extra_lock);
@@ -2107,9 +1959,6 @@ lsinet_rx_packets(struct net_device *device, int max)
 				&descriptor);
 
 		if (0 != descriptor.end_of_packet) {
-#ifdef __APPNIC_C_PROFILE__
-			++packets_handled_;
-#endif /* __APPNIC_C_PROFILE__ */
 			LSINET_COUNTS_INC(LSINET_COUNTS_RX_PKT);
 			lsinet_rx_packet(device);
 			++packets;
@@ -2168,13 +2017,6 @@ lsinet_poll(struct napi_struct *napi, int budget)
 	int cur_budget = budget;
 	int done;
 	unsigned long dma_interrupt_status_;
-#ifdef __APPNIC_C_PROFILE__
-	unsigned long packets_handled_ = 0;
-	unsigned long beginning_;
-	unsigned long end_;
-
-	beginning_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
-#endif /* __APPNIC_C_PROFILE__ */
 
 	LSINET_COUNTS_INC(LSINET_COUNTS_POL_START);
 
@@ -2214,17 +2056,6 @@ lsinet_poll(struct napi_struct *napi, int budget)
 		    adapter->rx_tail_copy.raw);
 	TRACE_ENDING();
 
-#ifdef __APPNIC_C_PROFILE__
-	end_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
-	app3xx_profile_time_calc(beginning_, end_, time_in_rx_min_,
-				 time_in_rx_max_, total_rx_time_);
-
-	total_rx_packets_handled_ += packets_handled_;
-	if (packets_handled_ > max_rx_packets_handled_)
-		max_rx_packets_handled_ = packets_handled_;
-	++total_polls_;
-#endif /* __APPNIC_C_PROFILE__ */
-
 	LSINET_COUNTS_INC(LSINET_COUNTS_POL_DONE);
 	status = (done ? 0 : 1);
 	return status;
@@ -2242,14 +2073,6 @@ static void handle_receive_interrupt_(struct net_device *device)
 	appnic_device_t *dev_ = netdev_priv(device);
 	appnic_queue_pointer_t queue_;
 
-#ifdef __APPNIC_C_PROFILE__
-	unsigned long beginning_;
-	unsigned long end_;
-	unsigned long packets_handled_ = 0;
-
-	beginning_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
-#endif /* __APPNIC_C_PROFILE__ */
-
 	LSINET_COUNTS_INC(LSINET_COUNTS_RX_START);
 	TRACE_BEGINNING();
 	DEBUG_PRINT("head=0x%lx tail=0x%lx tail_copy=0x%lx\n",
@@ -2262,16 +2085,6 @@ static void handle_receive_interrupt_(struct net_device *device)
 		    dev_->rx_tail_copy.raw);
 	TRACE_ENDING();
 	LSINET_COUNTS_INC(LSINET_COUNTS_RX_DONE);
-#ifdef __APPNIC_C_PROFILE__
-	end_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
-	app3xx_profile_time_calc(beginning_, end_, time_in_rx_min_,
-				 time_in_rx_max_, total_rx_time_);
-
-	total_rx_packets_handled_ += packets_handled_;
-	if (packets_handled_ > max_rx_packets_handled_)
-		max_rx_packets_handled_ = packets_handled_;
-	++total_rx_interrupts_;
-#endif /* __APPNIC_C_PROFILE__ */
 
 	return;
 }
@@ -2289,14 +2102,10 @@ static irqreturn_t appnic_isr_(int irq, void *device_id)
 	unsigned long dma_interrupt_status_;
 	unsigned long flags;
 
-#ifdef __APPNIC_C_PROFILE__
-	unsigned beginning_jiffies_ = jiffies;
-#endif /* __APPNIC_C_PROFILE__ */
-
 	TRACE_BEGINNING();
 	LSINET_COUNTS_INC(LSINET_COUNTS_ISR_START);
 
-/* acquire the lock */
+	/* Acquire the lock */
 	spin_lock_irqsave(&dev_->lock, flags);
 
 #if !defined(PHYLESS) && !defined(CONFIG_ACP)
@@ -2390,11 +2199,6 @@ static irqreturn_t appnic_isr_(int irq, void *device_id)
 
 	LSINET_COUNTS_INC(LSINET_COUNTS_ISR_DONE);
 	TRACE_ENDING();
-
-#ifdef __APPNIC_C_PROFILE__
-	if (jiffies != beginning_jiffies_)
-		++jiffies_changed_;
-#endif /* __APPNIC_C_PROFILE__ */
 
 	return IRQ_HANDLED;
 }
@@ -2568,17 +2372,7 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 	int length_;
 	int buf_per_desc_;
 
-#ifdef __APPNIC_C_PROFILE__
-	unsigned long beginning_;
-	unsigned long end_;
-	unsigned long this_time_;
-
-	beginning_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
-	++total_tx_packets_;
-#endif /* __APPNIC_C_PROFILE__ */
-
 	LSINET_COUNTS_INC(LSINET_COUNTS_HST_START);
-	appnic_special_lock(&adapter->lock);
 	length_ = skb->len < ETH_ZLEN ? ETH_ZLEN : skb->len;
 	buf_per_desc_ = adapter->tx_buf_sz / adapter->tx_num_desc;
 
@@ -2589,16 +2383,6 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 	DEBUG_PRINT("length_=%d buf_per_desc_=%d tx_tail=0x%x\n",
 		    length_, buf_per_desc_, swab32(adapter->tx_tail->raw));
 
-#if 0
-	if (((length_ / buf_per_desc_) + 1) >=
-		queue_uninitialized_(adapter->tx_head,
-				     SWAB_QUEUE_POINTER(adapter->tx_tail),
-				     adapter->tx_num_desc)) {
-		LSINET_COUNTS_INC(LSINET_COUNTS_HST_RCLM);
-		handle_transmit_interrupt_(device);
-	}
-#else
-/*ZZZ*/
 	while (((length_ / buf_per_desc_) + 1) >=
 		queue_uninitialized_(adapter->tx_head,
 				     SWAB_QUEUE_POINTER(adapter->tx_tail),
@@ -2607,7 +2391,6 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 		LSINET_COUNTS_INC(LSINET_COUNTS_HST_RCLM);
 		handle_transmit_interrupt_(device);
 	}
-#endif
 
 	if (((length_ / buf_per_desc_) + 1) <
 		queue_uninitialized_(adapter->tx_head,
@@ -2674,21 +2457,7 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 	}
 
 	/* Free the socket buffer */
-	appnic_special_unlock(&adapter->lock);
 	dev_kfree_skb(skb);
-
-#ifdef __APPNIC_C_PROFILE__
-	end_ = (0xffffffff - readl((TIMER7_BASE + TIMER_n_VALUE)));
-	if (end_ > beginning_)
-		this_time_ = end_ - beginning_;
-	else
-		this_time_ = end_ + (0xffffffff - beginning_) + 1;
-	total_tx_time_ += this_time_;
-	if (this_time_ > time_in_tx_max_)
-		time_in_tx_max_ = this_time_;
-	if (this_time_ < time_in_tx_min_)
-		time_in_tx_min_ = this_time_;
-#endif /* __APPNIC_C_PROFILE__ */
 
 	LSINET_COUNTS_INC(LSINET_COUNTS_HST_DONE);
 	return 0;
@@ -2776,8 +2545,6 @@ appnic_set_mac_address(struct net_device *device, void *data)
 static int
 appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 {
-	appnic_device_t *appnic_device_ = netdev_priv(device);
-
 	memset(command, 0, sizeof(struct ethtool_cmd));
 
 	/* What the hardware supports. */
@@ -2786,10 +2553,6 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 			      SUPPORTED_10baseT_Full |
 			      SUPPORTED_100baseT_Half |
 			      SUPPORTED_100baseT_Full);
-
-	/* Acquire the device lock. */
-
-	appnic_special_lock(&appnic_device_->lock);
 
 #ifndef PHYLESS
 
@@ -2802,7 +2565,6 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 				   PHY_AUTONEG_ADVERTISE,
 				   &ad_value_)) {
 			ERROR_PRINT("PHY read failed!");
-			appnic_special_unlock(&appnic_device_->lock);
 			return -EIO;
 
 		}
@@ -2841,7 +2603,6 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 		speed_ = phy_speed_(phy_address_);
 		if (-1 == speed_) {
 			ERROR_PRINT("PHY read failed!");
-			appnic_special_unlock(&appnic_device_->lock);
 			return -EIO;
 		} else if (1 == speed_) {
 			command->speed = SPEED_100;
@@ -2858,7 +2619,6 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 		duplex_ = phy_duplex_(phy_address_);
 		if (-1 == duplex_) {
 			ERROR_PRINT("PHY read failed!");
-			appnic_special_unlock(&appnic_device_->lock);
 			return -EIO;
 		} else if (1 == duplex_) {
 			command->duplex = DUPLEX_FULL;
@@ -2873,9 +2633,7 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 	/* Is autoneg enabled? */
 	command->autoneg = AUTONEG_ENABLE;
 
-	/* Unlock and return success. */
-	appnic_special_unlock(&appnic_device_->lock);
-
+	/* Return success. */
 	return 0;
 }
 
@@ -3056,7 +2814,7 @@ appnic_init(struct net_device *device)
 
 		if ((void *) 0 == adapter->dma_alloc) {
 			ERROR_PRINT("Could not allocate %d bytes of DMA-able memory!\n",
-				   adapter->dma_alloc_size);
+				    adapter->dma_alloc_size);
 			kfree(adapter);
 			TRACE_ENDING();
 			return -ENOMEM;
@@ -3230,11 +2988,8 @@ appnic_init(struct net_device *device)
 		 * TEMP: Initialize the semaphores
 		 */
 		mutex_init(&adapter->rx_sem);
-		lockdep_set_novalidate_class(&adapter->rx_sem);
 		mutex_init(&adapter->tx_sem);
-		lockdep_set_novalidate_class(&adapter->tx_sem);
 		mutex_init(&adapter->poll_sem);
-		lockdep_set_novalidate_class(&adapter->poll_sem);
 
 	}
 
@@ -3462,91 +3217,9 @@ appnic_read_proc_(char *page, char **start, off_t offset,
 {
 	int length_;
 
-#ifdef __APPNIC_C_PROFILE__
-	struct net_device *net_device_ = this_net_device;
-
-	appnic_device_t *appnic_device_ =
-		(appnic_device_t *) net_device_->priv;
-	unsigned long divisor_;
-	unsigned long tx_tpa_real_;
-	unsigned long tx_tpa_virt_;
-
-	divisor_ = get_core_speed() / 1000000;
-
-	if (appnic_device_->tx_tail_dma !=
-		read_mac_(APPNIC_DMA_TX_TAIL_POINTER_ADDRESS)) {
-
-		ERROR_PRINT("Real Address Doesn't Match Configuration! 0x%x 0x%x\n",
-			    appnic_device_->tx_tail_dma,
-			    read_mac_(APPNIC_DMA_TX_TAIL_POINTER_ADDRESS));
-	}
-
-	tx_tpa_real_ = appnic_device_->tx_tail_dma;
-	tx_tpa_virt_ = appnic_device_->tx_tail->raw;
-
-	length_ = sprintf(page,
-			  " GKM TEMP DEBUG Build 5\n" \
-			  " RX: head=0x%lx tail=0x%lx tail_copy=0x%lx\n" \
-			  " TX: head=0x%lx tail=0x%lx tail_copy=0x%lx\n" \
-			  "DMA: IE=0x%x IS=0x%x\n" \
-			  "VIC: status=0x%x raw=0x%x enable=0x%x\n" \
-			  " TX: tpa_config=0x%x tpa_real_=0x%lx " \
-			  "*tpa_virt_=0x%x\n",
-			  appnic_device_->rx_head.raw,
-			  appnic_device_->rx_tail->raw,
-			  appnic_device_->rx_tail_copy.raw,
-			  appnic_device_->tx_head.raw,
-			  appnic_device_->tx_tail->raw,
-			  appnic_device_->tx_tail_copy.raw,
-			  read_mac_(APPNIC_DMA_INTERRUPT_ENABLE),
-			  read_mac_(APPNIC_DMA_INTERRUPT_STATUS),
-			  readl((APP3XX_VIC_BASE + VICIRQSTATUS)),
-			  readl((APP3XX_VIC_BASE + VICRAWINTR)),
-			  readl((APP3XX_VIC_BASE + VICINTENABLE)),
-			  read_mac_(APPNIC_DMA_TX_TAIL_POINTER_ADDRESS),
-			  tx_tpa_real_,
-			  *((unsigned int *) tx_tpa_virt_));
-
-	time_in_rx_max_ = 0;
-	time_in_rx_min_ = 0xffffffff;
-	rx_packet_size_max_ = 0;
-	rx_packet_size_min_ = 0xffffffff;
-	total_rx_bytes_ = 0;
-	total_rx_packets_handled_ = 1;
-	total_rx_time_ = 0;
-	max_rx_packets_handled_ = 0;
-	total_rx_interrupts_ = 0;
-
-#ifdef LSINET_NAPI
-
-	receive_interrupts_ = 0;
-	total_polls_ = 0;
-
-#endif
-
-	time_in_tx_max_ = 0;
-	time_in_tx_min_ = 0xffffffff;
-	total_tx_time_ = 0;
-	total_tx_packets_ = 1;
-	jiffies_changed_ = 0;
-	recv_t1_min_ = 0xffffffff;
-	recv_t2_min_ = 0xffffffff;
-	recv_t3_min_ = 0xffffffff;
-	recv_t1_max_ = 0;
-	recv_t2_max_ = 0;
-	recv_t3_max_ = 0;
-	recv_t1_tot_ = 0;
-	recv_t2_tot_ = 0;
-	recv_t3_tot_ = 0;
-	total_rx_packets_sent_up_ = 1;
-
-#else
-
 	length_ = sprintf(page, "-- appnic.c -- Profiling is disabled\n");
 
-#endif /* __APPNIC_C_PROFILE__ */
-
-	/* that's all */
+	/* That's all */
 	return length_;
 }
 
@@ -3732,15 +3405,6 @@ device_tree_failed:
 	}
 
 device_tree_succeeded:
-
-#ifdef __APPNIC_C_PROFILE__
-	writel(0xffffffff, (TIMER7_BASE + TIMER_n_LOAD));
-	writel(0xffffffff, (TIMER7_BASE + TIMER_n_VALUE));
-	writel((TIMER_n_CONTROL_ENABLE |
-		  TIMER_n_CONTROL_MODE |
-		  TIMER_n_CONTROL_SIZE),
-		(TIMER7_BASE + TIMER_n_CONTROL));
-#endif /* __APPNIC_C_PROFILE__ */
 
 	/* Initialize the device. */
 

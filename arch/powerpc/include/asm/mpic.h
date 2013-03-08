@@ -43,11 +43,11 @@
 #define MPIC_GREG_VENDOR_2		0x00060
 #define MPIC_GREG_VENDOR_3		0x00070
 #define MPIC_GREG_VENDOR_ID		0x00080
-#define 	MPIC_GREG_VENDOR_ID_STEPPING_MASK	0x00ff0000
-#define 	MPIC_GREG_VENDOR_ID_STEPPING_SHIFT	16
-#define 	MPIC_GREG_VENDOR_ID_DEVICE_ID_MASK	0x0000ff00
-#define 	MPIC_GREG_VENDOR_ID_DEVICE_ID_SHIFT	8
-#define 	MPIC_GREG_VENDOR_ID_VENDOR_ID_MASK	0x000000ff
+#define MPIC_GREG_VENDOR_ID_STEPPING_MASK	0x00ff0000
+#define MPIC_GREG_VENDOR_ID_STEPPING_SHIFT	16
+#define MPIC_GREG_VENDOR_ID_DEVICE_ID_MASK	0x0000ff00
+#define MPIC_GREG_VENDOR_ID_DEVICE_ID_SHIFT	8
+#define MPIC_GREG_VENDOR_ID_VENDOR_ID_MASK	0x000000ff
 #define MPIC_GREG_PROCESSOR_INIT	0x00090
 #define MPIC_GREG_IPI_VECTOR_PRI_0	0x000a0
 #define MPIC_GREG_IPI_VECTOR_PRI_1	0x000b0
@@ -83,9 +83,9 @@
 #define MPIC_CPU_IPI_DISPATCH_3		0x00070
 #define MPIC_CPU_IPI_DISPATCH_STRIDE	0x00010
 #define MPIC_CPU_CURRENT_TASK_PRI	0x00080
-#define 	MPIC_CPU_TASKPRI_MASK			0x0000000f
+#define	MPIC_CPU_TASKPRI_MASK		0x0000000f
 #define MPIC_CPU_WHOAMI			0x00090
-#define 	MPIC_CPU_WHOAMI_MASK			0x0000001f
+#define	MPIC_CPU_WHOAMI_MASK		0x0000001f
 #define MPIC_CPU_INTACK			0x000a0
 #define MPIC_CPU_EOI			0x000b0
 #define MPIC_CPU_MCACK			0x000c0
@@ -97,22 +97,22 @@
 #define MPIC_IRQ_BASE			0x10000
 #define MPIC_IRQ_STRIDE			0x00020
 #define MPIC_IRQ_VECTOR_PRI		0x00000
-#define 	MPIC_VECPRI_MASK			0x80000000
-#define 	MPIC_VECPRI_ACTIVITY			0x40000000	/* Read Only */
-#define 	MPIC_VECPRI_PRIORITY_MASK		0x000f0000
-#define 	MPIC_VECPRI_PRIORITY_SHIFT		16
-#define 	MPIC_VECPRI_VECTOR_MASK			0x000007ff
-#define 	MPIC_VECPRI_POLARITY_POSITIVE		0x00800000
-#define 	MPIC_VECPRI_POLARITY_NEGATIVE		0x00000000
-#define 	MPIC_VECPRI_POLARITY_MASK		0x00800000
-#define 	MPIC_VECPRI_SENSE_LEVEL			0x00400000
-#define 	MPIC_VECPRI_SENSE_EDGE			0x00000000
-#define 	MPIC_VECPRI_SENSE_MASK			0x00400000
+#define MPIC_VECPRI_MASK		0x80000000
+#define MPIC_VECPRI_ACTIVITY		0x40000000	/* Read Only */
+#define MPIC_VECPRI_PRIORITY_MASK	0x000f0000
+#define	MPIC_VECPRI_PRIORITY_SHIFT	16
+#define MPIC_VECPRI_VECTOR_MASK		0x000007ff
+#define MPIC_VECPRI_POLARITY_POSITIVE	0x00800000
+#define MPIC_VECPRI_POLARITY_NEGATIVE	0x00000000
+#define MPIC_VECPRI_POLARITY_MASK	0x00800000
+#define MPIC_VECPRI_SENSE_LEVEL		0x00400000
+#define MPIC_VECPRI_SENSE_EDGE		0x00000000
+#define MPIC_VECPRI_SENSE_MASK		0x00400000
 #define MPIC_IRQ_DESTINATION		0x00010
 
-#define MPIC_MAX_IRQ_SOURCES	2048
-#define MPIC_MAX_CPUS		32
-#define MPIC_MAX_ISU		32
+#define MPIC_MAX_IRQ_SOURCES		2048
+#define MPIC_MAX_CPUS			32
+#define MPIC_MAX_ISU			32
 
 /*
  * Tsi108 implementation of MPIC has many differences from the original one
@@ -215,8 +215,7 @@ enum {
 
 #ifdef CONFIG_MPIC_U3_HT_IRQS
 /* Fixup table entry */
-struct mpic_irq_fixup
-{
+struct mpic_irq_fixup {
 	u8 __iomem	*base;
 	u8 __iomem	*applebase;
 	u32		data;
@@ -249,8 +248,7 @@ struct mpic_irq_save {
 };
 
 /* The instance data of a given MPIC */
-struct mpic
-{
+struct mpic {
 	/* The OpenFirmware dt node for this MPIC */
 	struct device_node *node;
 
@@ -323,6 +321,8 @@ struct mpic
 #ifdef CONFIG_PM
 	struct mpic_irq_save	*save_data;
 #endif
+
+	int cpu;
 };
 
 /*
@@ -363,12 +363,16 @@ struct mpic
 #define MPIC_ENABLE_COREINT		0x00002000
 /* Do not reset the MPIC during initialization */
 #define MPIC_NO_RESET			0x00004000
+/* Disable resetting of the MPIC.
+ * NOTE: This flag trumps MPIC_WANTS_RESET.
+ */
+#define MPIC_NO_RESET			0x00004000
 /* Freescale MPIC (compatible includes "fsl,mpic") */
 #define MPIC_FSL			0x00008000
 
 /* MPIC HW modification ID */
 #define MPIC_REGSET_MASK		0xf0000000
-#define MPIC_REGSET(val)		(((val) & 0xf ) << 28)
+#define MPIC_REGSET(val)		(((val) & 0xf) << 28)
 #define MPIC_GET_REGSET(flags)		(((flags) >> 28) & 0xf)
 
 #define	MPIC_REGSET_STANDARD		MPIC_REGSET(0)	/* Original MPIC */
@@ -377,7 +381,7 @@ struct mpic
 /* Allocate the controller structure and setup the linux irq descs
  * for the range if interrupts passed in. No HW initialization is
  * actually performed.
- * 
+ *
  * @phys_addr:	physial base address of the MPIC
  * @flags:	flags, see constants above
  * @isu_size:	number of interrupts in an ISU. Use 0 to use a
