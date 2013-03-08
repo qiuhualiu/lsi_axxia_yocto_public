@@ -1041,8 +1041,18 @@ int __hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 			 * case it expired already. Otherwise we would have a
 			 * stale base->first entry until the softirq runs.
 			 */
-			if (!hrtimer_rt_defer(timer))
-				return -ETIME;
+			if (!hrtimer_rt_defer(timer)) {
+				/*
+				 * In case we failed to reprogram the timer (mostly
+				 * because out current timer is already elapsed),
+				 * remove it again and report a failure. This avoids
+				 * stale base->first entries.
+				 */
+				debug_deactivate(timer);
+				__remove_hrtimer(timer, new_base,
+					timer->state & HRTIMER_STATE_CALLBACK, 0);
+				goto etime;
+			}
 #endif
 			/*
 			 * We need to drop cpu_base->lock to avoid a
@@ -1057,6 +1067,7 @@ int __hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 		}
 	}
 
+etime:
 	unlock_hrtimer_base(timer, &flags);
 
 	return ret;
