@@ -29,7 +29,7 @@
 #include <linux/prctl.h>
 #include <linux/delay.h>
 #include <linux/kprobes.h>
-#include <asm/kexec.h>
+#include <linux/kexec.h>
 #include <linux/backlight.h>
 #include <linux/bug.h>
 #include <linux/kdebug.h>
@@ -53,7 +53,7 @@
 #include <asm/firmware.h>
 #include <asm/processor.h>
 #endif
-#include <linux/kexec.h>
+#include <asm/kexec.h>
 #include <asm/ppc-opcode.h>
 #include <asm/rio.h>
 #include <asm/fadump.h>
@@ -446,10 +446,14 @@ int machine_check_47x(struct pt_regs *regs)
 	if (mcsr & PPC47x_MCSR_FPR)
 		printk(KERN_ERR "FPR Parity Error\n");
 	if (mcsr & PPC47x_MCSR_IPR)
-		printk(KERN_ERR "Machine Check exception is imprecise\n");
+		printk(KERN_ERR "Imprecise Machine Check\n");
+	if (mcsr & PPC47x_MCSR_L2)
+		printk(KERN_ERR "Error or System Error Reported by L2\n");
+	if (mcsr & PPC47x_MCSR_DCR)
+		printk(KERN_ERR "DCR Timeout\n");
 
 	/* Clear MCSR */
-	mtspr(SPRN_MCSR, mcsr);
+	mtspr(SPRN_MCSR_ACK, mcsr);
 
 	return 0;
 silent_out:
@@ -1021,6 +1025,7 @@ static int emulate_instruction(struct pt_regs *regs)
 			cpu_has_feature(CPU_FTR_DSCR)) {
 		PPC_WARN_EMULATED(mtdscr, regs);
 		rd = (instword >> 21) & 0x1f;
+		mtspr(SPRN_DSCR, regs->gpr[rd]);
 		current->thread.dscr = regs->gpr[rd];
 		current->thread.dscr_inherit = 1;
 		mtspr(SPRN_DSCR, current->thread.dscr);

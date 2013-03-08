@@ -41,6 +41,7 @@ static __initdata struct of_device_id acpx14xx_of_bus[] = {
 	{ .compatible = "ibm,plb6", },
 	{ .compatible = "ibm,opb", },
 	{ .compatible = "ibm,ebc", },
+	{ .compatible = "acp,rapidio-delta", },
 	{},
 };
 
@@ -117,6 +118,7 @@ static int __cpuinit smp_acpx14xx_kick_cpu(int cpu)
 	smp_wmb();
 	spin_table[1] = __pa(start_secondary_47x);
 	mb();
+
 	return 0;
 }
 
