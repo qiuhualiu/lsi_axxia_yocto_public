@@ -932,6 +932,12 @@ modpost-init := $(filter-out init/built-in.o, $(vmlinux-init))
 vmlinux.o: $(modpost-init) $(vmlinux-main) FORCE
 	$(call if_changed_rule,vmlinux-modpost)
 
+vmlinux.bin: vmlinux
+	$(OBJCOPY) -O binary -R .note -R .comment -S vmlinux vmlinux.bin
+
+vmlinux.srec: vmlinux
+	$(OBJCOPY) -O srec -R .note -R .comment -S vmlinux vmlinux.srec
+
 # The actual objects are generated when descending,
 # make sure no implicit rule kicks in
 $(sort $(vmlinux-init) $(vmlinux-main)) $(vmlinux-lds): $(vmlinux-dirs) ;
@@ -1208,6 +1214,16 @@ distclean: mrproper
 		-o -name '.*.rej' \
 		-o -name '*%' -o -name '.*.cmd' -o -name 'core' \) \
 		-type f -print | xargs rm -f
+	@rm -f linux.img vmlinux.bin vmlinux.strip.gz
+	@rm -f arch/powerpc/boot/ramdisk.image.gz
+	@rm -f  scripts/dtc/dtc-lexer.lex.c \
+		scripts/dtc/dtc-parser.tab.c \
+		scripts/dtc/dtc-parser.tab.h
+	@rm -f  scripts/genksyms/keywords.hash.c \
+		scripts/genksyms/lex.lex.c \
+		scripts/genksyms/parse.tab.c \
+		scripts/genksyms/parse.tab.h
+	@rm -f arch/arm/boot/dts/*.dtb
 
 
 # Packaging of the kernel to various formats
@@ -1416,6 +1432,16 @@ clean: $(clean-dirs)
 		-o -name '*.symtypes' -o -name 'modules.order' \
 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
 		-o -name '*.gcno' \) -type f -print | xargs rm -f
+	@rm -f linux.img
+	@rm -f arch/powerpc/boot/ramdisk.image.gz
+	@rm -f  scripts/dtc/dtc-lexer.lex.c \
+		scripts/dtc/dtc-parser.tab.c \
+		scripts/dtc/dtc-parser.tab.h
+	@rm -f  scripts/genksyms/keywords.hash.c \
+		scripts/genksyms/lex.lex.c \
+		scripts/genksyms/parse.tab.c \
+		scripts/genksyms/parse.tab.h
+	@rm -f arch/arm/boot/dts/*.dtb
 
 # Generate tags for editors
 # ---------------------------------------------------------------------------
