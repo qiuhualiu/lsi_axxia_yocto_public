@@ -4,6 +4,9 @@
 #define ci13612_PHY_ADDR	0x0020004A0000ULL
 #define ci13162_PHY_ADDR_SIZE	0x20000
 
+#define GPREG_PHY_ADDR		0x00200040C000ULL
+#define GPREG_PHY_ADDR_SIZE	0x1000
+
 /*
  * Host interface registers
  */

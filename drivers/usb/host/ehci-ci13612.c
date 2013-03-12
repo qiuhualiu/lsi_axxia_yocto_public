@@ -30,15 +30,32 @@
 static void ci13612_usb_setup(struct usb_hcd *hcd)
 {
 	int USB_TXFIFOTHRES, VUSB_HS_TX_BURST;
+	u32 deviceMode;
+	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 
 	/* Fix a HW erratum where the USB core may overrun its transmit FIFO. */
-	/* Fix a HW erratum where the USB core may incorrectly fill its transmit FIFO. */
+	/* Fix a HW erratum where the USB core may incorrectly fill its
+	 * transmit FIFO.
+	 */
 	VUSB_HS_TX_BURST = inl(USB_HWTXBUF) & 0x0f;
 	USB_TXFIFOTHRES = (inl(USB_TXFILLTUNING) & 0x3f0000) >> 16;
 
-	printk(KERN_INFO "ehci-ci13612 (ci13612_usb_setup): "
-			 "VUSB_HS_TX_BURST = 0x%x, USB_TXFIFOTHRES = 0x%x\n",
-			 VUSB_HS_TX_BURST, USB_TXFIFOTHRES);
+	/* Fix related to an issue that we found with the burst size on
+	 * the AXI bus check if device or host mode
+	 */
+	deviceMode = ehci_readl(ehci, hcd->regs + 0x1A8);
+
+	if ((deviceMode & 0x3) == 0x2) {
+		/* device mode */
+		writel(0x0, hcd->regs + 0x90);
+	} else if ((deviceMode & 0x3) == 0x3) {
+		/* host mode */
+		writel(0x6, hcd->regs + 0x90);
+	}
+
+	printk(KERN_INFO
+	       "ehci-ci13612 (ci13612_usb_setup): VUSB_HS_TX_BURST = 0x%x, USB_TXFIFOTHRES = 0x%x\n",
+		VUSB_HS_TX_BURST, USB_TXFIFOTHRES);
 
 	return;
 }
@@ -97,8 +114,8 @@ static int ehci_run_fix(struct usb_hcd *hcd)
 	port_status = ehci_readl(ehci, &ehci->regs->port_status[0]);
 	printk(KERN_INFO "ehci_run: port_status = 0x%x\n", port_status);
 	if (port_status & 0x100) {
-		printk(KERN_ERR "USB port is in reset status, not able to "
-				"change host controller status to run\n");
+		printk(KERN_ERR
+		       "USB port is in reset status, not able to change host controller status to run\n");
 		return -EFAULT;
 	}
 
@@ -187,13 +204,13 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 	}
 
 	/* FIXME: This reported error since we don't have a second register
-         *  area defined in our dtb. Should we add it or stay backwards compatible ?
-         */
+	 * area defined in our dtb. Should we add it or stay backwards
+	 * compatible ?
+	 */
 	gpreg_base = of_iomap(np, 1);
 	if (!gpreg_base) {
 		dev_warn(&pdev->dev, "of_iomap error can't map region 1\n");
-	}
-	else {
+	} else {
 		/* Setup GPREG for USB to enable the 6-bit address line */
 		writel(0x0, gpreg_base + 0x8);
 
