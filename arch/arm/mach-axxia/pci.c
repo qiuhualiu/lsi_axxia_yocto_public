@@ -481,8 +481,6 @@ static irqreturn_t
 acp_pcie_MSI_isr(int irq, void *arg)
 {
 	u32 intr_status;
-	u32 msg_fifo_stat;
-	u32 msg_fifo_info;
 	u8  msiIntr = 0, bit = 0;
 	struct axxia_pciex_port *port = (struct axxia_pciex_port *)arg;
 	void __iomem *mbase = (void __iomem *)port->cfg_addr;
@@ -777,7 +775,7 @@ DECLARE_PCI_FIXUP_HEADER(PCI_ANY_ID, PCI_ANY_ID, axxia_pcie_msi_enable);
 
 /* Port definition struct
  * Please note: PEI core#1 is not used in AXM5500 */
-static struct hw_pci axxia_pcie_hw[] = {
+static struct hw_pci __refdata axxia_pcie_hw[] = {
 	[0] = {
 	.nr_controllers = 1,
 	.domain = 0,
