@@ -102,7 +102,7 @@ static int __cpuinit smp_ppc47x_kick_cpu(int cpu)
 	struct device_node *cpunode = of_get_cpu_node(cpu, NULL);
 	const u64 *spin_table_addr_prop;
 	u32 *spin_table;
-	extern void start_secondary_47x(void);
+	extern void __cpuinit start_secondary_47x(void);
 
 	BUG_ON(cpunode == NULL);
 
@@ -158,7 +158,8 @@ static void __init ppc47x_setup_arch(void)
 {
 
 	/* No need to check the DMA config as we /know/ our windows are all of
- 	 * RAM.  Lets hope that doesn't change */
+	 * RAM.  Lets hope that doesn't change
+	 */
 #ifdef CONFIG_SWIOTLB
 	if (memblock_end_of_DRAM() > 0xffffffff) {
 		ppc_swiotlb_enable = 1;
@@ -186,7 +187,7 @@ static int __init ppc47x_probe(void)
 static void ppc47x_pci_irq_fixup(struct pci_dev *dev)
 {
 	if (dev->vendor == 0x1033 && (dev->device == 0x0035 ||
-	                              dev->device == 0x00e0)) {
+	    dev->device == 0x00e0)) {
 		dev->irq = irq_create_mapping(NULL, 47);
 		pr_info("%s: Mapping irq 47 %d\n", __func__, dev->irq);
 	}

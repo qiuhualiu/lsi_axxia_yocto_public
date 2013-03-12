@@ -91,7 +91,7 @@ static int __cpuinit smp_acpx14xx_kick_cpu(int cpu)
 	struct device_node *cpunode = of_get_cpu_node(cpu, NULL);
 	const u64 *spin_table_addr_prop;
 	u32 *spin_table;
-	extern void start_secondary_47x(void);
+	extern void __cpuinit start_secondary_47x(void);
 
 	BUG_ON(cpunode == NULL);
 

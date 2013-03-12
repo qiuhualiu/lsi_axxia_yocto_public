@@ -71,7 +71,8 @@ static void __init iss4xx_init_irq(void)
 		/* The MPIC driver will get everything it needs from the
 		 * device-tree, just pass 0 to all arguments
 		 */
-		struct mpic *mpic = mpic_alloc(np, 0, MPIC_NO_RESET, 0, 0, " MPIC     ");
+		struct mpic *mpic = mpic_alloc(np, 0,
+					MPIC_NO_RESET, 0, 0, " MPIC     ");
 		BUG_ON(mpic == NULL);
 		mpic_init(mpic);
 		ppc_md.get_irq = mpic_get_irq;
@@ -91,7 +92,7 @@ static int __cpuinit smp_iss4xx_kick_cpu(int cpu)
 	struct device_node *cpunode = of_get_cpu_node(cpu, NULL);
 	const u64 *spin_table_addr_prop;
 	u32 *spin_table;
-	extern void start_secondary_47x(void);
+	extern void __cpuinit start_secondary_47x(void);
 
 	BUG_ON(cpunode == NULL);
 
