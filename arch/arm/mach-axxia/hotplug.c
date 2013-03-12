@@ -56,7 +56,7 @@ static inline void cpu_leave_lowpower(void)
 	  : "cc");
 }
 
-static inline void platform_do_lowpower(unsigned int cpu, int *spurious)
+static void __ref platform_do_lowpower(unsigned int cpu, int *spurious)
 {
 	/*
 	 * there is no power-control hardware on this platform, so all
