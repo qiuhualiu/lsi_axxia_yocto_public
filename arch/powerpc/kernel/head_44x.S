@@ -825,7 +825,8 @@ _GLOBAL(set_context)
  * to setup initial TLB entries, setup IVORs, etc...
  *
  */
-_GLOBAL(init_cpu_state)
+	__CPUINIT
+_ENTRY(init_cpu_state)
 	mflr	r22
 #ifdef CONFIG_PPC_47x
 	/* We use the PVR to differenciate 44x cores from 476 */
@@ -948,7 +949,8 @@ skpinv:	addi	r4,r4,1				/* Increment */
 	/* attrib fields */
 	/* Added guarded bit to protect against speculative loads/stores */
 	li	r5,0
-	ori	r5,r5,(PPC44x_TLB_SW | PPC44x_TLB_SR | PPC44x_TLB_SX | PPC44x_TLB_G)
+	ori	r5,r5,(PPC44x_TLB_SW | PPC44x_TLB_SR | \
+		       PPC44x_TLB_SX | PPC44x_TLB_G)
 
         li      r0,63                    /* TLB slot 63 */
 
@@ -1039,9 +1041,9 @@ END_FTR_SECTION_IFSET(CPU_FTR_476_DD2)
 	blr
 
 #ifdef CONFIG_SMP
-
+	__CPUINIT
 /* Entry point for secondary 47x processors */
-_GLOBAL(start_secondary_47x)
+_ENTRY(start_secondary_47x)
         mr      r24,r3          /* CPU number */
 
 	bl	init_cpu_state
@@ -1254,7 +1256,8 @@ clear_utlb_entry:
 	ori	r4,r4,CONFIG_PPC_EARLY_DBG_AXXIA_PHYSHIGH
 
 	/* Word 2 */
-	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I | PPC47x_TLB2_G)
+	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | \
+		    PPC47x_TLB2_I | PPC47x_TLB2_G)
 
 	/* Bolted in way 0, bolt slot 4, we -hope- we don't hit the same
 	 * congruence class as the kernel, we need to make sure of it at
@@ -1274,7 +1277,8 @@ clear_utlb_entry:
 	ori	r4,r4,0x20
 
 	/* Word 2 */
-	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | PPC47x_TLB2_I | PPC47x_TLB2_G)
+	li	r5,(PPC47x_TLB2_SW | PPC47x_TLB2_SR | \
+		    PPC47x_TLB2_I | PPC47x_TLB2_G)
 
 	/* Bolted in way 0, bolt slot 4, we -hope- we don't hit the same
 	 * congruence class as the kernel, we need to make sure of it at

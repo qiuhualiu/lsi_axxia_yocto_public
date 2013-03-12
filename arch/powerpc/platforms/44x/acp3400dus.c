@@ -105,7 +105,7 @@ static int __cpuinit smp_acp3400dus_kick_cpu(int cpu)
 	struct device_node *cpunode = of_get_cpu_node(cpu, NULL);
 	const u64 *spin_table_addr_prop;
 	u32 *spin_table;
-	extern void start_secondary_47x(void);
+	extern void __cpuinit start_secondary_47x(void);
 
 	BUG_ON(cpunode == NULL);
 
@@ -251,8 +251,8 @@ int acp3400dus_mcheck_exception(struct pt_regs *regs)
 
 	esr = mfspr(SPRN_ESR);
 	if (esr & ESR_MCI) {
-		printk(KERN_ERR	"Instruction Synchronous Machine Check "
-				"exception\n");
+		printk(KERN_ERR
+		       "Instruction Synchronous Machine Check exception\n");
 		mtspr(SPRN_ESR, esr & ~ESR_MCI);
 		return 0;
 	}
@@ -278,10 +278,11 @@ int acp3400dus_mcheck_exception(struct pt_regs *regs)
 	if (mcsr & PPC47x_MCSR_FPR)
 		printk(KERN_ERR "FPR Parity Error\n");
 	if (mcsr & PPC47x_MCSR_IPR)
-		printk(KERN_ERR "Machine Check exception is imprecise\n");
+		printk(KERN_ERR
+		       "Machine Check exception is imprecise\n");
 	if (mcsr & PPC47x_MCSR_L2)
-		printk(KERN_ERR "Error or system error reported through "
-				"the L2 cache\n");
+		printk(KERN_ERR
+		       "Error or system error reported through the L2 cache\n");
 	if (mcsr & PPC47x_MCSR_DCR)
 		printk(KERN_ERR "DCR timeout\n");
 
