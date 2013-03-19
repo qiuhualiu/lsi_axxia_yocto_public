@@ -31,7 +31,7 @@ static void __iomem *nca_address;
 
 #define LOCK_DOMAIN 0
 
-typedef union {
+union command_data_register_0 {
 	unsigned long raw;
 	struct {
 		unsigned long start_done:1;
@@ -43,23 +43,23 @@ typedef union {
 		unsigned long cmd_type:4;
 		unsigned long dbs:16;
 	} __packed bits;
-} __packed command_data_register_0_t;
+} __packed;
 
-typedef union {
+union command_data_register_1 {
 	unsigned long raw;
 	struct {
 		unsigned long target_address:32;
 	} __packed bits;
-} __packed command_data_register_1_t;
+} __packed;
 
-typedef union {
+union command_data_register_2 {
 	unsigned long raw;
 	struct {
 		unsigned long unused:16;
 		unsigned long target_node_id:8;
 		unsigned long target_id_address_upper:8;
 	} __packed bits;
-} __packed command_data_register_2_t;
+} __packed;
 
 /*
   ----------------------------------------------------------------------
@@ -143,9 +143,9 @@ ncr_unlock(int domain)
 int
 ncr_read(unsigned long region, unsigned long address, int number, void *buffer)
 {
-	command_data_register_0_t cdr0;
-	command_data_register_1_t cdr1;
-	command_data_register_2_t cdr2;
+	union command_data_register_0 cdr0;
+	union command_data_register_1 cdr1;
+	union command_data_register_2 cdr2;
 	int wfc_timeout = WFC_TIMEOUT;
 
 	if (NULL == nca_address)
@@ -245,9 +245,9 @@ EXPORT_SYMBOL(is_asic);
 int
 ncr_write(unsigned long region, unsigned long address, int number, void *buffer)
 {
-	command_data_register_0_t cdr0;
-	command_data_register_1_t cdr1;
-	command_data_register_2_t cdr2;
+	union command_data_register_0 cdr0;
+	union command_data_register_1 cdr1;
+	union command_data_register_2 cdr2;
 	unsigned long data_word_base;
 	int dbs = (number - 1);
 	int wfc_timeout = WFC_TIMEOUT;
