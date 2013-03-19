@@ -23,7 +23,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 
-#include <asm/lsi/acp_ncr.h>
+#include <linux/acp_ncr.h>
 
 static void *nca_reg;
 

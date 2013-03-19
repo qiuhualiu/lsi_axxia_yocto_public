@@ -55,7 +55,7 @@
 #include "ai2c_plat_pvt.h"
 #include "regs/ai2c_cfg_node_reg_defines.h"
 #include "regs/ai2c_cfg_node_regs.h"
-#include "asm/lsi/acp_ncr.h"
+#include "linux/acp_ncr.h"
 
 /******************************************************************************
 * --- Linux Module Interface                                              --- *

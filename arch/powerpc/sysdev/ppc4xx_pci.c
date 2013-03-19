@@ -37,7 +37,7 @@
 
 #include "ppc4xx_pci.h"
 #ifdef CONFIG_ACP
-#include "../../../drivers/lsi/acp/ncr.h"
+#include "linux/acp_ncr.h"
 static int acp_plx;
 #endif
 
