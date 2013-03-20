@@ -52,7 +52,7 @@
 #include <linux/of.h>
 #include <linux/io.h>
 
-#include <asm/lsi/acp_ncr.h>
+#include <linux/acp_ncr.h>
 #include <asm/lsi/acp_clock.h>
 
 #define SZ_4K (4*1024)

@@ -8,7 +8,7 @@
 #include <linux/types.h>	/* size_t */
 #include <linux/uaccess.h>	/* copy_from/to_user */
 #include <linux/io.h>
-#include <asm/lsi/acp_ncr.h>
+#include <linux/acp_ncr.h>
 #include "ncr_cd.h"
 
 

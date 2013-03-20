@@ -23,7 +23,7 @@
 #include <asm/irq.h>
 #include <linux/io.h>
 
-#include <asm/lsi/acp_ncr.h>
+#include <linux/acp_ncr.h>
 
 /*
   ==============================================================================
