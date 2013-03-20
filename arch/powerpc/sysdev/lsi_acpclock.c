@@ -25,7 +25,7 @@
 
 #define CLK_REF0 125000000
 
-#include <asm/lsi/acp_ncr.h>
+#include <linux/acp_ncr.h>
 
 /*
  * Private Interface

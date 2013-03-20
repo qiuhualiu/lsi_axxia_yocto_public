@@ -55,7 +55,7 @@
 #include "ai2c_plat_pvt.h"
 #include "regs/ai2c_cfg_node_reg_defines.h"
 #include "regs/ai2c_cfg_node_regs.h"
-#include "asm/lsi/acp_ncr.h"
+#include "linux/acp_ncr.h"
 
 /******************************************************************************
 * --- Linux Module Interface                                              --- *
@@ -79,18 +79,7 @@ int ai2c_chip_ver;		/* Opt: Needed to figure out memory map, etc.
 				 *	 9=X7_REL1+
 				 */
 
-/* HACK --- REMOVE --- temp work around - irq_create_mapping requires GPL */
-#if 1
 MODULE_LICENSE("GPL");
-#else
-#ifdef MODULE_LICENSE
-#ifndef AI2C_GPL_LICENSE
-MODULE_LICENSE("Proprietary");
-#else
-MODULE_LICENSE("GPL");
-#endif
-#endif
-#endif
 
 MODULE_DESCRIPTION("LSI ACP I2C Platform Driver");
 MODULE_AUTHOR("LSI");
