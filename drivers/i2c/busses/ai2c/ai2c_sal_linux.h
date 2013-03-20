@@ -28,8 +28,6 @@
 #ifndef __AI2C_SAL_LINUX_H__
 #define __AI2C_SAL_LINUX_H__
 
-#ifdef __KERNEL__
-
 #include <linux/module.h>
 #include <generated/autoconf.h>
 #include <linux/init.h>
@@ -65,14 +63,6 @@
 #include <linux/errno.h>
 #include <linux/mman.h>
 
-#else
-
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
-
-#endif /* #ifdef __KERNEL__ */
-
 #include <asm/byteorder.h>
 
 #ifdef __BIG_ENDIAN
@@ -87,10 +77,6 @@
 #define AI2C_LITTLE_ENDIAN      9998
 #endif
 
-
-#ifdef __KERNEL__
-
-#define AI2C_KERNEL __KERNEL__
 
 /*
 * AI2C_MSG
@@ -107,24 +93,6 @@
 			printk(fmt, ## args);				 \
 		}							 \
 	} while (0)
-
-#else /* !#ifdef __KERNEL__ */
-
-#define AI2C_MSG(type, fmt, args...) \
-	do { \
-		if ((type) & AI2C_MSG_TRACE_LEVEL) \
-			printf(fmt, ## args); \
-	} while (0)
-
-#define AI2C_MSGRAW(fmt, args...) \
-	do { \
-		printf(fmt, ## args); \
-	} while (0)
-
-#define AI2C_LOGDATA \
-	AI2C_MSGRAW
-
-#endif /* #ifdef __KERNEL__ */
 
     /*
      * AI2C_LOG
@@ -172,8 +140,6 @@ extern int AI2C_MSG_TRACE_LEVEL;
 /*
 * Endian-ness I/O
 */
-
-#ifdef __KERNEL__
 
 #ifdef CONFIG_ARM
 
@@ -316,9 +282,6 @@ extern int AI2C_MSG_TRACE_LEVEL;
     */
 
 extern int snprintf(char *s, size_t n, const char *format, ...);
-
-#endif  /* !__KERNEL__ */
-
 
 struct ai2c_rev_id {
 

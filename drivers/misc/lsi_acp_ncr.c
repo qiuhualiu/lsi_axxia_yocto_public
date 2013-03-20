@@ -23,13 +23,15 @@
 #include <linux/io.h>
 #include <linux/module.h>
 
-#include <asm/lsi/acp_ncr.h>
+#include <linux/acp_ncr.h>
 
-static void *nca_reg;
+static void __iomem *nca_address;
 
-#define NCA  nca_reg
+#define WFC_TIMEOUT (400000)
 
-typedef union {
+#define LOCK_DOMAIN 0
+
+union command_data_register_0 {
 	unsigned long raw;
 	struct {
 		unsigned long start_done:1;
@@ -41,23 +43,23 @@ typedef union {
 		unsigned long cmd_type:4;
 		unsigned long dbs:16;
 	} __packed bits;
-} __packed command_data_register_0_t;
+} __packed;
 
-typedef union {
+union command_data_register_1 {
 	unsigned long raw;
 	struct {
 		unsigned long target_address:32;
 	} __packed bits;
-} __packed command_data_register_1_t;
+} __packed;
 
-typedef union {
+union command_data_register_2 {
 	unsigned long raw;
 	struct {
 		unsigned long unused:16;
 		unsigned long target_node_id:8;
 		unsigned long target_id_address_upper:8;
 	} __packed bits;
-} __packed command_data_register_2_t;
+} __packed;
 
 /*
   ----------------------------------------------------------------------
@@ -86,6 +88,46 @@ ncr_register_write(const unsigned value, unsigned *address)
 }
 
 /*
+  ------------------------------------------------------------------------------
+  ncr_lock
+*/
+
+static int
+ncr_lock(int domain)
+{
+	unsigned long offset;
+	unsigned long value;
+	int loops = 10000;
+
+	offset = (0xff80 + (domain * 4));
+
+	do {
+		value = ncr_register_read((unsigned *)(nca_address + offset));
+	} while ((0 != value) && (0 < --loops));
+
+	if (0 == loops)
+		return -1;
+
+	return 0;
+}
+
+/*
+  ------------------------------------------------------------------------------
+  ncr_unlock
+*/
+
+static void
+ncr_unlock(int domain)
+{
+	unsigned long offset;
+
+	offset = (0xff80 + (domain * 4));
+	ncr_register_write(0, (unsigned *)(nca_address + offset));
+
+	return;
+}
+
+/*
   ======================================================================
   ======================================================================
   Public Interface
@@ -101,9 +143,16 @@ ncr_register_write(const unsigned value, unsigned *address)
 int
 ncr_read(unsigned long region, unsigned long address, int number, void *buffer)
 {
-	command_data_register_0_t cdr0;
-	command_data_register_1_t cdr1;
-	command_data_register_2_t cdr2;
+	union command_data_register_0 cdr0;
+	union command_data_register_1 cdr1;
+	union command_data_register_2 cdr2;
+	int wfc_timeout = WFC_TIMEOUT;
+
+	if (NULL == nca_address)
+		nca_address = ioremap(0x002000520000ULL, 0x20000);
+
+	if (0 != ncr_lock(LOCK_DOMAIN))
+		return -1;
 
 	/*
 	  Set up the read command.
@@ -112,11 +161,11 @@ ncr_read(unsigned long region, unsigned long address, int number, void *buffer)
 	cdr2.raw = 0;
 	cdr2.bits.target_node_id = NCP_NODE_ID(region);
 	cdr2.bits.target_id_address_upper = NCP_TARGET_ID(region);
-	ncr_register_write(cdr2.raw, (unsigned *) (NCA + 0xf8));
+	ncr_register_write(cdr2.raw, (unsigned *) (nca_address + 0xf8));
 
 	cdr1.raw = 0;
 	cdr1.bits.target_address = (address >> 2);
-	ncr_register_write(cdr1.raw, (unsigned *) (NCA + 0xf4));
+	ncr_register_write(cdr1.raw, (unsigned *) (nca_address + 0xf4));
 
 	cdr0.raw = 0;
 	cdr0.bits.start_done = 1;
@@ -127,27 +176,29 @@ ncr_read(unsigned long region, unsigned long address, int number, void *buffer)
 	cdr0.bits.cmd_type = 4;
 	/* TODO: Verify number... */
 	cdr0.bits.dbs = (number - 1);
-	ncr_register_write(cdr0.raw, (unsigned *) (NCA + 0xf0));
+	ncr_register_write(cdr0.raw, (unsigned *) (nca_address + 0xf0));
 	mb();
 
 	/*
 	  Wait for completion.
 	*/
 
-	/* TODO: Handle failure cases. */
-	{
-		volatile unsigned long value;
+	do {
+		--wfc_timeout;
+	} while ((0x80000000UL ==
+		  ncr_register_read((unsigned *)(nca_address + 0xf0))) &&
+		 0 < wfc_timeout);
 
-		do {
-			value = ncr_register_read((unsigned *) (NCA + 0xf0));
-		} while (0x80000000 == (value & 0x80000000));
+	if (0 == wfc_timeout) {
+		ncr_unlock(LOCK_DOMAIN);
+		return -1;
 	}
 
 	/*
 	  Copy data words to the buffer.
 	*/
 
-	address = (unsigned long)(NCA + 0x1000);
+	address = (unsigned long)(nca_address + 0x1000);
 	while (4 <= number) {
 		*((unsigned long *) buffer) =
 			ncr_register_read((unsigned *) address);
@@ -159,6 +210,8 @@ ncr_read(unsigned long region, unsigned long address, int number, void *buffer)
 		unsigned long temp = ncr_register_read((unsigned *) address);
 		memcpy((void *) buffer, &temp, number);
 	}
+
+	ncr_unlock(LOCK_DOMAIN);
 
 	return 0;
 }
@@ -192,11 +245,18 @@ EXPORT_SYMBOL(is_asic);
 int
 ncr_write(unsigned long region, unsigned long address, int number, void *buffer)
 {
-	command_data_register_0_t cdr0;
-	command_data_register_1_t cdr1;
-	command_data_register_2_t cdr2;
+	union command_data_register_0 cdr0;
+	union command_data_register_1 cdr1;
+	union command_data_register_2 cdr2;
 	unsigned long data_word_base;
 	int dbs = (number - 1);
+	int wfc_timeout = WFC_TIMEOUT;
+
+	if (NULL == nca_address)
+		nca_address = ioremap(0x002000520000ULL, 0x20000);
+
+	if (0 != ncr_lock(LOCK_DOMAIN))
+		return -1;
 
 	/*
 	  Set up the write.
@@ -205,17 +265,17 @@ ncr_write(unsigned long region, unsigned long address, int number, void *buffer)
 	cdr2.raw = 0;
 	cdr2.bits.target_node_id = NCP_NODE_ID(region);
 	cdr2.bits.target_id_address_upper = NCP_TARGET_ID(region);
-	ncr_register_write(cdr2.raw, (unsigned *) (NCA + 0xf8));
+	ncr_register_write(cdr2.raw, (unsigned *) (nca_address + 0xf8));
 
 	cdr1.raw = 0;
 	cdr1.bits.target_address = (address >> 2);
-	ncr_register_write(cdr1.raw, (unsigned *) (NCA + 0xf4));
+	ncr_register_write(cdr1.raw, (unsigned *) (nca_address + 0xf4));
 
 	/*
 	  Copy from buffer to the data words.
 	*/
 
-	data_word_base = (unsigned long)(NCA + 0x1000);
+	data_word_base = (unsigned long)(nca_address + 0x1000);
 
 	while (4 <= number) {
 		ncr_register_write(*((unsigned long *) buffer),
@@ -244,17 +304,40 @@ ncr_write(unsigned long region, unsigned long address, int number, void *buffer)
 	cdr0.bits.cmd_type = 5;
 	/* TODO: Verify number... */
 	cdr0.bits.dbs = dbs;
-	ncr_register_write(cdr0.raw, (unsigned *) (NCA + 0xf0));
+	ncr_register_write(cdr0.raw, (unsigned *) (nca_address + 0xf0));
 	mb();
 
 	/*
 	  Wait for completion.
 	*/
 
-	/* TODO: Handle failure cases. */
-	while (0x80000000 ==
-		(ncr_register_read((unsigned *) (NCA + 0xf0)) & 0x80000000))
-		;
+	do {
+		--wfc_timeout;
+	} while ((0x80000000UL ==
+		  ncr_register_read((unsigned *)(nca_address + 0xf0))) &&
+		 0 < wfc_timeout);
+
+	if (0 == wfc_timeout) {
+		ncr_unlock(LOCK_DOMAIN);
+		return -1;
+	}
+
+	/*
+	  Check status.
+	*/
+
+	if (0x3 !=
+	    ((ncr_register_read((unsigned *) (nca_address + 0xf0)) &
+		0x00c00000) >> 22)) {
+		unsigned long status;
+
+		status = ncr_register_read((unsigned *)(nca_address + 0xe4));
+		ncr_unlock(LOCK_DOMAIN);
+
+		return status;
+	}
+
+	ncr_unlock(LOCK_DOMAIN);
 
 	return 0;
 }
@@ -271,12 +354,6 @@ ncr_init(void)
 	/* We need this to be a module so that the functions can be exported
 	 * as module symbols.
 	 */
-	nca_reg = ioremap(0x2000520000ull, 0x2000);
-	if (!nca_reg) {
-		pr_err("Can't iomap for nca registers\n");
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -290,7 +367,8 @@ postcore_initcall(ncr_init);
 void __exit
 ncr_exit(void)
 {
-	iounmap(nca_reg);
+	/* Unmap the NCA. */
+	iounmap(nca_address);
 }
 
 module_exit(ncr_exit);
