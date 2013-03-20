@@ -26,11 +26,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  */
 
-#ifndef __KERNEL__
-int AI2C_MSG_TRACE_LEVEL = (AI2C_MSG_INFO | AI2C_MSG_ERROR);
-#endif
-
-
 /*
  * definitions of the ai2c_malloc/ai2c_nvm_malloc family of functions.
  */
