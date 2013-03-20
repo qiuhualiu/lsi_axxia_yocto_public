@@ -46,6 +46,7 @@
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <mach/timers.h>
+#include <mach/axxia-gic.h>
 #include "axxia.h"
 #include "pci.h"
 #include "i2c.h"
@@ -110,7 +111,8 @@ void __init axxia_dt_timer_init(void)
 		return;
 
 	__sp804_clocksource_and_sched_clock_init(base, "axxia-timer0", 0);
-	sp804_clockevents_init(base + 0x20, irq_of_parse_and_map(node, 1),
+	sp804_clockevents_init(base + 0x20,
+			       irq_of_parse_and_map(node, 1),
 			       "axxia-timer1");
 }
 
@@ -228,8 +230,8 @@ void __init axxia_dt_init(void)
 	/*
 	 * Setup PL022 to handle chip-select signal automatically
 	 */
-	ssp_base =
-		of_iomap(of_find_compatible_node(NULL, NULL, "arm,pl022"), 0);
+	ssp_base = of_iomap(of_find_compatible_node(NULL, NULL, "arm,pl022"),
+			    0);
 	if (!WARN_ON(ssp_base == NULL)) {
 		/* Use legacy mode, bits 0..4 control nCS[0..4] pins */
 		writel(0x1F, ssp_base+0x30);
@@ -254,6 +256,6 @@ DT_MACHINE_START(AXXIA_DT, "LSI Axxia")
 	.init_irq	= axxia_dt_init_irq,
 	.timer		= &axxia_dt_timer,
 	.init_machine	= axxia_dt_init,
-	.handle_irq	= gic_handle_irq,
+	.handle_irq	= axxia_gic_handle_irq,
 	.restart	= axxia_restart,
 MACHINE_END
