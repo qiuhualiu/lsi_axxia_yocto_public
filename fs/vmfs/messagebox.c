@@ -100,7 +100,7 @@ static irqreturn_t mb_interrupt(int irq, void *dev_id)
 #endif /* USE_IRQ */
 
 /* Initialise OS structures involved in serialising access to the messagebox */
-MessageBox *mb_new(uint32_t dev_base, uint32_t dev_irq)
+MessageBox *mb_new(phys_addr_t dev_base, uint32_t dev_irq)
 {
 	MessageBox *mb;
 
@@ -118,6 +118,7 @@ MessageBox *mb_new(uint32_t dev_base, uint32_t dev_irq)
 	request_mem_region(dev_base, MBOX_DEVICE_SIZE, "messagebox");
 
 	/*mb->dev = ioremap_nocache(0x2022050000ULL, MBOX_DEVICE_SIZE); */
+	/* mb->dev = ioremap_nocache(0x20101C0000ULL, MBOX_DEVICE_SIZE);  */
 	mb->dev = ioremap_nocache(dev_base, MBOX_DEVICE_SIZE);
 
 	DEBUG1("device registers mapped at %p, size 0x%x\n", mb->dev,

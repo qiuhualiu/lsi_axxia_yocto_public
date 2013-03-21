@@ -36,7 +36,7 @@ typedef struct MessageBox MessageBox;
  *
  * \return opaque message box structure for use in other calls
  */
-MessageBox *mb_new(uint32_t dev_base, uint32_t dev_irq);
+MessageBox *mb_new(phys_addr_t dev_base, uint32_t dev_irq);
 
 /*! free resources assocuated with the messagebox handle
  *
