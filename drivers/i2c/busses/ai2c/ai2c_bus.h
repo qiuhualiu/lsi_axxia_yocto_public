@@ -52,8 +52,8 @@
 */
 #define AI2C_I2CPROT_MAX_BUF_SIZE           8
 
-#define AI2C_I2C_CHECK_COUNT           0x1000
-/* Max number of  tries at looking for an I/O success */
+#define AI2C_I2C_CHECK_COUNT				0xFFFFF
+/* Max number of tries at looking for an I/O success */
 
 	/*****************************
 	* ACP3400                    *
