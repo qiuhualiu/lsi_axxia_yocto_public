@@ -20,9 +20,11 @@
 #include <asm/hardware/gic.h>
 #include <asm/mach/map.h>
 
+#include <mach/axxia-gic.h>
+
 /*
- * control for which core is the next to come out of the secondary
- * boot "holding pen"
+ * Control for which core is the next to come out of the secondary
+ * boot "holding pen".
  */
 volatile int __cpuinitdata pen_release = -1;
 
@@ -46,15 +48,18 @@ static DEFINE_RAW_SPINLOCK(boot_lock);
 void __cpuinit platform_secondary_init(unsigned int cpu)
 {
 	/*
-	 * if any interrupts are already enabled for the primary
-	 * core (e.g. timer irq), then they will not have been enabled
-	 * for us: do so
+	 * If this isn't the first physical core in a secondary cluster
+	 * then run the standard GIC secondary init routine. Otherwise,
+	 * run the Axxia secondary cluster init routine.
 	 */
-	gic_secondary_init(0);
+	if (cpu_logical_map(cpu) % 4)
+		axxia_gic_secondary_init();
+	else
+		axxia_gic_secondary_cluster_init();
 
 	/*
-	 * let the primary processor know we're out of the
-	 * pen, then head off into the C entry point
+	 * Let the primary processor know we're out of the
+	 * pen, then head off into the C entry point.
 	 */
 	write_pen_release(-1);
 
@@ -68,28 +73,40 @@ void __cpuinit platform_secondary_init(unsigned int cpu)
 int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	unsigned long timeout;
+	int phys_cpu, cluster;
 
 	/*
 	 * Set synchronisation state between this boot processor
-	 * and the secondary one
+	 * and the secondary one.
 	 */
 	_raw_spin_lock(&boot_lock);
 
 	/*
-	 * This is really belt and braces; we hold unintended secondary
-	 * CPUs in the holding pen until we're ready for them.  However,
-	 * since we haven't sent them a soft interrupt, they shouldn't
-	 * be there.
+	 * In the Axxia, the bootloader does not put the secondary cores
+	 * into a wait-for-event (wfe) or wait-for-interrupt (wfi) state
+	 * because of the multi-cluster design (i.e., there's no way for
+	 * the primary core in cluster 0 to send an event or interrupt
+	 * to secondary cores in the other clusters).
+	 *
+	 * Instead, the secondary cores are immediately put into a loop
+	 * that polls the "pen_release" global and MPIDR register. The two
+	 * are compared and if they match, a secondary core then executes
+	 * the Axxia secondary startup code.
+	 *
+	 * Here we convert the "cpu" variable to be compatible with the
+	 * ARM MPIDR register format (CLUSTERID and CPUID):
+	 *
+	 * Bits:   |11 10 9 8|7 6 5 4 3 2|1 0
+	 *         | CLUSTER | Reserved  |CPU
 	 */
-	write_pen_release(cpu_logical_map(cpu));
+	phys_cpu = cpu_logical_map(cpu);
+	cluster = (phys_cpu / 4) << 8;
+	phys_cpu = cluster + (phys_cpu % 4);
 
-	/*
-	 * Send the secondary CPU a soft interrupt, thereby causing
-	 * the boot monitor to read the system wide flags register,
-	 * and branch to the address found there.
-	 */
-	gic_raise_softirq(cpumask_of(cpu), 1);
+	/* Release the specified core */
+	write_pen_release(phys_cpu);
 
+	/* Wait for so long, then give up if nothing happens ... */
 	timeout = jiffies + (1 * HZ);
 	while (time_before(jiffies, timeout)) {
 		smp_rmb();
@@ -100,8 +117,8 @@ int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 	}
 
 	/*
-	 * now the secondary core is starting up let it run its
-	 * calibrations, then wait for it to finish
+	 * Now the secondary core is starting up let it run its
+	 * calibrations, then wait for it to finish.
 	 */
 	_raw_spin_unlock(&boot_lock);
 
@@ -155,7 +172,7 @@ void __init smp_init_cpus(void)
 	for (i = 0; i < ncores; ++i)
 		set_cpu_possible(i, true);
 
-	set_smp_cross_call(gic_raise_softirq);
+	set_smp_cross_call(axxia_gic_raise_softirq);
 }
 
 void __init platform_smp_prepare_cpus(unsigned int max_cpus)
@@ -169,6 +186,11 @@ void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 	for (i = 0; i < max_cpus; i++)
 		set_cpu_present(i, true);
 
+	/*
+	 * This is the entry point of the routine that the secondary
+	 * cores will execute once they are released from their
+	 * "holding pen".
+	 */
 	*(u32 *)phys_to_virt(0x10000020) =
 		virt_to_phys(axxia_secondary_startup);
 }

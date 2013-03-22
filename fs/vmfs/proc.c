@@ -327,8 +327,7 @@ int vmfs_open(struct dentry *dentry, int flags, int wish)
 
 	result = -ENOENT;
 	if (!inode) {
-		printk(KERN_ERR "vmfs_open: no inode for dentry %s/%s\n",
-		       DENTRY_PATH(dentry));
+		printk(KERN_ERR "vmfs_open: no inode for dentry!\n");
 		goto out;
 	}
 
@@ -785,7 +784,7 @@ vmfs_proc_readdir_long(struct file *filp, void *dirent, filldir_t filldir,
 
 		fattr.f_size = fsize;
 		fattr.attr = 0;
-		if (ftype == VFS_TYPE_DIR)
+		if (ftype == (VFSAttr)VFS_TYPE_DIR)
 			fattr.attr |= aDIR;
 
 		qname.name = fname;
