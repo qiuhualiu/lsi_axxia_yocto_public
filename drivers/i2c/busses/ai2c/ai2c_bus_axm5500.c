@@ -227,7 +227,7 @@ static int ai2c_bus_block_read8_axm5500_internal(
 
 	} else {
 
-		u32 a1 = (((msg->addr >> 1) & 0x7f) << 1) | 0x1;
+		u32 a1 = ((msg->addr & 0x7f) << 1) | 0x1;
 		u32 a2 = 0x00000000;
 		ai2cStatus = ai2c_dev_write32(priv,
 			regionId,
@@ -275,7 +275,7 @@ static int ai2c_bus_block_read8_axm5500_internal(
 			endit = TRUE;
 		if (!stop && ((reg >> 11) & 0x1))
 			endit = TRUE;
-		if (reg & 0x00000078) {
+		if (reg & 0x00000078) {	/* al || nd || na || ts */
 			ai2cStatus = -EBADE;
 			goto ai2c_return;
 		}
@@ -347,7 +347,7 @@ int ai2c_bus_block_read8_axm5500(
 		u32 thisXfr = MIN(count - bytesRead, thisLim);
 		int tempStop = stop;
 
-		if ((count+thisXfr) < bytesRead)
+		if ((bytesRead + thisXfr) < count)
 			tempStop = 0;
 
 		ai2cStatus = ai2c_bus_block_read8_axm5500_internal(priv,
@@ -452,8 +452,7 @@ static int ai2c_bus_block_write8_axm5500_internal(
 
 	} else {
 
-		u32 a1 = ((msg->addr & 0x7f) << 1) |
-			0x0;
+		u32 a1 = ((msg->addr & 0x7f) << 1) | 0x0;
 		u32 a2 = 0x00000000;
 		ai2cStatus = ai2c_dev_write32(priv,
 			regionId,
