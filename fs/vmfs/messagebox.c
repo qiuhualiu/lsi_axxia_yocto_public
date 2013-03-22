@@ -23,9 +23,7 @@
 #include <linux/version.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28)
 #include <linux/semaphore.h>
-#endif
 
 #include "vmfs_debug.h"
 
@@ -36,12 +34,12 @@
 /* Define this to make the driver use PIO rather than memory mapped access */
 /* #define USE_PIO */
 
-/* Define this to use interrupts rather than polling - not quite working yet */
+/* Define this to use interrupts rather than polling */
 #define USE_IRQ
 
 /* Message box device register layout in memory */
 
-typedef struct MBRegs {
+struct MBRegs {
 	uint32_t id;
 	uint32_t data;
 	uint32_t control;
@@ -52,7 +50,7 @@ typedef struct MBRegs {
 } MBRegs;
 
 struct MessageBox {
-	volatile MBRegs *dev;	/* virtual base of registers */
+	volatile struct MBRegs *dev;	/* virtual base of registers */
 
 	uint32_t dev_base;	/* physical base of registers */
 	uint32_t dev_irq;	/* irq number of device */
@@ -117,8 +115,6 @@ MessageBox *mb_new(phys_addr_t dev_base, uint32_t dev_irq)
 
 	request_mem_region(dev_base, MBOX_DEVICE_SIZE, "messagebox");
 
-	/*mb->dev = ioremap_nocache(0x2022050000ULL, MBOX_DEVICE_SIZE); */
-	/* mb->dev = ioremap_nocache(0x20101C0000ULL, MBOX_DEVICE_SIZE);  */
 	mb->dev = ioremap_nocache(dev_base, MBOX_DEVICE_SIZE);
 
 	DEBUG1("device registers mapped at %p, size 0x%x\n", mb->dev,
