@@ -111,7 +111,8 @@ all_defconfigs()
 docscope()
 {
 	(echo \-k; echo \-q; all_sources) > cscope.files
-	cscope -b -f cscope.out
+	# With the original, cscope -b -f cscope.out, cscope -d segfaults.
+	cscope -b
 }
 
 dogtags()
