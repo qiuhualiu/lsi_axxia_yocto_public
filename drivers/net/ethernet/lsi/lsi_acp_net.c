@@ -53,6 +53,7 @@ extern int acp_mdio_read(unsigned long,
 extern int acp_mdio_write(unsigned long,
 			  unsigned long,
 			  unsigned short);
+extern int ubootenv_get(const char *, char *);
 
 /* Base Addresses of the RX, TX, and DMA Registers. */
 static void *rx_base;
@@ -242,13 +243,11 @@ EXPORT_SYMBOL(lsinet_counts);
 /* -- control -- */
 
 #define PHY_CONTROL 0x00
-#define __LITLE_ENDIAN
 
-typedef union {
+union phy_control {
 	unsigned short raw;
 
 	struct {
-#ifdef __LITTLE_ENDIAN
 		unsigned short soft_reset:1;
 		unsigned short loop_back:1;
 		unsigned short force100:1;	/* speedBit0 */
@@ -259,30 +258,17 @@ typedef union {
 		unsigned short full_duplex:1;	/* duplex */
 		unsigned short collision_test:1;
 		unsigned short unused:7;
-#else  /* __BIG_ENDIAN */
-		unsigned short unused:7;
-		unsigned short collision_test:1;
-		unsigned short full_duplex:1;	/* duplex */
-		unsigned short restart_autoneg:1;
-		unsigned short isolate:1;
-		unsigned short power_down:1;
-		unsigned short autoneg_enable:1;
-		unsigned short force100:1;	/* speedBit0 */
-		unsigned short loop_back:1;
-		unsigned short soft_reset:1;
-#endif /* __BIG_ENDIAN */
-	} __attribute__ ((packed)) bits;
-} __attribute__ ((packed)) phy_control_t;
+	} __packed bits;
+} __packed;
 
 /* -- status -- */
 
 #define PHY_STATUS 0x01
 
-typedef union {
+union phy_status {
 	unsigned short raw;
 
 	struct {
-#ifdef __LITTLE_ENDIAN
 		unsigned short t4_capable:1;
 		unsigned short tx_fdx_capable:1;
 		unsigned short tx_capable:1;
@@ -296,55 +282,34 @@ typedef union {
 		unsigned short link_status:1;	/* linkStatus */
 		unsigned short jabber_detect:1;
 		unsigned short extd_reg_capable:1;
-#else
-		unsigned short extd_reg_capable:1;
-		unsigned short jabber_detect:1;
-		unsigned short link_status:1;	/* linkStatus */
-		unsigned short autoneg_capable:1;
-		unsigned short remote_fault:1;	/* remoutFault */
-		unsigned short autoneg_comp:1;	/* autoNegDone */
-		unsigned short mf_pream_suppress:1;
-		unsigned short unused2:4;
-		unsigned short tenbt_capable:1;
-		unsigned short bt_fdx_capable:1;
-		unsigned short tx_capable:1;
-		unsigned short tx_fdx_capable:1;
-		unsigned short t4_capable:1;
-#endif /* __BIG_ENDIAN */
-	} __attribute__ ((packed)) bits;
-} __attribute__ ((packed)) phy_status_t;
+	} __packed bits;
+} __packed;
 
 /* -- id_high -- */
 
 #define PHY_ID_HIGH 0x02
 
-typedef union {
+union phy_id_high {
 	unsigned short raw;
 
 	struct {
 		unsigned short id:16;
-	} __attribute__ ((packed)) bits;
-} __attribute__ ((packed)) phy_id_high_t;
+	} __packed bits;
+} __packed;
 
 /* -- id_low -- */
 
 #define PHY_ID_LOW  0x03
 
-typedef union {
+union phy_id_low {
 	unsigned short raw;
 
 	struct {
-#ifdef __LITTLE_ENDIAN
 		unsigned short id:6;
 		unsigned short model:6;
 		unsigned short revision:4;
-#else  /* __BIG_ENDIAN */
-		unsigned short revision:4;
-		unsigned short model:6;
-		unsigned short id:6;
-#endif /* __BIG_ENDIAN */
-	} __attribute__ ((packed)) bits;
-} __attribute__ ((packed)) phy_id_low_t;
+	} __packed bits;
+} __packed;
 
 /* -- autoneg_advertise  -- */
 
@@ -357,12 +322,8 @@ typedef union {
 /* -- -- */
 
 #define MICREL_PHY_AUXILIARY_CONTROL_STATUS	0x1f
-#define BC_AUX_ERROR_AND_GEN_STATUS_REG		0x1C
-#define BC_PHY_ID_HIGH_ID			0x40
-#define BC_PHY_ID_LOW_ID			0x61E4
-#define BC_PHY_ID_LOW_MODEL			0x1e
 
-typedef union {
+union micrel_phy_auxiliary_control_status {
 	unsigned short raw;
 
 	struct {
@@ -378,7 +339,7 @@ typedef union {
 		unsigned short op_mode_indication:3;
 		unsigned short unused2:2;
 	} bits;
-} micrel_phy_auxiliary_control_status_t;
+};
 
 /*
   Auto-negotiation Advertisement Values.
@@ -389,19 +350,16 @@ typedef union {
 #define PHY_AUTONEG_ADVERTISE_10FULL	0x041
 #define PHY_AUTONEG_ADVERTISE_10	0x021
 
-#define PHY_ADDRESS_ 0x00
-static int phy_address_ = PHY_ADDRESS_;
+#define UNKNOWN_PHY 0x0
+#define BCM5221_PHY 0x1
+#define MICREL_PHY  0x2
 
-#define UNKNOWN_PHY_ 0x0
-#define BCM5221_PHY_ 0x1
-#define MICREL_PHY_  0x2
-
-static int phy_read_(int, int, unsigned short *);
-static int phy_write_(int, int, unsigned short);
-static int phy_speed_(int);
-static int phy_duplex_(int);
-static int phy_renegotiate_(int);
-static int phy_enable_(int);
+static int phy_read(int, int, unsigned short *);
+static int phy_write(int, int, unsigned short);
+static int phy_speed(int);
+static int phy_duplex(int);
+static int phy_renegotiate(int);
+static int phy_enable(struct net_device *);
 
 #endif /* PHYLESS */
 
@@ -417,7 +375,7 @@ static int phy_enable_(int);
   ======================================================================
 */
 
-static int enable_(struct net_device *);
+static int enable_rx_tx(struct net_device *);
 
 /*
   ======================================================================
@@ -432,7 +390,7 @@ static int enable_(struct net_device *);
 */
 
 
-typedef struct {
+struct appnic_dma_descriptor {
 
 #ifdef CONFIG_ACP
 
@@ -484,9 +442,9 @@ typedef struct {
 
 #endif
 
-} __attribute__ ((packed)) appnic_dma_descriptor_t;
+} __packed;
 
-typedef union {
+union appnic_queue_pointer {
 
 	unsigned long raw;
 
@@ -500,9 +458,9 @@ typedef union {
 		unsigned long generation_bit:1;
 		unsigned long unused:11;
 #endif
-	} __attribute__ ((packed)) bits;
+	} __packed bits;
 
-} __attribute__ ((packed)) appnic_queue_pointer_t;
+} __packed;
 
 /*
   =============================================================================
@@ -510,7 +468,7 @@ typedef union {
   =============================================================================
 */
 
-typedef struct {
+struct appnic_device {
 
 	/* net_device */
 	struct net_device *device;
@@ -543,16 +501,16 @@ typedef struct {
 	int dma_alloc_offset;
 
 	/* tail pointers */
-	volatile appnic_queue_pointer_t *rx_tail;
+	volatile union appnic_queue_pointer *rx_tail;
 	dma_addr_t rx_tail_dma;
-	volatile appnic_queue_pointer_t *tx_tail;
+	volatile union appnic_queue_pointer *tx_tail;
 	dma_addr_t tx_tail_dma;
 
 	/* descriptors */
-	appnic_dma_descriptor_t *rx_desc;
+	struct appnic_dma_descriptor *rx_desc;
 	dma_addr_t rx_desc_dma;
 	unsigned rx_num_desc;
-	appnic_dma_descriptor_t *tx_desc;
+	struct appnic_dma_descriptor *tx_desc;
 	dma_addr_t tx_desc_dma;
 	unsigned tx_num_desc;
 
@@ -570,11 +528,11 @@ typedef struct {
 	 * The local pointers
 	 */
 
-	appnic_queue_pointer_t rx_tail_copy;
-	appnic_queue_pointer_t rx_head;
+	union appnic_queue_pointer rx_tail_copy;
+	union appnic_queue_pointer rx_head;
 
-	appnic_queue_pointer_t tx_tail_copy;
-	appnic_queue_pointer_t tx_head;
+	union appnic_queue_pointer tx_tail_copy;
+	union appnic_queue_pointer tx_head;
 
 	/*
 	 * Polling Mode?
@@ -597,7 +555,7 @@ typedef struct {
 	struct mutex rx_sem;
 	struct mutex poll_sem;
 
-} appnic_device_t;
+};
 
 #define DESCRIPTOR_GRANULARITY 64
 #define BUFFER_ALIGNMENT 64
@@ -654,18 +612,18 @@ typedef struct {
 #define APPNIC_RX_SMII_STATUS_JABBER	0x08
 #define APPNIC_RX_SMII_STATUS_FCD	0x10 /* False Carrier Detect */
 
-#define SMII_SPEED_100(smii_status_) \
-	(0 != (smii_status_ & APPNIC_RX_SMII_STATUS_SPEED))
-#define SMII_DUPLEX(smii_status_) \
-	(0 != (smii_status_ & APPNIC_RX_SMII_STATUS_DUPLEX))
-#define SMII_LINK(smii_status_) \
-	(0 != (smii_status_ & APPNIC_RX_SMII_STATUS_LINK))
-#define SMII_JABBER(smii_status_) \
-	(0 != (smii_status_ & APPNIC_RX_SMII_STATUS_JABBER))
+#define SMII_SPEED_100(smii_status) \
+	(0 != (smii_status & APPNIC_RX_SMII_STATUS_SPEED))
+#define SMII_DUPLEX(smii_status) \
+	(0 != (smii_status & APPNIC_RX_SMII_STATUS_DUPLEX))
+#define SMII_LINK(smii_status) \
+	(0 != (smii_status & APPNIC_RX_SMII_STATUS_LINK))
+#define SMII_JABBER(smii_status) \
+	(0 != (smii_status & APPNIC_RX_SMII_STATUS_JABBER))
 
 /* Receive Configuration -------------------------------------------- */
 
-#define APPNIC_RX_CONF	   (rx_base + 0x004c)
+#define APPNIC_RX_CONF		(rx_base + 0x004c)
 #define APPNIC_RX_CONF_ENABLE   0x0001
 /* Pass Any Packet */
 #define APPNIC_RX_CONF_PAP	0x0002
@@ -789,10 +747,10 @@ typedef struct {
 #define APPNIC_TX_CONF_PAD_ENABLE	0x0002
 #define APPNIC_TX_CONF_ENABLE		0x0001
 
-#define TX_CONF_SET_IFG(tx_configuration_, ifg_)		\
+#define TX_CONF_SET_IFG(tx_configuration, ifg)			\
 	do {							\
-		(tx_configuration_) &= ~APPNIC_TX_CONF_IFG;	\
-		(tx_configuration_) |= ((ifg_ & 0x1f) << 4);	\
+		(tx_configuration) &= ~APPNIC_TX_CONF_IFG;	\
+		(tx_configuration) |= ((ifg & 0x1f) << 4);	\
 	} while (0);
 
 /* Transmit Time Value Configuration -------------------------------- */
@@ -857,10 +815,10 @@ typedef struct {
 #define APPNIC_DMA_INTERRUPT_STATUS (dma_base + 0x18)
 #define APPNIC_DMA_INTERRUPT_STATUS_RX 0x2
 #define APPNIC_DMA_INTERRUPT_STATUS_TX 0x1
-#define RX_INTERRUPT(dma_interrupt_status_) \
-	(0 != (dma_interrupt_status_ & APPNIC_DMA_INTERRUPT_STATUS_RX))
-#define TX_INTERRUPT(dma_interrupt_status_) \
-	(0 != (dma_interrupt_status_ & APPNIC_DMA_INTERRUPT_STATUS_TX))
+#define RX_INTERRUPT(dma_interrupt_status) \
+	(0 != (dma_interrupt_status & APPNIC_DMA_INTERRUPT_STATUS_RX))
+#define TX_INTERRUPT(dma_interrupt_status) \
+	(0 != (dma_interrupt_status & APPNIC_DMA_INTERRUPT_STATUS_TX))
 
 /* DMA Interrupt Enable --------------------------------------------- */
 
@@ -935,10 +893,10 @@ typedef struct {
 
 #define readio(address) in_le32((u32 *) (address))
 
-#define writeio(value, address) out_le32((u32 *) (address), (value));
+#define writeio(value, address) out_le32((u32 *) (address), (value))
 
 static inline void
-readdescriptor(unsigned long address, appnic_dma_descriptor_t *descriptor)
+readdescriptor(unsigned long address, struct appnic_dma_descriptor *descriptor)
 {
 	unsigned long *from = (unsigned long *) address;
 	unsigned long *to = (unsigned long *) descriptor;
@@ -952,7 +910,7 @@ readdescriptor(unsigned long address, appnic_dma_descriptor_t *descriptor)
 
 static inline void
 writedescriptor(unsigned long address,
-		 const appnic_dma_descriptor_t *descriptor)
+		 const struct appnic_dma_descriptor *descriptor)
 {
 	unsigned long *to = (unsigned long *) address;
 	unsigned long *from = (unsigned long *) descriptor;
@@ -964,16 +922,16 @@ writedescriptor(unsigned long address,
 	return;
 }
 
-static inline appnic_queue_pointer_t
-swab_queue_pointer(const appnic_queue_pointer_t *old_queue)
+static inline union appnic_queue_pointer
+swab_queue_pointer(const union appnic_queue_pointer *old_queue)
 {
-	appnic_queue_pointer_t new_queue;
+	union appnic_queue_pointer new_queue;
 	new_queue.raw = swab32(old_queue->raw);
 	return new_queue;
 }
 
 #define SWAB_QUEUE_POINTER(pointer) \
-swab_queue_pointer((const appnic_queue_pointer_t *) (pointer))
+swab_queue_pointer((const union appnic_queue_pointer *) (pointer))
 
 #else
 
@@ -981,17 +939,19 @@ swab_queue_pointer((const appnic_queue_pointer_t *) (pointer))
 #define writeio(value, address) writel((value), (address))
 
 static inline void
-readdescriptor(unsigned long address, appnic_dma_descriptor_t *descriptor)
+readdescriptor(unsigned long address, struct appnic_dma_descriptor *descriptor)
 {
-	memcpy(descriptor, (void *) address, sizeof(appnic_dma_descriptor_t));
+	memcpy(descriptor, (void *) address,
+	       sizeof(struct appnic_dma_descriptor));
 	return;
 }
 
 static inline void
 writedescriptor(unsigned long address,
-		 const appnic_dma_descriptor_t *descriptor)
+		 const struct appnic_dma_descriptor *descriptor)
 {
-	memcpy((void *) address, descriptor, sizeof(appnic_dma_descriptor_t));
+	memcpy((void *) address, descriptor,
+	       sizeof(struct appnic_dma_descriptor));
 	return;
 }
 
@@ -1005,15 +965,15 @@ swab_queue_pointer(unsigned long old_queue)
 
 #ifdef LOG_MAC_ACCESS
 
-static unsigned long read_mac_(unsigned int address)
+static unsigned long read_mac(unsigned int address)
 {
-	unsigned long value_ = readio(address);
+	unsigned long value = readio(address);
 	printk(KERN_INFO "-MAC-  0x%04x => 0x%08lx\n",
 	       (address & 0x1fff), value_);
-	return value_;
+	return value;
 }
 
-static void write_mac_(unsigned long value, unsigned int address)
+static void write_mac(unsigned long value, unsigned int address)
 {
 	printk(KERN_INFO "-MAC-  0x%04x <= 0x%08lx\n",
 	       (address & 0x1fff), value);
@@ -1023,8 +983,8 @@ static void write_mac_(unsigned long value, unsigned int address)
 
 #else  /* ! LOG_MAC_ACCESS */
 
-#define read_mac_(address) readio((address))
-#define write_mac_(value, address) writeio((value), (address))
+#define read_mac(address) readio((address))
+#define write_mac(value, address) writeio((value), (address))
 
 #endif
 
@@ -1033,10 +993,10 @@ static void write_mac_(unsigned long value, unsigned int address)
 
 static unsigned long read_phy_(unsigned int address)
 {
-	unsigned long value_ = readl(address);
+	unsigned long value = readl(address);
 	printk(KERN_INFO "-PHY- HOST + 0x%04x => 0x%08lx\n",
-	       (address & 0xff), value_);
-	return value_;
+	       (address & 0xff), value);
+	return value;
 }
 
 static void write_phy_(unsigned long value, unsigned int address)
@@ -1123,17 +1083,17 @@ MODULE_PARM_DESC(tx_buf_sz, "Appnic : Receive buffer size");
 
 struct net_device *this_net_device;
 
-static unsigned long dropped_by_stack_ = 0;
-static unsigned long out_of_tx_descriptors_ = 0;
-static unsigned long transmit_interrupts_ = 0;
+static unsigned long dropped_by_stack;
+static unsigned long out_of_tx_descriptors;
+static unsigned long transmit_interrupts;
 #ifdef LSINET_NAPI
-static unsigned long receive_interrupts_ = 0;
+static unsigned long receive_interrupts;
 #endif
 
 #define APPNIC_TIMER_PERIOD 5
 #ifndef PHYLESS
-static void appnic_timer_handler_(unsigned long);
-static struct timer_list appnic_timer_;
+static void appnic_timer_handler(unsigned long);
+static struct timer_list appnic_timer;
 #endif /* PHYLESS */
 
 /*
@@ -1153,9 +1113,9 @@ static struct timer_list appnic_timer_;
   clear_statistics_
 */
 
-static void clear_statistics_(appnic_device_t *device)
+static void clear_statistics_(struct appnic_device *device)
 {
-	int waste_;
+	int waste;
 
 	/*
 	 * Clear memory.
@@ -1168,8 +1128,8 @@ static void clear_statistics_(appnic_device_t *device)
 	 * Clear counters.
 	 */
 
-	waste_ = read_mac_(APPNIC_RX_STAT_PACKET_OK); /* rx_packets */
-	waste_ = read_mac_(APPNIC_TX_STAT_PACKET_OK); /* tx_packets */
+	waste = read_mac(APPNIC_RX_STAT_PACKET_OK); /* rx_packets */
+	waste = read_mac(APPNIC_TX_STAT_PACKET_OK); /* tx_packets */
 
 	/* rx_bytes kept by driver. */
 	/* tx_bytes kept by driver. */
@@ -1180,38 +1140,38 @@ static void clear_statistics_(appnic_device_t *device)
 
 	/* multicast */
 
-	waste_ = read_mac_(APPNIC_RX_STAT_MULTICAST);
+	waste = read_mac(APPNIC_RX_STAT_MULTICAST);
 
 	/* collisions will be the sum of the three following. */
 
-	waste_ = read_mac_(APPNIC_TX_STATUS_LATE_COLLISION);
-	waste_ = read_mac_(APPNIC_TX_STATUS_EXCESSIVE_COLLISION);
-	waste_ = read_mac_(APPNIC_TX_STAT_COLLISION_ABOVE_WATERMARK);
+	waste = read_mac(APPNIC_TX_STATUS_LATE_COLLISION);
+	waste = read_mac(APPNIC_TX_STATUS_EXCESSIVE_COLLISION);
+	waste = read_mac(APPNIC_TX_STAT_COLLISION_ABOVE_WATERMARK);
 
 	/* rx_length_errors will be the sum of the two following. */
 
-	waste_ = read_mac_(APPNIC_RX_STAT_UNDERSIZE);
-	waste_ = read_mac_(APPNIC_RX_STAT_OVERSIZE);
+	waste = read_mac(APPNIC_RX_STAT_UNDERSIZE);
+	waste = read_mac(APPNIC_RX_STAT_OVERSIZE);
 
 	/* rx_over_errors (out of descriptors?) maintained by the driver. */
 	/* rx_crc_errors */
 
-	waste_ = read_mac_(APPNIC_RX_STAT_CRC_ERROR);
+	waste = read_mac(APPNIC_RX_STAT_CRC_ERROR);
 
 	/* rx_frame_errors */
 
-	waste_ = read_mac_(APPNIC_RX_STAT_ALIGN_ERROR);
+	waste = read_mac(APPNIC_RX_STAT_ALIGN_ERROR);
 
 	/* rx_fifo_errors */
 
-	waste_ = read_mac_(APPNIC_RX_STAT_OVERFLOW);
+	waste = read_mac(APPNIC_RX_STAT_OVERFLOW);
 
 	/* rx_missed will not be maintained. */
 	/* tx_aborted_errors will be maintained by the driver. */
 	/* tx_carrier_errors will not be maintained. */
 	/* tx_fifo_errors */
 
-	waste_ = read_mac_(APPNIC_TX_STAT_UNDERRUN);
+	waste = read_mac(APPNIC_TX_STAT_UNDERRUN);
 
 	/* tx_heartbeat_errors */
 	/* tx_window_errors */
@@ -1235,34 +1195,34 @@ static void clear_statistics_(appnic_device_t *device)
  *  1) The hardware clears the statistics registers after a read.
  */
 
-static void get_hw_statistics_(appnic_device_t *device)
+static void get_hw_statistics_(struct appnic_device *device)
 {
-	unsigned long flags_;
+	unsigned long flags;
 
 	/* tx_packets */
 
-	device->stats.tx_packets += read_mac_(APPNIC_TX_STAT_PACKET_OK);
+	device->stats.tx_packets += read_mac(APPNIC_TX_STAT_PACKET_OK);
 
 	/* multicast */
 
-	device->stats.multicast += read_mac_(APPNIC_RX_STAT_MULTICAST);
+	device->stats.multicast += read_mac(APPNIC_RX_STAT_MULTICAST);
 
 	/* collision */
 
-	device->stats.collisions += read_mac_(APPNIC_TX_STATUS_LATE_COLLISION);
+	device->stats.collisions += read_mac(APPNIC_TX_STATUS_LATE_COLLISION);
 	device->stats.collisions +=
-	read_mac_(APPNIC_TX_STATUS_EXCESSIVE_COLLISION);
+		read_mac(APPNIC_TX_STATUS_EXCESSIVE_COLLISION);
 	device->stats.collisions +=
-	read_mac_(APPNIC_TX_STAT_COLLISION_ABOVE_WATERMARK);
+	read_mac(APPNIC_TX_STAT_COLLISION_ABOVE_WATERMARK);
 
 	/* rx_length_errors */
 
-	device->stats.rx_length_errors += read_mac_(APPNIC_RX_STAT_UNDERSIZE);
-	device->stats.rx_length_errors += read_mac_(APPNIC_RX_STAT_OVERSIZE);
+	device->stats.rx_length_errors += read_mac(APPNIC_RX_STAT_UNDERSIZE);
+	device->stats.rx_length_errors += read_mac(APPNIC_RX_STAT_OVERSIZE);
 
 	/* tx_fifo_errors */
 
-	device->stats.tx_fifo_errors += read_mac_(APPNIC_TX_STAT_UNDERRUN);
+	device->stats.tx_fifo_errors += read_mac(APPNIC_TX_STAT_UNDERRUN);
 
 	/*
 	 * Lock this section out so the statistics maintained by the driver
@@ -1270,7 +1230,7 @@ static void get_hw_statistics_(appnic_device_t *device)
 	 */
 
 
-	spin_lock_irqsave(&device->lock, flags_);
+	spin_lock_irqsave(&device->lock, flags);
 
 	device->stats.rx_errors +=
 		(device->stats.rx_length_errors +
@@ -1288,7 +1248,7 @@ static void get_hw_statistics_(appnic_device_t *device)
 		 device->stats.tx_aborted_errors);
 	device->stats.tx_aborted_errors = 0;
 
-	spin_unlock_irqrestore(&device->lock, flags_);
+	spin_unlock_irqrestore(&device->lock, flags);
 
 	/*
 	 * That's all.
@@ -1299,15 +1259,15 @@ static void get_hw_statistics_(appnic_device_t *device)
 
 /*
  * ----------------------------------------------------------------------
- * queue_initialized_
+ * queue_initialized
  *
  * Returns the number of descriptors that are ready to receive packets
  * or are waiting to transmit packets.  (from tail to head).
  */
 
-static int queue_initialized_(appnic_queue_pointer_t head,
-			      appnic_queue_pointer_t tail,
-			      int size)
+static int queue_initialized(union appnic_queue_pointer head,
+			     union appnic_queue_pointer tail,
+			     int size)
 {
 	int initialized;
 
@@ -1319,12 +1279,12 @@ static int queue_initialized_(appnic_queue_pointer_t head,
 	} else {
 		/* different generation */
 		initialized = head.bits.offset +
-			(size * sizeof(appnic_dma_descriptor_t) -
+			(size * sizeof(struct appnic_dma_descriptor) -
 			 tail.bits.offset);
 	}
 
 	/* number of descriptors is offset / sizeof(a descriptor) */
-	initialized /= sizeof(appnic_dma_descriptor_t);
+	initialized /= sizeof(struct appnic_dma_descriptor);
 
 	return initialized;
 }
@@ -1336,41 +1296,41 @@ static int queue_initialized_(appnic_queue_pointer_t head,
  * Returns the number of unused/uninitialized descriptors. (from head to tail).
 */
 
-static int queue_uninitialized_(appnic_queue_pointer_t head,
-				appnic_queue_pointer_t tail,
+static int queue_uninitialized_(union appnic_queue_pointer head,
+				union appnic_queue_pointer tail,
 				int size)
 {
-	int allocated_;
+	int allocated;
 
-	/* calculate the number of descriptors currently unused/uninitialized */
+	/* Calculate the number of descriptors currently unused/uninitialized */
 
 	if (head.bits.generation_bit == tail.bits.generation_bit) {
-		/* same generation. */
-		allocated_ = ((size * sizeof(appnic_dma_descriptor_t)) -
+		/* Same generation. */
+		allocated = ((size * sizeof(struct appnic_dma_descriptor)) -
 			 head.bits.offset) + tail.bits.offset;
 	} else {
-		/* different generation. */
-		allocated_ = tail.bits.offset - head.bits.offset;
+		/* Different generation. */
+		allocated = tail.bits.offset - head.bits.offset;
 	}
 
 	/* number of descriptors is offset / sizeof(a descriptor). */
-	allocated_ /= sizeof(appnic_dma_descriptor_t);
+	allocated /= sizeof(struct appnic_dma_descriptor);
 
-	/* that's all */
-	return allocated_;
+	/* That's all, */
+	return allocated;
 }
 
 /*
  * ----------------------------------------------------------------------
- * queue_increment_
+ * queue_increment
  */
 
-static void queue_increment_(appnic_queue_pointer_t *queue,
-			     int number_of_descriptors)
+static void queue_increment(union appnic_queue_pointer *queue,
+			    int number_of_descriptors)
 {
-	queue->bits.offset += sizeof(appnic_dma_descriptor_t);
+	queue->bits.offset += sizeof(struct appnic_dma_descriptor);
 
-	if ((number_of_descriptors * sizeof(appnic_dma_descriptor_t)) ==
+	if ((number_of_descriptors * sizeof(struct appnic_dma_descriptor)) ==
 		queue->bits.offset) {
 
 		queue->bits.offset = 0;
@@ -1386,17 +1346,17 @@ static void queue_increment_(appnic_queue_pointer_t *queue,
  * queue_decrement_
  */
 
-static void queue_decrement_(appnic_queue_pointer_t *queue,
+static void queue_decrement_(union appnic_queue_pointer *queue,
 			     int number_of_descriptors)
 {
 	if (0 == queue->bits.offset) {
 		queue->bits.offset =
 			((number_of_descriptors - 1) *
-			 sizeof(appnic_dma_descriptor_t));
+			 sizeof(struct appnic_dma_descriptor));
 		queue->bits.generation_bit =
 			(0 == queue->bits.generation_bit) ? 1 : 0;
 	} else {
-		queue->bits.offset -= sizeof(appnic_dma_descriptor_t);
+		queue->bits.offset -= sizeof(struct appnic_dma_descriptor);
 	}
 
 	return;
@@ -1405,21 +1365,21 @@ static void queue_decrement_(appnic_queue_pointer_t *queue,
 
 #ifndef PHYLESS
 
-static void appnic_timer_handler_(unsigned long __opaque)
+static void appnic_timer_handler(unsigned long __opaque)
 {
-	struct net_device *device_ = (struct net_device *) __opaque;
+	struct net_device *device = (struct net_device *) __opaque;
 
 	PHY_DEBUG_PRINT("Handling Timer Expiration.\n");
-	enable_(device_);
-	appnic_timer_.expires = jiffies + (APPNIC_TIMER_PERIOD * HZ);
-	add_timer(&appnic_timer_);
+	enable_rx_tx(device);
+	appnic_timer.expires = jiffies + (APPNIC_TIMER_PERIOD * HZ);
+	add_timer(&appnic_timer);
 }
 
 #endif
 
 /*
  * ----------------------------------------------------------------------
- * enable_
+ * enable_rx_tx
  *
  * -- NOTES --
  *
@@ -1427,24 +1387,25 @@ static void appnic_timer_handler_(unsigned long __opaque)
  *    half-duplex configuration registers.
  */
 
-static int enable_(struct net_device *device)
+static int enable_rx_tx(struct net_device *device)
 {
-	int return_code_ = 1;
-	int carrier_state_ = 0;
-	unsigned long rx_configuration_;
-	unsigned long tx_configuration_ = 0;
-	phy_status_t phy_status_;
+	int return_code = 1;
+	int carrier_state = 0;
+	unsigned long rx_configuration;
+	unsigned long tx_configuration = 0;
+	union phy_status phy_status;
+	struct appnic_device *dev = netdev_priv(device);
 
-	rx_configuration_ =
+	rx_configuration =
 		(APPNIC_RX_CONF_STRIPCRC |
 		 APPNIC_RX_CONF_RXFCE |
 		 APPNIC_RX_CONF_TXFCE);
-	tx_configuration_ =
+	tx_configuration =
 		(APPNIC_TX_CONF_ENABLE_SWAP_SA |
 		 APPNIC_TX_CONF_APP_CRC_ENABLE |
 		 APPNIC_TX_CONF_PAD_ENABLE);
 
-	TX_CONF_SET_IFG(tx_configuration_, 0xf);
+	TX_CONF_SET_IFG(tx_configuration, 0xf);
 
 	DEBUG_PRINT("Enabling the interface.\n");
 
@@ -1453,44 +1414,43 @@ static int enable_(struct net_device *device)
 	 * status to set speed/duplex and check the link status).
 	 */
 
-	if ((0 == phy_read_(phy_address_, PHY_STATUS, &phy_status_.raw)) &&
-	    (0 == phy_read_(phy_address_, PHY_STATUS, &phy_status_.raw))) {
+	if ((0 == phy_read(dev->phy_address, PHY_STATUS, &phy_status.raw)) &&
+	    (0 == phy_read(dev->phy_address, PHY_STATUS, &phy_status.raw))) {
+		PHY_DEBUG_PRINT("phy_status.raw=0x%x phy address= 0x%x\n",
+				phy_status.raw, dev->phy_address);
+		PHY_DEBUG_PRINT("phy_status.bits.link_status=0x%x\n",
+				phy_status.bits.link_status);
+		PHY_DEBUG_PRINT("phy_status.bits.autoneg_comp=0x%x\n",
+				phy_status.bits.autoneg_comp);
 
-		PHY_DEBUG_PRINT("phy_status_.raw=0x%x phy address= 0x%x\n",
-				phy_status_.raw, phy_address_);
-		PHY_DEBUG_PRINT("phy_status_.bits.link_status=0x%x\n",
-				phy_status_.bits.link_status);
-		PHY_DEBUG_PRINT("phy_status_.bits.autoneg_comp=0x%x\n",
-				phy_status_.bits.autoneg_comp);
-
-		if (1 == phy_status_.bits.autoneg_comp) {
-			if (1 == phy_status_.bits.link_status) {
-				if (1 == phy_speed_(phy_address_)) {
-					rx_configuration_ |=
+		if (1 == phy_status.bits.autoneg_comp) {
+			if (1 == phy_status.bits.link_status) {
+				if (1 == phy_speed(dev->phy_address)) {
+					rx_configuration |=
 						APPNIC_RX_CONF_SPEED;
-					tx_configuration_ |=
+					tx_configuration |=
 						APPNIC_TX_CONF_SPEED;
 					PHY_DEBUG_PRINT(
 					 "RX/TX conf after phy_speed\n");
 				}
 
-				if (1 == phy_duplex_(phy_address_)) {
-					rx_configuration_ |=
+				if (1 == phy_duplex(dev->phy_address)) {
+					rx_configuration |=
 						APPNIC_RX_CONF_DUPLEX;
-					tx_configuration_ |=
+					tx_configuration |=
 						APPNIC_TX_CONF_DUPLEX;
 					PHY_DEBUG_PRINT(
 					 "RX/TX conf after phy_duplex\n");
 				}
 
-				rx_configuration_ |=
+				rx_configuration |=
 					(APPNIC_RX_CONF_ENABLE |
 					 APPNIC_RX_CONF_LINK);
-				tx_configuration_ |=
+				tx_configuration |=
 					(APPNIC_TX_CONF_LINK |
 					 APPNIC_TX_CONF_ENABLE);
-				return_code_ = 0;
-				carrier_state_ = 1;
+				return_code = 0;
+				carrier_state = 1;
 			} else {
 				netif_carrier_off(device);
 			}
@@ -1498,59 +1458,54 @@ static int enable_(struct net_device *device)
 			netif_carrier_off(device);
 		}
 	} else {
-		ERROR_PRINT("phy_read_() failed!\n");
+		ERROR_PRINT("phy_read() failed!\n");
 	}
 
-	if (rx_configuration_ != read_mac_(APPNIC_RX_CONF)) {
+	if (rx_configuration != read_mac(APPNIC_RX_CONF)) {
 		PHY_DEBUG_PRINT("Writing APPNIC_RX_CONF: rx_config: 0x%x\n",
-				rx_configuration_);
-		write_mac_(rx_configuration_, APPNIC_RX_CONF);
+				rx_configuration);
+		write_mac(rx_configuration, APPNIC_RX_CONF);
 	}
 
-	if (tx_configuration_ != read_mac_(APPNIC_TX_CONF)) {
+	if (tx_configuration != read_mac(APPNIC_TX_CONF)) {
 		PHY_DEBUG_PRINT("Writing APPNIC_TX_CONF: tx_config: 0x%x\n",
-				tx_configuration_);
-		write_mac_(tx_configuration_, APPNIC_TX_CONF);
+				tx_configuration);
+		write_mac(tx_configuration, APPNIC_TX_CONF);
 	}
 
-	if (0 != carrier_state_) {
+	if (0 != carrier_state) {
 		PHY_DEBUG_PRINT("Writing netif_carrier_on to device.\n");
 		netif_carrier_on(device);
 	} else {
 		 netif_carrier_off(device);
 	}
 
-	return return_code_;
+	return return_code;
 }
 
 /*
  * ----------------------------------------------------------------------
- * disable_
+ * disable_rx_tx
  */
 
-static void disable_(void)
+static void disable_rx_tx(void)
 {
-	unsigned long tx_configuration_;
-	unsigned long rx_configuration_;
+	unsigned long tx_configuration;
+	unsigned long rx_configuration;
 
 	DEBUG_PRINT("Disabling the interface.\n");
 
-	rx_configuration_ = read_mac_(APPNIC_RX_CONF);
-	rx_configuration_ &= ~APPNIC_RX_CONF_ENABLE;
-	write_mac_(rx_configuration_, APPNIC_RX_CONF);
+	rx_configuration = read_mac(APPNIC_RX_CONF);
+	rx_configuration &= ~APPNIC_RX_CONF_ENABLE;
+	write_mac(rx_configuration, APPNIC_RX_CONF);
 
-	tx_configuration_ = read_mac_(APPNIC_TX_CONF);
-	tx_configuration_ &= ~APPNIC_TX_CONF_ENABLE;
+	tx_configuration = read_mac(APPNIC_TX_CONF);
+	tx_configuration &= ~APPNIC_TX_CONF_ENABLE;
 
-	write_mac_(tx_configuration_, APPNIC_TX_CONF);
+	write_mac(tx_configuration, APPNIC_TX_CONF);
 
-	/* that's all. */
+	/* That's all. */
 	return;
-}
-
-void disable_nic_(void)
-{
-	disable_();
 }
 
 /*
@@ -1567,119 +1522,105 @@ void disable_nic_(void)
 
 /*
  * ----------------------------------------------------------------------
- * phy_read_
+ * phy_read
  *
  * Returns -1 if unsuccessful, the (short) value otherwise.
  */
 
 static int
-phy_read_(int phy, int reg, unsigned short *value)
+phy_read(int phy, int reg, unsigned short *value)
 {
 	return acp_mdio_read(phy, reg, value);
 }
 
 /*
  * ----------------------------------------------------------------------
- * phy_write_
+ * phy_write
  */
 
 static int
-phy_write_(int phy, int reg, unsigned short value)
+phy_write(int phy, int reg, unsigned short value)
 {
 	return acp_mdio_write(phy, reg, value);
 }
 
 /*
  * ----------------------------------------------------------------------
- * phy_speed_
+ * phy_speed
  *
  * Returns the speed (1=100, 0=10) or an error (-1).
  */
 
 static int
-phy_speed_(int phy)
+phy_speed(int phy)
 {
-	unsigned short aux;
-	aux = phy_read_(phy, BC_AUX_ERROR_AND_GEN_STATUS_REG, &aux);
+	union micrel_phy_auxiliary_control_status aux;
 
-	if (aux & 2)
-		/* 100BASE-X*/
+	phy_read(phy, MICREL_PHY_AUXILIARY_CONTROL_STATUS, &aux.raw);
+
+	switch ((aux.bits.op_mode_indication & 3)) {
+	case 2:
 		return 1;
+		break;
+	case 1:
+		return 0;
+		break;
+	default:
+		break;
+	}
 
-	return 0;
+	return -1;
 }
 
 /*
  * ----------------------------------------------------------------------
- * phy_duplex_
+ * phy_duplex
  *
  * Returns duplex status (1=full duplex, 0=half duplex) or an error (-1).
  */
 
 static int
-phy_duplex_(int phy)
+phy_duplex(int phy)
 {
-	unsigned short aux;
+	union micrel_phy_auxiliary_control_status aux;
 
-	phy_read_(phy,  BC_AUX_ERROR_AND_GEN_STATUS_REG, &aux);
+	phy_read(phy, MICREL_PHY_AUXILIARY_CONTROL_STATUS, &aux.raw);
 
-	if (aux & 0x1)
-		/* Full-duplex active */
-		return 1;
-
-	return 0;
+	return (aux.bits.op_mode_indication >> 2) & 0x1;
 }
 
 /*
  * ----------------------------------------------------------------------
- * phy_renegotiate_
+ * phy_renegotiate
  */
 
 static int
-phy_renegotiate_(int phy)
+phy_renegotiate(int phy)
 {
-	phy_control_t control;
-	phy_status_t status;
-	int autoneg_retries = 4;
-	int autoneg_complete_retries = 80;
+	union phy_control control;
+	union phy_status status;
+	int autoneg_retries = 2;
+	int autoneg_complete_retries = 8;
 
 	printk(KERN_INFO "Initiating Auto Negotiation");
-	phy_write_(phy, PHY_AUTONEG_ADVERTISE, 0x61);
-#if defined(PHY_DEBUG)
-	/*Debug Code */
-	phy_read_(phy, PHY_STATUS, &status.raw);
-	PHY_DEBUG_PRINT("PHY Status raw: 0x%x\n Listing all regs:\n",
-			status.raw);
 
-	{
-		unsigned short regI;
-		int count;
-		for (count = 0x0; count <= 0x1F; count++) {
-			phy_read_(phy, count, &regI);
-			PHY_DEBUG_PRINT("Register: 0x%x reads: 0x%x\n",
-					count, regI);
-			}
-	}
-	/* End Debug code*/
-#endif /*End PHY_DEBUG */
+	/* Takes about 2 seconds for autoneg to complete ... */
 	do {
-		phy_read_(phy, PHY_CONTROL, &control.raw);
-		PHY_DEBUG_PRINT("control.raw read to: 0x%x\n", control.raw);
+		phy_read(phy, PHY_CONTROL, &control.raw);
 		control.bits.restart_autoneg = 1;
-		phy_write_(phy, PHY_CONTROL, control.raw);
-		PHY_DEBUG_PRINT("control.raw Written to: 0x%x\n", control.raw);
+		phy_write(phy, PHY_CONTROL, control.raw);
+
 		do {
-			udelay(50000);
-			phy_read_(phy, PHY_STATUS, &status.raw);
-			PHY_DEBUG_PRINT(" PHY_STATUS raw: 0x%x\n", status.raw);
+			mdelay(500);
+			phy_read(phy, PHY_STATUS, &status.raw);
 		} while ((0 < --autoneg_complete_retries) &&
 			 (0 == status.bits.autoneg_comp));
 
 		if (0 != status.bits.autoneg_comp)
 			break;
 
-		autoneg_complete_retries = 8;
 		printk(KERN_INFO ".");
+
 	} while (0 < --autoneg_retries);
 
 	printk(KERN_INFO "\n");
@@ -1695,34 +1636,18 @@ phy_renegotiate_(int phy)
 
 /*
  * ----------------------------------------------------------------------
- * phy_enable_
+ * phy_enable
  */
 
-extern int ubootenv_get(const char *, char *);
-
-static int phy_enable_(int phy)
+static int phy_enable(struct net_device *device)
 {
+	struct appnic_device *dev = netdev_priv(device);
 
-	phy_id_high_t phy_id_high_;
-	phy_id_low_t phy_id_low_;
-	unsigned char phyaddr_string_[40];
+	if (phy_write(dev->phy_address, PHY_AUTONEG_ADVERTISE,
+		      (unsigned short)dev->ad_value) != 0)
+		return -1;
 
-	if (0 != ubootenv_get("phy_address", phyaddr_string_))
-		phy_address_ = PHY_ADDRESS_;
-	else
-		phy_address_ = simple_strtoul(phyaddr_string_, NULL, 10);
-
-	if (0 == phy_read_(phy_address_, PHY_ID_HIGH, &phy_id_high_.raw)) {
-		PHY_DEBUG_PRINT("Read PHY_ID_HIGH as 0x%x on mdio addr 0x%x.\n",
-		phy_id_high_.raw, phy_address_);
-	}
-
-	if (0 == phy_read_(phy_address_, PHY_ID_LOW, &phy_id_low_.raw)) {
-		PHY_DEBUG_PRINT("Read PHY_ID_LOW as 0x%x on mdio addr 0x%x.\n",
-		phy_id_low_.raw, phy_address_);
-	}
-
-	phy_renegotiate_(phy_address_);
+	phy_renegotiate(dev->phy_address);
 
 	return 0;
 }
@@ -1743,31 +1668,31 @@ static int phy_enable_(int phy)
 
 /*
  * ----------------------------------------------------------------------
- * handle_transmit_interrupt_
+ * handle_transmit_interrupt
  */
 
-static void handle_transmit_interrupt_(struct net_device *device)
+static void handle_transmit_interrupt(struct net_device *device)
 {
-	appnic_device_t *dev_ = netdev_priv(device);
+	struct appnic_device *dev = netdev_priv(device);
 
 	TRACE_BEGINNING();
 	DEBUG_PRINT("tail=0x%lx tail_copy=0x%lx head=0x%lx\n",
-		    dev_->tx_tail->raw, dev_->tx_tail_copy.raw,
-		    dev_->tx_head.raw);
+		    dev->tx_tail->raw, dev->tx_tail_copy.raw,
+		    dev->tx_head.raw);
 
 	/*
 	 * The hardware's tail pointer should be one descriptor (or more)
 	 * ahead of software's copy.
 	 */
 
-	while (0 < queue_initialized_(SWAB_QUEUE_POINTER(dev_->tx_tail),
-	       dev_->tx_tail_copy, dev_->tx_num_desc)) {
-		queue_increment_(&dev_->tx_tail_copy, dev_->tx_num_desc);
+	while (0 < queue_initialized(SWAB_QUEUE_POINTER(dev->tx_tail),
+				     dev->tx_tail_copy, dev->tx_num_desc)) {
+		queue_increment(&dev->tx_tail_copy, dev->tx_num_desc);
 	}
 
 	DEBUG_PRINT("tail=0x%lx tail_copy=0x%lx head=0x%lx\n",
-		    dev_->tx_tail->raw, dev_->tx_tail_copy.raw,
-		    dev_->tx_head.raw);
+		    dev->tx_tail->raw, dev->tx_tail_copy.raw,
+		    dev->tx_head.raw);
 	TRACE_ENDING();
 
 	return;
@@ -1783,13 +1708,13 @@ static void handle_transmit_interrupt_(struct net_device *device)
 static void
 lsinet_rx_packet(struct net_device *device)
 {
-	appnic_device_t *adapter = netdev_priv(device);
-	appnic_dma_descriptor_t descriptor;
-	struct sk_buff *sk_buff_;
-	unsigned bytes_copied_ = 0;
-	unsigned error_ = 0;
-	int return_code_;
-	unsigned long ok_, overflow_, crc_, align_;
+	struct appnic_device *adapter = netdev_priv(device);
+	struct appnic_dma_descriptor descriptor;
+	struct sk_buff *sk_buff;
+	unsigned bytes_copied = 0;
+	unsigned error_num = 0;
+	int return_code;
+	unsigned long ok_stat, overflow_stat, crc_stat, align_stat;
 
 	/*
 	 * TEMP HACK:
@@ -1798,58 +1723,57 @@ lsinet_rx_packet(struct net_device *device)
 	spin_lock(&adapter->extra_lock);
 	TRACE_BEGINNING();
 	DEBUG_PRINT("head=0x%lx tail=0x%lx tail_copy=0x%lx\n",
-	adapter->rx_head.raw, adapter->rx_tail->raw,
-	adapter->rx_tail_copy.raw);
+		    adapter->rx_head.raw, adapter->rx_tail->raw,
+		    adapter->rx_tail_copy.raw);
 	readdescriptor(((unsigned long) adapter->rx_desc +
 		       adapter->rx_tail_copy.bits.offset), &descriptor);
 
-	sk_buff_ = dev_alloc_skb(1600);
+	sk_buff = dev_alloc_skb(1600);
 
-
-	if ((struct sk_buff *) 0 == sk_buff_) {
+	if ((struct sk_buff *) 0 == sk_buff) {
 		ERROR_PRINT("dev_alloc_skb() failed! Dropping packet.\n");
 		TRACE_ENDING();
 		spin_unlock(&adapter->extra_lock);
 		return;
 	}
 
-	ok_ = read_mac_(APPNIC_RX_STAT_PACKET_OK);
-	overflow_ = read_mac_(APPNIC_RX_STAT_OVERFLOW);
-	crc_ = read_mac_(APPNIC_RX_STAT_CRC_ERROR);
-	align_ = read_mac_(APPNIC_RX_STAT_ALIGN_ERROR);
+	ok_stat = read_mac(APPNIC_RX_STAT_PACKET_OK);
+	overflow_stat = read_mac(APPNIC_RX_STAT_OVERFLOW);
+	crc_stat = read_mac(APPNIC_RX_STAT_CRC_ERROR);
+	align_stat = read_mac(APPNIC_RX_STAT_ALIGN_ERROR);
 
 	/*
 	 * Copy the received packet into the skb.
 	 */
 
-	while (0 < queue_initialized_(SWAB_QUEUE_POINTER(adapter->rx_tail),
-	       adapter->rx_tail_copy, adapter->rx_num_desc)) {
+	while (0 < queue_initialized(SWAB_QUEUE_POINTER(adapter->rx_tail),
+				adapter->rx_tail_copy, adapter->rx_num_desc)) {
 
 #ifdef PRELOAD_RX_BUFFERS
 		{
-			unsigned char *buffer_;
-			buffer_ = skb_put(sk_buff_, descriptor.pdu_length);
-			memcmp(buffer_, buffer_, descriptor.pdu_length);
-			memcpy((void *) buffer_,
+			unsigned char *buffer;
+			buffer = skb_put(sk_buff, descriptor.pdu_length);
+			memcmp(buffer, buffer, descriptor.pdu_length);
+			memcpy((void *) buffer,
 			       (void *) (descriptor.host_data_memory_pointer +
 				 adapter->dma_alloc_offset),
 			       descriptor.pdu_length);
 		}
 #else  /* PRELOAD_RX_BUFFERS */
-		memcpy((void *) skb_put(sk_buff_,
+		memcpy((void *) skb_put(sk_buff,
 					descriptor.pdu_length),
 		       (void *) (descriptor.host_data_memory_pointer +
 			adapter->dma_alloc_offset),
 			descriptor.pdu_length);
 #endif /* PRELOAD_RX_BUFFERS */
-		bytes_copied_ += descriptor.pdu_length;
+		bytes_copied += descriptor.pdu_length;
 		descriptor.data_transfer_length = adapter->rx_buf_per_desc;
 		writedescriptor(((unsigned long) adapter->rx_desc +
 				adapter->rx_tail_copy.bits.offset),
 				&descriptor);
 		if (0 != descriptor.error)
-			error_ = 1;
-		queue_increment_(&adapter->rx_tail_copy,
+			error_num = 1;
+		queue_increment(&adapter->rx_tail_copy,
 				 adapter->rx_num_desc);
 		if (0 != descriptor.end_of_packet)
 			break;
@@ -1860,63 +1784,63 @@ lsinet_rx_packet(struct net_device *device)
 
 	if (0 == descriptor.end_of_packet) {
 		ERROR_PRINT("No end of packet! %lu/%lu/%lu/%lu\n",
-			    ok_, overflow_, crc_, align_);
+			    ok_stat, overflow_stat, crc_stat, align_stat);
 		BUG();
-		dev_kfree_skb(sk_buff_);
+		dev_kfree_skb(sk_buff);
 
 	} else {
-		if (0 == error_) {
-			struct ethhdr *ethhdr_ =
-				(struct ethhdr *) sk_buff_->data;
-			unsigned char broadcast_[] = { 0xff, 0xff, 0xff,
-						       0xff, 0xff, 0xff };
-			unsigned char multicast_[] = { 0x01, 0x00 };
+		if (0 == error_num) {
+			struct ethhdr *ethhdr =
+				(struct ethhdr *) sk_buff->data;
+			unsigned char broadcast[] = { 0xff, 0xff, 0xff,
+						      0xff, 0xff, 0xff };
+			unsigned char multicast[] = { 0x01, 0x00 };
 
 			LSINET_COUNTS_INC(LSINET_COUNTS_RX_GOOD);
 
-			if ((0 == memcmp((const void *) &(ethhdr_->h_dest[0]),
+			if ((0 == memcmp((const void *) &(ethhdr->h_dest[0]),
 					(const void *) &(device->dev_addr[0]),
-					sizeof(ethhdr_->h_dest))) ||
+					sizeof(ethhdr->h_dest))) ||
 					 (0 == memcmp((const void *)
-					  &(ethhdr_->h_dest[0]),
-					(const void *) &(broadcast_[0]),
-					sizeof(ethhdr_->h_dest))) ||
+					  &(ethhdr->h_dest[0]),
+					(const void *) &(broadcast[0]),
+					sizeof(ethhdr->h_dest))) ||
 					(0 == memcmp((const void *)
-					  &(ethhdr_->h_dest[0]),
-					(const void *) &(multicast_[0]),
-					sizeof(multicast_)))) {
+					  &(ethhdr->h_dest[0]),
+					(const void *) &(multicast[0]),
+					sizeof(multicast)))) {
 
-				adapter->stats.rx_bytes += bytes_copied_;
+				adapter->stats.rx_bytes += bytes_copied;
 				++adapter->stats.rx_packets;
-				sk_buff_->dev = device;
-				sk_buff_->protocol = eth_type_trans(sk_buff_,
-								    device);
+				sk_buff->dev = device;
+				sk_buff->protocol = eth_type_trans(sk_buff,
+								   device);
 #ifdef LSINET_NAPI
 				LSINET_COUNTS_INC(LSINET_COUNTS_RX_SENT);
-				return_code_ = netif_receive_skb(sk_buff_);
+				return_code = netif_receive_skb(sk_buff);
 #else
 LSINET_COUNTS_INC(LSINET_COUNTS_RX_SENT);
-				return_code_ = netif_rx(sk_buff_);
+				return_code = netif_rx(sk_buff);
 #endif
 
-				if (NET_RX_DROP == return_code_) {
-					++dropped_by_stack_;
+				if (NET_RX_DROP == return_code) {
+					++dropped_by_stack;
 					LSINET_COUNTS_INC
 						(LSINET_COUNTS_RX_DRPD);
 				}
 			} else {
-				dev_kfree_skb(sk_buff_);
+				dev_kfree_skb(sk_buff);
 			}
 		} else {
 			LSINET_COUNTS_INC(LSINET_COUNTS_RX_ERR);
 
-			dev_kfree_skb(sk_buff_);
+			dev_kfree_skb(sk_buff);
 
-			if (0 != overflow_)
+			if (0 != overflow_stat)
 				++adapter->stats.rx_fifo_errors;
-			else if (0 != crc_)
+			else if (0 != crc_stat)
 				++adapter->stats.rx_crc_errors;
-			else if (0 != align_)
+			else if (0 != align_stat)
 				++adapter->stats.rx_frame_errors;
 		}
 	}
@@ -1929,7 +1853,7 @@ LSINET_COUNTS_INC(LSINET_COUNTS_RX_SENT);
 	/* TEMP */
 	spin_unlock(&adapter->extra_lock);
 
-	/* that's all */
+	/* That's all. */
 	return;
 }
 
@@ -1941,8 +1865,8 @@ LSINET_COUNTS_INC(LSINET_COUNTS_RX_SENT);
 static int
 lsinet_rx_packets(struct net_device *device, int max)
 {
-	appnic_device_t *adapter = netdev_priv(device);
-	appnic_queue_pointer_t queue;
+	struct appnic_device *adapter = netdev_priv(device);
+	union appnic_queue_pointer queue;
 	int updated_head_pointer = 0;
 	int packets = 0;
 
@@ -1950,9 +1874,9 @@ lsinet_rx_packets(struct net_device *device, int max)
 
 	/* Receive Packets */
 
-	while (0 < queue_initialized_(SWAB_QUEUE_POINTER(adapter->rx_tail),
-					queue, adapter->rx_num_desc)) {
-		appnic_dma_descriptor_t descriptor;
+	while (0 < queue_initialized(SWAB_QUEUE_POINTER(adapter->rx_tail),
+				     queue, adapter->rx_num_desc)) {
+		struct appnic_dma_descriptor descriptor;
 
 		readdescriptor(((unsigned long) adapter->rx_desc +
 				  queue.bits.offset),
@@ -1967,7 +1891,7 @@ lsinet_rx_packets(struct net_device *device, int max)
 			if ((-1 != max) && (packets == max))
 				break;
 		} else {
-			queue_increment_(&queue, adapter->rx_num_desc);
+			queue_increment(&queue, adapter->rx_num_desc);
 		}
 	}
 
@@ -1976,7 +1900,7 @@ lsinet_rx_packets(struct net_device *device, int max)
 	while (1 < queue_uninitialized_(adapter->rx_head, adapter->rx_tail_copy,
 					 adapter->rx_num_desc)) {
 
-		appnic_dma_descriptor_t descriptor;
+		struct appnic_dma_descriptor descriptor;
 
 		readdescriptor(((unsigned long) adapter->rx_desc +
 				  adapter->rx_head.bits.offset), &descriptor);
@@ -1989,12 +1913,12 @@ lsinet_rx_packets(struct net_device *device, int max)
 		writedescriptor(((unsigned long) adapter->rx_desc +
 				   adapter->rx_head.bits.offset),
 				 &descriptor);
-		queue_increment_(&adapter->rx_head, adapter->rx_num_desc);
+		queue_increment(&adapter->rx_head, adapter->rx_num_desc);
 		updated_head_pointer = 1;
 	}
 
 	if (0 != updated_head_pointer)
-		write_mac_(adapter->rx_head.raw, APPNIC_DMA_RX_HEAD_POINTER);
+		write_mac(adapter->rx_head.raw, APPNIC_DMA_RX_HEAD_POINTER);
 
 	return packets;
 }
@@ -2009,14 +1933,15 @@ lsinet_rx_packets(struct net_device *device, int max)
 static int
 lsinet_poll(struct napi_struct *napi, int budget)
 {
-	appnic_device_t *adapter = container_of(napi, appnic_device_t, napi);
+	struct appnic_device *adapter =
+		container_of(napi, struct appnic_device, napi);
 	struct net_device *device = adapter->device;
-	appnic_queue_pointer_t queue_;
+	union appnic_queue_pointer queue;
 	int status;
 
 	int cur_budget = budget;
 	int done;
-	unsigned long dma_interrupt_status_;
+	unsigned long dma_interrupt_status;
 
 	LSINET_COUNTS_INC(LSINET_COUNTS_POL_START);
 
@@ -2024,29 +1949,29 @@ lsinet_poll(struct napi_struct *napi, int budget)
 	DEBUG_PRINT("head=0x%x tail=0x%x tail_copy=0x%x\n",
 		    adapter->rx_head.raw, adapter->rx_tail->raw,
 		    adapter->rx_tail_copy.raw);
-	queue_.raw = adapter->rx_tail_copy.raw;
+	queue.raw = adapter->rx_tail_copy.raw;
 
 	done = 1;
 
 	do {
 
 		/* Acknowledge the RX interrupt. */
-		write_mac_(~APPNIC_DMA_INTERRUPT_ENABLE_RECEIVE,
+		write_mac(~APPNIC_DMA_INTERRUPT_ENABLE_RECEIVE,
 			   APPNIC_DMA_INTERRUPT_STATUS);
 
 		cur_budget -= lsinet_rx_packets(device, cur_budget);
 		if (0 == cur_budget)
 			break;
 
-		dma_interrupt_status_ = read_mac_(APPNIC_DMA_INTERRUPT_STATUS);
+		dma_interrupt_status = read_mac(APPNIC_DMA_INTERRUPT_STATUS);
 
-	} while ((RX_INTERRUPT(dma_interrupt_status_)) && cur_budget);
+	} while ((RX_INTERRUPT(dma_interrupt_status)) && cur_budget);
 
 	if (done) {
 		LSINET_COUNTS_INC(LSINET_COUNTS_POL_RNBL);
 		napi_complete(napi);
 		/* re-enable receive interrupts */
-		write_mac_((APPNIC_DMA_INTERRUPT_ENABLE_RECEIVE |
+		write_mac((APPNIC_DMA_INTERRUPT_ENABLE_RECEIVE |
 			   APPNIC_DMA_INTERRUPT_ENABLE_TRANSMIT),
 		APPNIC_DMA_INTERRUPT_ENABLE);
 	}
@@ -2070,19 +1995,19 @@ lsinet_poll(struct napi_struct *napi, int budget)
 
 static void handle_receive_interrupt_(struct net_device *device)
 {
-	appnic_device_t *dev_ = netdev_priv(device);
-	appnic_queue_pointer_t queue_;
+	struct appnic_device *dev = netdev_priv(device);
+	union appnic_queue_pointer queue;
 
 	LSINET_COUNTS_INC(LSINET_COUNTS_RX_START);
 	TRACE_BEGINNING();
 	DEBUG_PRINT("head=0x%lx tail=0x%lx tail_copy=0x%lx\n",
-		    dev_->rx_head.raw, dev_->rx_tail->raw,
-		    dev_->rx_tail_copy.raw);
-	queue_.raw = dev_->rx_tail_copy.raw;
+		    dev->rx_head.raw, dev->rx_tail->raw,
+		    dev->rx_tail_copy.raw);
+	queue.raw = dev_->rx_tail_copy.raw;
 	lsinet_rx_packets(device, -1);
 	DEBUG_PRINT("head=0x%lx tail=0x%lx tail_copy=0x%lx\n",
-		    dev_->rx_head.raw, dev_->rx_tail->raw,
-		    dev_->rx_tail_copy.raw);
+		    dev->rx_head.raw, dev->rx_tail->raw,
+		    dev->rx_tail_copy.raw);
 	TRACE_ENDING();
 	LSINET_COUNTS_INC(LSINET_COUNTS_RX_DONE);
 
@@ -2092,102 +2017,103 @@ static void handle_receive_interrupt_(struct net_device *device)
 
 /*
  * ----------------------------------------------------------------------
- * appnic_isr_
+ * appnic_isr
  */
 
-static irqreturn_t appnic_isr_(int irq, void *device_id)
+static irqreturn_t appnic_isr(int irq, void *device_id)
 {
-	struct net_device *device_ = (struct net_device *) device_id;
-	appnic_device_t *dev_ = netdev_priv(device_);
-	unsigned long dma_interrupt_status_;
+	struct net_device *device = (struct net_device *) device_id;
+	struct appnic_device *dev = netdev_priv(device);
+	unsigned long dma_interrupt_status;
 	unsigned long flags;
 
 	TRACE_BEGINNING();
 	LSINET_COUNTS_INC(LSINET_COUNTS_ISR_START);
 
 	/* Acquire the lock */
-	spin_lock_irqsave(&dev_->lock, flags);
+	spin_lock_irqsave(&dev->lock, flags);
 
 #if !defined(PHYLESS) && !defined(CONFIG_ACP)
 	if (INT_MAC_RX == irq) {
 
 		PHY_DEBUG_PRINT("Handling PHY interrupt.\n");
 
-		if (BCM5221_PHY_ == phy_type_) {
+		if (BCM5221_PHY == phy_type_) {
 
-			bc_phy_interrupt_t bc_phy_interrupt_;
+			bc_phy_interrupt_t bc_phy_interrupt;
 
-			(void) phy_read_(phy_address_,
-					 BC_PHY_INTERRUPT_,
-					 &bc_phy_interrupt_.raw);
+			(void) phy_read(dev->phy_address,
+					BC_PHY_INTERRUPT_,
+					&bc_phy_interrupt.raw);
 			bc_phy_interrupt_.raw = 0;
 			bc_phy_interrupt_.bits.enable = 1;
-			(void) phy_write_(phy_address_,
-					  BC_PHY_INTERRUPT_,
-					  bc_phy_interrupt_.raw);
+			(void) phy_write(dev->phy_address,
+					 BC_PHY_INTERRUPT_,
+					 bc_phy_interrupt.raw);
 
-		} else if (MICREL_PHY_ == phy_type_) {
+		} else if (MICREL_PHY == phy_type_) {
 
-			m_phy_interrupt_t m_phy_interrupt_;
+			m_phy_interrupt_t m_phy_interrupt;
 
-			(void) phy_read_(phy_address_,
+			(void) phy_read(dev->phy_address,
+					M_PHY_INTERRUPT_,
+					&m_phy_interrupt.raw);
+			(void) phy_write(dev->phy_address,
 					 M_PHY_INTERRUPT_,
-					 &m_phy_interrupt_.raw);
-			(void) phy_write_(phy_address_,
-					  M_PHY_INTERRUPT_,
-					  m_phy_interrupt_.raw);
+					 m_phy_interrupt.raw);
 
 		}
 
-		write_mac_(0, APPNIC_RX_INTERRUPT_STATUS);
-		enable_(device_);
+		write_mac(0, APPNIC_RX_INTERRUPT_STATUS);
+		enable_rx_tx(device);
 
 	} else {
 #endif /* PHYLESS */
 
-		/* get the status */
-		dma_interrupt_status_ = read_mac_(APPNIC_DMA_INTERRUPT_STATUS);
+		/* Get the status. */
+		dma_interrupt_status = read_mac(APPNIC_DMA_INTERRUPT_STATUS);
+
 #ifdef LSINET_NAPI
 		/* NAPI - don't ack RX interrupt */
-		write_mac_(APPNIC_DMA_INTERRUPT_ENABLE_RECEIVE,
+		write_mac(APPNIC_DMA_INTERRUPT_ENABLE_RECEIVE,
 			   APPNIC_DMA_INTERRUPT_STATUS);
 #else
-		write_mac_(0, APPNIC_DMA_INTERRUPT_STATUS);
+		write_mac(0, APPNIC_DMA_INTERRUPT_STATUS);
 #endif
 
 		/* Handle interrupts */
 
-		if (TX_INTERRUPT(dma_interrupt_status_)) {
+		if (TX_INTERRUPT(dma_interrupt_status)) {
 			LSINET_COUNTS_INC(LSINET_COUNTS_ISR_TX);
 
 			/* transmition complete */
-			++transmit_interrupts_;
-			handle_transmit_interrupt_(device_);
+			++transmit_interrupts;
+			handle_transmit_interrupt(device);
 		}
 
-		if (RX_INTERRUPT(dma_interrupt_status_)) {
+		if (RX_INTERRUPT(dma_interrupt_status)) {
 			LSINET_COUNTS_INC(LSINET_COUNTS_ISR_RX);
 
 #ifdef LSINET_NAPI
-			++receive_interrupts_;
-			if (napi_schedule_prep(&dev_->napi)) {
+			++receive_interrupts;
+			if (napi_schedule_prep(&dev->napi)) {
 
 				/*
 				 * Disable RX interrupts and tell the
 				 * system we've got work
 				 */
 
-				write_mac_(APPNIC_DMA_INTERRUPT_ENABLE_TRANSMIT,
-					   APPNIC_DMA_INTERRUPT_ENABLE);
-				__napi_schedule(&dev_->napi);
+				write_mac(APPNIC_DMA_INTERRUPT_ENABLE_TRANSMIT,
+					  APPNIC_DMA_INTERRUPT_ENABLE);
+				__napi_schedule(&dev->napi);
 			} else {
 				ERROR_PRINT("NAPI bug! Int while in poll\n");
-				write_mac_(APPNIC_DMA_INTERRUPT_ENABLE_TRANSMIT,
-					   APPNIC_DMA_INTERRUPT_ENABLE);
+				write_mac(APPNIC_DMA_INTERRUPT_ENABLE_TRANSMIT,
+					  APPNIC_DMA_INTERRUPT_ENABLE);
 			}
 #else
 			/* Receive complete */
-			handle_receive_interrupt_(device_);
+			handle_receive_interrupt_(device);
 #endif
 		}
 #if !defined(PHYLESS) && !defined(CONFIG_ACP)
@@ -2195,7 +2121,7 @@ static irqreturn_t appnic_isr_(int irq, void *device_id)
 #endif /* PHYLESS */
 
 	/* release the lock */
-	spin_unlock_irqrestore(&dev_->lock, flags);
+	spin_unlock_irqrestore(&dev->lock, flags);
 
 	LSINET_COUNTS_INC(LSINET_COUNTS_ISR_DONE);
 	TRACE_ENDING();
@@ -2215,53 +2141,39 @@ static irqreturn_t appnic_isr_(int irq, void *device_id)
 
 int appnic_open(struct net_device *device)
 {
-	int return_code_ = 0;
-#if defined(CONFIG_ARCH_APP3)
-	unsigned long gpio_mux_ = readl(APP3XX_HB_CONF_BASE + 0x18);
-#endif
+	int return_code = 0;
 
-	/* enable the receiver and transmitter */
-	if (0 != enable_(device)) {
+	/* Enable the receiver and transmitter. */
+	if (0 != enable_rx_tx(device)) {
 		ERROR_PRINT("Unable to enable the interface.\n");
-		disable_();
+		disable_rx_tx();
 		return -EBUSY;
 	}
 
 #ifdef LSINET_NAPI
 	{
-		appnic_device_t *adapter = netdev_priv(device);
+		struct appnic_device *adapter = netdev_priv(device);
 		napi_enable(&adapter->napi);
 	}
 #endif /* LSINET_NAPI */
 
-	/* install the interrupt handlers */
-	return_code_ = request_irq(device->irq, appnic_isr_, IRQF_DISABLED,
+	/* Install the interrupt handlers. */
+	return_code = request_irq(device->irq, appnic_isr, IRQF_DISABLED,
 				   APPNIC_NAME, device);
-	if (0 != return_code_) {
+	if (0 != return_code) {
 		ERROR_PRINT("request_irq() failed, returned 0x%x/%d\n",
-			    return_code_, return_code_);
-		return return_code_;
+			    return_code, return_code);
+		return return_code;
 	}
 
 	/* enable interrupts */
-	write_mac_((APPNIC_DMA_INTERRUPT_ENABLE_RECEIVE |
+	write_mac((APPNIC_DMA_INTERRUPT_ENABLE_RECEIVE |
 		   APPNIC_DMA_INTERRUPT_ENABLE_TRANSMIT),
 		   APPNIC_DMA_INTERRUPT_ENABLE);
 
 	{
 #ifndef PHYLESS
-		/*    char phy_string_ [256];  */
-		/*    int use_interrupts_ = 1; */
-		appnic_device_t *dev_ = netdev_priv(device);
-#endif
-
-#ifdef CONFIG_ARCH_APP3
-		PHY_DEBUG_PRINT("phy_type_=0x%x gpio_mux_=0x%x\n",
-				phy_type_, gpio_mux_);
-
-		if ((BCM5221_PHY_ != phy_type_) ||
-		    (0x04000000 != (gpio_mux_ & 0x04000000)))
-			use_interrupts_ = 0;
+		struct appnic_device *dev = netdev_priv(device);
 #endif
 
 #ifndef PHYLESS
@@ -2269,12 +2181,12 @@ int appnic_open(struct net_device *device)
 #ifndef CONFIG_ACP
 	WARN_PRINT("PHY is in polling mode.\n");
 #endif
-	init_timer(&appnic_timer_);
-	appnic_timer_.expires = jiffies + (APPNIC_TIMER_PERIOD * HZ);
-	appnic_timer_.data = (unsigned long) device;
-	appnic_timer_.function = appnic_timer_handler_;
-	add_timer(&appnic_timer_);
-	dev_->polling = 1;
+	init_timer(&appnic_timer);
+	appnic_timer.expires = jiffies + (APPNIC_TIMER_PERIOD * HZ);
+	appnic_timer.data = (unsigned long) device;
+	appnic_timer.function = appnic_timer_handler;
+	add_timer(&appnic_timer);
+	dev->polling = 1;
 
 #endif /* PHYLESS */
 
@@ -2297,7 +2209,7 @@ int appnic_open(struct net_device *device)
 
 int appnic_stop(struct net_device *device)
 {
-	int return_code_ = 0;
+	int return_code = 0;
 
 	DEBUG_PRINT("Stopping the interface.\n");
 
@@ -2311,12 +2223,12 @@ int appnic_stop(struct net_device *device)
 	 * Stop the receiver and transmitter.
 	 */
 
-	disable_();
+	disable_rx_tx();
 
 	/* Disable NAPI. */
 #ifdef LSINET_NAPI
 	{
-		appnic_device_t *adapter = netdev_priv(device);
+		struct appnic_device *adapter = netdev_priv(device);
 		napi_disable(&adapter->napi);
 	}
 #endif
@@ -2331,13 +2243,13 @@ int appnic_stop(struct net_device *device)
 
 	{
 #ifndef CONFIG_ACP
-		appnic_device_t *dev_ = netdev_priv(device);
-		if (0 != dev_->polling)
-			del_timer(&appnic_timer_);
+		struct appnic_device *dev = netdev_priv(device);
+		if (0 != dev->polling)
+			del_timer(&appnic_timer);
 		else
 			free_irq(INT_MAC_RX, device);
 #else
-		del_timer(&appnic_timer_);
+		del_timer(&appnic_timer);
 #endif
 	}
 
@@ -2347,7 +2259,7 @@ int appnic_stop(struct net_device *device)
 	 * That's all.
 	 */
 
-	return return_code_;
+	return return_code;
 
 }
 
@@ -2368,90 +2280,90 @@ int
 appnic_hard_start_xmit(struct sk_buff *skb,
 		       struct net_device *device)
 {
-	appnic_device_t *adapter = netdev_priv(device);
-	int length_;
-	int buf_per_desc_;
+	struct appnic_device *adapter = netdev_priv(device);
+	int length;
+	int buf_per_desc;
 
 	LSINET_COUNTS_INC(LSINET_COUNTS_HST_START);
-	length_ = skb->len < ETH_ZLEN ? ETH_ZLEN : skb->len;
-	buf_per_desc_ = adapter->tx_buf_sz / adapter->tx_num_desc;
+	length = skb->len < ETH_ZLEN ? ETH_ZLEN : skb->len;
+	buf_per_desc = adapter->tx_buf_sz / adapter->tx_num_desc;
 
 	/*
 	 * If enough transmit descriptors are available, copy and transmit.
 	 */
 
-	DEBUG_PRINT("length_=%d buf_per_desc_=%d tx_tail=0x%x\n",
-		    length_, buf_per_desc_, swab32(adapter->tx_tail->raw));
+	DEBUG_PRINT("length=%d buf_per_desc=%d tx_tail=0x%x\n",
+		    length, buf_per_desc, swab32(adapter->tx_tail->raw));
 
-	while (((length_ / buf_per_desc_) + 1) >=
+	while (((length / buf_per_desc) + 1) >=
 		queue_uninitialized_(adapter->tx_head,
 				     SWAB_QUEUE_POINTER(adapter->tx_tail),
 				     adapter->tx_num_desc)) {
 		udelay(1000);
 		LSINET_COUNTS_INC(LSINET_COUNTS_HST_RCLM);
-		handle_transmit_interrupt_(device);
+		handle_transmit_interrupt(device);
 	}
 
-	if (((length_ / buf_per_desc_) + 1) <
+	if (((length / buf_per_desc) + 1) <
 		queue_uninitialized_(adapter->tx_head,
 				     SWAB_QUEUE_POINTER(adapter->tx_tail),
 				     adapter->tx_num_desc)) {
-		int bytes_copied_ = 0;
-		appnic_dma_descriptor_t descriptor;
+		int bytes_copied = 0;
+		struct appnic_dma_descriptor descriptor;
 
 		LSINET_COUNTS_INC(LSINET_COUNTS_HST_SNDG);
 		readdescriptor(((unsigned long) adapter->tx_desc +
 			adapter->tx_head.bits.offset), &descriptor);
 		descriptor.start_of_packet = 1;
 
-		while (bytes_copied_ < length_) {
+		while (bytes_copied < length) {
 			descriptor.write = 1;
-			descriptor.pdu_length = length_;
+			descriptor.pdu_length = length;
 
-			if ((length_ - bytes_copied_) > buf_per_desc_) {
+			if ((length - bytes_copied) > buf_per_desc) {
 				memcpy((void *)
 					(descriptor.host_data_memory_pointer +
 					 adapter->dma_alloc_offset),
 				       (void *) ((unsigned long) skb->data +
-					bytes_copied_),
-					buf_per_desc_);
-				descriptor.data_transfer_length = buf_per_desc_;
+					bytes_copied),
+					buf_per_desc);
+				descriptor.data_transfer_length = buf_per_desc;
 				descriptor.end_of_packet = 0;
 				descriptor.interrupt_on_completion = 0;
-				bytes_copied_ += buf_per_desc_;
+				bytes_copied += buf_per_desc;
 			} else {
 				memcpy((void *)
 					(descriptor.host_data_memory_pointer +
 					 adapter->dma_alloc_offset),
 				       (void *) ((unsigned long) skb->data +
-					bytes_copied_),
-					(length_ - bytes_copied_));
+					bytes_copied),
+					(length - bytes_copied));
 				descriptor.data_transfer_length =
-				 (length_ - bytes_copied_);
+				 (length - bytes_copied);
 				descriptor.end_of_packet = 1;
 #ifdef DISABLE_TX_INTERRUPTS
 				descriptor.interrupt_on_completion = 0;
 #else  /* DISABLE_TX_INTERRUPTS */
 				descriptor.interrupt_on_completion = 1;
 #endif /* DISABLE_TX_INTERRUPTS */
-				bytes_copied_ = length_;
+				bytes_copied = length;
 			}
 
-			adapter->stats.tx_bytes += bytes_copied_;
+			adapter->stats.tx_bytes += bytes_copied;
 			writedescriptor(((unsigned long) adapter->tx_desc +
 				adapter->tx_head.bits.offset), &descriptor);
-			queue_increment_(&adapter->tx_head,
-					 adapter->tx_num_desc);
+			queue_increment(&adapter->tx_head,
+					adapter->tx_num_desc);
 			readdescriptor(((unsigned long) adapter->tx_desc +
 				adapter->tx_head.bits.offset), &descriptor);
 			descriptor.start_of_packet = 0;
 		}
 
-		write_mac_(adapter->tx_head.raw, APPNIC_DMA_TX_HEAD_POINTER);
+		write_mac(adapter->tx_head.raw, APPNIC_DMA_TX_HEAD_POINTER);
 		device->trans_start = jiffies;
 		LSINET_COUNTS_INC(LSINET_COUNTS_HST_SNT);
 	} else {
-		++out_of_tx_descriptors_;
+		++out_of_tx_descriptors;
 		LSINET_COUNTS_INC(LSINET_COUNTS_HST_OOD);
 		ERROR_PRINT("No transmit descriptors available!\n");
 	}
@@ -2474,19 +2386,19 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 
 struct net_device_stats *appnic_get_stats(struct net_device *device)
 {
-	appnic_device_t *device_ = netdev_priv(device);
+	struct appnic_device *dev = netdev_priv(device);
 
 	/*
 	 * Update the statistics structure.
 	 */
 
-	get_hw_statistics_(device_);
+	get_hw_statistics_(dev);
 
 	/*
 	 * That's all.
 	 */
 
-	return &device_->stats;
+	return &dev->stats;
 }
 
 /*
@@ -2497,30 +2409,30 @@ struct net_device_stats *appnic_get_stats(struct net_device *device)
 static int
 appnic_set_mac_address(struct net_device *device, void *data)
 {
-	struct sockaddr *address_ = data;
-	unsigned long swap_source_address_;
+	struct sockaddr *address = data;
+	unsigned long swap_source_address;
 
 	if (netif_running(device))
 		return -EBUSY;
 
+	memcpy(device->dev_addr, address->sa_data, 6);
+	memcpy(device->perm_addr, address->sa_data, 6);
+
 	DEBUG_PRINT("Setting MAC to %02x:%02x:%02x:%02x:%02x:%02x\n",
-		    address_->sa_data[0], address_->sa_data[1],
-		    address_->sa_data[2], address_->sa_data[3],
-		    address_->sa_data[4], address_->sa_data[5]);
+		    address->sa_data[0], address->sa_data[1],
+		    address->sa_data[2], address->sa_data[3],
+		    address->sa_data[4], address->sa_data[5]);
 
-	memcpy(device->dev_addr, address_->sa_data, 6);
-	memcpy(device->perm_addr, address_->sa_data, 6);
-
-	swap_source_address_ = ((address_->sa_data[4]) << 8) |
-				address_->sa_data[5];
-	write_mac_(swap_source_address_, APPNIC_SWAP_SOURCE_ADDRESS_2);
-	swap_source_address_ = ((address_->sa_data[2]) << 8) |
-				address_->sa_data[3];
-	write_mac_(swap_source_address_, APPNIC_SWAP_SOURCE_ADDRESS_1);
-	swap_source_address_ = ((address_->sa_data[0]) << 8) |
-				address_->sa_data[1];
-	write_mac_(swap_source_address_, APPNIC_SWAP_SOURCE_ADDRESS_0);
-	memcpy(device->dev_addr, address_->sa_data, device->addr_len);
+	swap_source_address = ((address->sa_data[4]) << 8) |
+			       address->sa_data[5];
+	write_mac(swap_source_address, APPNIC_SWAP_SOURCE_ADDRESS_2);
+	swap_source_address = ((address->sa_data[2]) << 8) |
+			address->sa_data[3];
+	write_mac(swap_source_address, APPNIC_SWAP_SOURCE_ADDRESS_1);
+	swap_source_address = ((address->sa_data[0]) << 8) |
+			       address->sa_data[1];
+	write_mac(swap_source_address, APPNIC_SWAP_SOURCE_ADDRESS_0);
+	memcpy(device->dev_addr, address->sa_data, device->addr_len);
 
 	return 0;
 }
@@ -2545,6 +2457,8 @@ appnic_set_mac_address(struct net_device *device, void *data)
 static int
 appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 {
+	struct appnic_device *dev = netdev_priv(device);
+
 	memset(command, 0, sizeof(struct ethtool_cmd));
 
 	/* What the hardware supports. */
@@ -2559,17 +2473,17 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 	/* What is currently advertised. */
 
 	{
-		unsigned short ad_value_;
+		unsigned short ad_value;
 
-		if (0 != phy_read_(phy_address_,
-				   PHY_AUTONEG_ADVERTISE,
-				   &ad_value_)) {
+		if (0 != phy_read(dev->phy_address,
+				  PHY_AUTONEG_ADVERTISE,
+				  &ad_value)) {
 			ERROR_PRINT("PHY read failed!");
 			return -EIO;
 
 		}
 
-		switch (ad_value_) {
+		switch (ad_value) {
 		case 0x1e1:
 			command->advertising = (ADVERTISED_100baseT_Full |
 						ADVERTISED_100baseT_Half |
@@ -2598,13 +2512,13 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 	/* The current speed. */
 
 	{
-		int speed_;
+		int speed;
 
-		speed_ = phy_speed_(phy_address_);
-		if (-1 == speed_) {
+		speed = phy_speed(dev->phy_address);
+		if (-1 == speed) {
 			ERROR_PRINT("PHY read failed!");
 			return -EIO;
-		} else if (1 == speed_) {
+		} else if (1 == speed) {
 			command->speed = SPEED_100;
 		} else {
 			command->speed = SPEED_10;
@@ -2614,18 +2528,17 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 	/* Is the current link duplex? */
 
 	{
-		int duplex_;
+		int duplex;
 
-		duplex_ = phy_duplex_(phy_address_);
-		if (-1 == duplex_) {
+		duplex = phy_duplex(dev->phy_address);
+		if (-1 == duplex) {
 			ERROR_PRINT("PHY read failed!");
 			return -EIO;
-		} else if (1 == duplex_) {
+		} else if (1 == duplex) {
 			command->duplex = DUPLEX_FULL;
 		} else {
 			command->duplex = DUPLEX_HALF;
 		}
-
 	}
 
 #endif /* PHYLESS */
@@ -2674,7 +2587,7 @@ static const struct net_device_ops appnic_netdev_ops = {
 int
 appnic_init(struct net_device *device)
 {
-	appnic_device_t *adapter = netdev_priv(device);
+	struct appnic_device *adapter = netdev_priv(device);
 
 	TRACE_BEGINNING();
 
@@ -2682,7 +2595,7 @@ appnic_init(struct net_device *device)
 	 * Reset the MAC
 	 */
 
-	write_mac_(0x80000000, APPNIC_DMA_PCI_CONTROL);
+	write_mac(0x80000000, APPNIC_DMA_PCI_CONTROL);
 
 	/*
 	 * -- WORKAROUND -- WORKAROUND -- WORKAROUND -- WORKAROUND --
@@ -2692,8 +2605,7 @@ appnic_init(struct net_device *device)
 	 */
 #ifndef CONFIG_ACP
 	if (1 >= (APP3XX_REVISION_REGISTER & 0x1f)) {
-		printk(KERN_WARN
-		       "++ Using work around for defect 15129\n");
+		printk(KERN_WARN "++ Using work around for defect 15129\n");
 		rx_num_desc = (8 * DESCRIPTOR_GRANULARITY);
 		rx_buf_sz = 32768;
 	}
@@ -2704,7 +2616,7 @@ appnic_init(struct net_device *device)
 	 */
 
 	{
-		void *dma_offset_;
+		void *dma_offset;
 
 		/*
 		 * fixup num_[rt]x_desc
@@ -2768,14 +2680,14 @@ appnic_init(struct net_device *device)
 
 		adapter->dma_alloc_size =
 		 /* The tail pointers (rx and tx) */
-		 (sizeof(appnic_queue_pointer_t) * 2) +
+		 (sizeof(union appnic_queue_pointer) * 2) +
 		 /* The RX descriptor ring (and padding to allow
 		  * 64 byte alignment) */
-		 (sizeof(appnic_dma_descriptor_t) *
+		 (sizeof(struct appnic_dma_descriptor) *
 		  adapter->rx_num_desc) +
 		 (DESCRIPTOR_GRANULARITY) +
 		 /* The TX descriptor ring (and padding...) */
-		 (sizeof(appnic_dma_descriptor_t) *
+		 (sizeof(struct appnic_dma_descriptor) *
 		  adapter->tx_num_desc) +
 		 (DESCRIPTOR_GRANULARITY) +
 		 /* The RX buffer (and padding...) */
@@ -2786,11 +2698,12 @@ appnic_init(struct net_device *device)
 #ifdef DMA_CACHABLE
 
 		adapter->dma_alloc =
-		 (void *)kmalloc(adapter->dma_alloc_size, GFP_KERNEL);
+			kmalloc(adapter->dma_alloc_size, GFP_KERNEL);
 
 		if ((void *)0 == adapter->dma_alloc) {
-			ERROR_PRINT("Could not allocate %d bytes of DMA-able memory!\n",
-				    adapter->dma_alloc_size);
+			ERROR_PRINT(
+				"Could not allocate %d bytes of DMA-able memory!\n",
+				adapter->dma_alloc_size);
 			kfree(adapter);
 			TRACE_ENDING();
 			return -ENOMEM;
@@ -2813,8 +2726,9 @@ appnic_init(struct net_device *device)
 					   GFP_KERNEL);
 
 		if ((void *) 0 == adapter->dma_alloc) {
-			ERROR_PRINT("Could not allocate %d bytes of DMA-able memory!\n",
-				    adapter->dma_alloc_size);
+			ERROR_PRINT(
+				"Could not allocate %d bytes of DMA-able memory!\n",
+				adapter->dma_alloc_size);
 			kfree(adapter);
 			TRACE_ENDING();
 			return -ENOMEM;
@@ -2823,32 +2737,33 @@ appnic_init(struct net_device *device)
 
 		adapter->dma_alloc_offset = (int) adapter->dma_alloc -
 			(int) adapter->dma_alloc_dma;
-		dma_offset_ = adapter->dma_alloc;
-		DEBUG_PRINT("Allocated %d bytes at 0x%08lx(0x%08lx), offset=0x%x.\n",
-			    adapter->dma_alloc_size,
-			    (unsigned long) adapter->dma_alloc,
-			    (unsigned long) adapter->dma_alloc_dma,
-			    adapter->dma_alloc_offset);
+		dma_offset = adapter->dma_alloc;
+		DEBUG_PRINT(
+			"Allocated %d bytes at 0x%08lx(0x%08lx), offset=0x%x.\n",
+			adapter->dma_alloc_size,
+			(unsigned long) adapter->dma_alloc,
+			(unsigned long) adapter->dma_alloc_dma,
+			adapter->dma_alloc_offset);
 
 		/*
 		 * Initialize the tail pointers
 		 */
 
-		adapter->rx_tail = (appnic_queue_pointer_t *) dma_offset_;
+		adapter->rx_tail = (union appnic_queue_pointer *) dma_offset;
 		adapter->rx_tail_dma = (int) adapter->rx_tail -
 			(int) adapter->dma_alloc_offset;
-		dma_offset_ += sizeof(appnic_queue_pointer_t);
+		dma_offset += sizeof(union appnic_queue_pointer);
 		memset((void *) adapter->rx_tail, 0,
-		       sizeof(appnic_queue_pointer_t));
+		       sizeof(union appnic_queue_pointer));
 		DEBUG_PRINT("rx_tail=0x%08lx\n",
 			    (unsigned long) adapter->rx_tail);
 
-		adapter->tx_tail = (appnic_queue_pointer_t *) dma_offset_;
+		adapter->tx_tail = (union appnic_queue_pointer *) dma_offset;
 		adapter->tx_tail_dma = (int) adapter->tx_tail -
 			(int) adapter->dma_alloc_offset;
-		dma_offset_ += sizeof(appnic_queue_pointer_t);
+		dma_offset += sizeof(union appnic_queue_pointer);
 		memset((void *) adapter->tx_tail, 0,
-		       sizeof(appnic_queue_pointer_t));
+		       sizeof(union appnic_queue_pointer));
 		DEBUG_PRINT("tx_tail=0x%08lx\n",
 			    (unsigned long) adapter->tx_tail);
 
@@ -2858,30 +2773,30 @@ appnic_init(struct net_device *device)
 
 		DEBUG_PRINT("rx_tail=0x%08lx\n",
 			    (unsigned long) adapter->rx_tail);
-		adapter->rx_desc = (appnic_dma_descriptor_t *)
-			ALIGN64B(dma_offset_);
+		adapter->rx_desc = (struct appnic_dma_descriptor *)
+			ALIGN64B(dma_offset);
 		DEBUG_PRINT("rx_desc=0x%08lx\n",
 			    (unsigned long) adapter->rx_desc);
 		adapter->rx_desc_dma = (int) adapter->rx_desc -
 			(int) adapter->dma_alloc_offset;
-		dma_offset_ += (sizeof(appnic_dma_descriptor_t) *
+		dma_offset += (sizeof(struct appnic_dma_descriptor) *
 			adapter->rx_num_desc) + (DESCRIPTOR_GRANULARITY);
 		memset((void *) adapter->rx_desc, 0,
-		       (sizeof(appnic_dma_descriptor_t) *
+		       (sizeof(struct appnic_dma_descriptor) *
 			 adapter->rx_num_desc));
 
 		DEBUG_PRINT("rx_tail=0x%08lx\n",
 			    (unsigned long) adapter->rx_tail);
-		adapter->tx_desc = (appnic_dma_descriptor_t *)
-			ALIGN64B(dma_offset_);
+		adapter->tx_desc = (struct appnic_dma_descriptor *)
+			ALIGN64B(dma_offset);
 		DEBUG_PRINT("tx_desc=0x%08lx\n",
 			    (unsigned long) adapter->tx_desc);
 		adapter->tx_desc_dma = (int) adapter->tx_desc -
 			(int) adapter->dma_alloc_offset;
-		dma_offset_ += (sizeof(appnic_dma_descriptor_t) *
+		dma_offset += (sizeof(struct appnic_dma_descriptor) *
 			adapter->tx_num_desc) + (DESCRIPTOR_GRANULARITY);
 		memset((void *) adapter->tx_desc, 0,
-		       (sizeof(appnic_dma_descriptor_t) *
+		       (sizeof(struct appnic_dma_descriptor) *
 			adapter->tx_num_desc));
 
 		/*
@@ -2890,29 +2805,30 @@ appnic_init(struct net_device *device)
 
 		DEBUG_PRINT("rx_tail=0x%08lx\n",
 			    (unsigned long) adapter->rx_tail);
-		DEBUG_PRINT("Initializing the RX buffer pointers, dma_offset=0x%lx/0x%lx\n",
-			    (unsigned long) dma_offset_,
-			    (unsigned long) ALIGN64B(dma_offset_));
-		adapter->rx_buf = (void *) ALIGN64B(dma_offset_);
+		DEBUG_PRINT(
+			"Initializing the RX buffer pointers, dma_offset=0x%lx/0x%lx\n",
+			(unsigned long) dma_offset,
+			(unsigned long) ALIGN64B(dma_offset));
+		adapter->rx_buf = (void *) ALIGN64B(dma_offset);
 		adapter->rx_buf_dma = (int) adapter->rx_buf -
 			(int) adapter->dma_alloc_offset;
 		adapter->rx_buf_per_desc =
 			adapter->rx_buf_sz / adapter->rx_num_desc;
 
-		dma_offset_ += (adapter->rx_buf_sz) +
-			(BUFFER_ALIGNMENT);
+		dma_offset += (adapter->rx_buf_sz) + (BUFFER_ALIGNMENT);
 
 		DEBUG_PRINT("rx_tail=0x%08lx\n",
 			    (unsigned long) adapter->rx_tail);
-		DEBUG_PRINT("Initializing the TX buffer pointers, dma_offset=0x%lx/0x%lx\n",
-			    (unsigned long) dma_offset_,
-			    (unsigned long) ALIGN64B(dma_offset_));
-		adapter->tx_buf = (void *) ALIGN64B(dma_offset_);
+		DEBUG_PRINT(
+			"Initializing the TX buffer pointers, dma_offset=0x%lx/0x%lx\n",
+			(unsigned long) dma_offset,
+			(unsigned long) ALIGN64B(dma_offset));
+		adapter->tx_buf = (void *) ALIGN64B(dma_offset);
 		adapter->tx_buf_dma = (int) adapter->tx_buf -
 			 (int) adapter->dma_alloc_offset;
 		adapter->tx_buf_per_desc =
 			 adapter->tx_buf_sz / adapter->tx_num_desc;
-		dma_offset_ += (adapter->tx_buf_sz) + (BUFFER_ALIGNMENT);
+		dma_offset += (adapter->tx_buf_sz) + (BUFFER_ALIGNMENT);
 
 		DEBUG_PRINT("rx_tail=0x%08lx\n",
 			    (unsigned long) adapter->rx_tail);
@@ -2922,54 +2838,50 @@ appnic_init(struct net_device *device)
 		 */
 
 		{
-			int index_;
-			unsigned long buf_ =
+			int index;
+			unsigned long buf =
 			 (unsigned long) adapter->rx_buf_dma;
-			appnic_dma_descriptor_t descriptor;
+			struct appnic_dma_descriptor descriptor;
 
 			DEBUG_PRINT("Initializing RX descriptors at 0x%lx\n",
-				    buf_);
+				    buf);
 
-			for (index_ = 0;
-			     index_ < adapter->rx_num_desc;
-			     ++index_) {
+			for (index = 0;
+			     index < adapter->rx_num_desc;
+			     ++index) {
 				memset((void *) &descriptor, 0,
-				       sizeof(appnic_dma_descriptor_t));
+				       sizeof(struct appnic_dma_descriptor));
 				descriptor.write = 1;
 				descriptor.interrupt_on_completion = 1;
-				descriptor.host_data_memory_pointer =
-					buf_;
+				descriptor.host_data_memory_pointer = buf;
 				descriptor.data_transfer_length =
 					adapter->rx_buf_per_desc;
 
 				writedescriptor(((unsigned long)
-					adapter->rx_desc + (index_ *
-					sizeof(appnic_dma_descriptor_t))),
+					adapter->rx_desc + (index *
+					sizeof(struct appnic_dma_descriptor))),
 					&descriptor);
 
-				buf_ += adapter->rx_buf_per_desc;
+				buf += adapter->rx_buf_per_desc;
 			}
 
-			buf_ = (unsigned long) adapter->tx_buf_dma;
+			buf = (unsigned long) adapter->tx_buf_dma;
 			DEBUG_PRINT("Initializing RX descriptors at 0x%lx\n",
-				    buf_);
+				    buf);
 
-			for (index_ = 0;
-			     index_ < adapter->tx_num_desc;
-			     ++index_) {
+			for (index = 0; index < adapter->tx_num_desc; ++index) {
 				memset((void *) &descriptor, 0,
-				       sizeof(appnic_dma_descriptor_t));
+				       sizeof(struct appnic_dma_descriptor));
 				descriptor.write = 1;
 				descriptor.interrupt_on_completion = 1;
-				descriptor.host_data_memory_pointer =
-					buf_;
+				descriptor.host_data_memory_pointer = buf;
 
 				writedescriptor(((unsigned long)
-					adapter->tx_desc + (index_ *
-					 sizeof(appnic_dma_descriptor_t))),
+					adapter->tx_desc + (index *
+					 sizeof(struct appnic_dma_descriptor))),
 					&descriptor);
 
-				buf_ += adapter->tx_buf_per_desc;
+				buf += adapter->tx_buf_per_desc;
 			}
 		}
 
@@ -3000,19 +2912,22 @@ appnic_init(struct net_device *device)
 	DEBUG_PRINT("rx_tail=0x%08lx\n",
 		    (unsigned long) adapter->rx_tail);
 	DEBUG_PRINT("Enabling the MAC");
-	write_mac_(0x0, APPNIC_RX_SOFT_RESET);
-	write_mac_(0x1, APPNIC_RX_MODE);
-	write_mac_(0x0, APPNIC_TX_SOFT_RESET);
-	write_mac_(0x1, APPNIC_TX_MODE);
-	write_mac_(0x300a, APPNIC_TX_WATERMARK);
-	write_mac_(0x1, APPNIC_TX_HALF_DUPLEX_CONF);
-	write_mac_(0xffff, APPNIC_TX_TIME_VALUE_CONF);
-	write_mac_(0x1, APPNIC_TX_INTERRUPT_CONTROL);
-	write_mac_(0x5275, APPNIC_TX_EXTENDED_CONF);
-	write_mac_(0x1, APPNIC_RX_INTERNAL_INTERRUPT_CONTROL);
-	write_mac_(0x1, APPNIC_RX_EXTERNAL_INTERRUPT_CONTROL);
-	write_mac_(0x40010000, APPNIC_DMA_PCI_CONTROL);
-	write_mac_(0x30000, APPNIC_DMA_CONTROL);
+	write_mac(0x0, APPNIC_RX_SOFT_RESET);
+	write_mac(0x1, APPNIC_RX_MODE);
+	write_mac(0x0, APPNIC_TX_SOFT_RESET);
+	write_mac(0x1, APPNIC_TX_MODE);
+	if (is_asic())
+		write_mac(0x300a, APPNIC_TX_WATERMARK);
+	else
+		write_mac(0xc00096, APPNIC_TX_WATERMARK);
+	write_mac(0x1, APPNIC_TX_HALF_DUPLEX_CONF);
+	write_mac(0xffff, APPNIC_TX_TIME_VALUE_CONF);
+	write_mac(0x1, APPNIC_TX_INTERRUPT_CONTROL);
+	write_mac(0x5275, APPNIC_TX_EXTENDED_CONF);
+	write_mac(0x1, APPNIC_RX_INTERNAL_INTERRUPT_CONTROL);
+	write_mac(0x1, APPNIC_RX_EXTERNAL_INTERRUPT_CONTROL);
+	write_mac(0x40010000, APPNIC_DMA_PCI_CONTROL);
+	write_mac(0x30000, APPNIC_DMA_CONTROL);
 	writeio(0x280044, dma_base + 0x60);
 	writeio(0xc0, dma_base + 0x64);
 
@@ -3021,25 +2936,26 @@ appnic_init(struct net_device *device)
 	 */
 
 	{
-		unsigned char ethaddr_string_[40];
+		unsigned char ethaddr_string[40];
 
-		if (0 != ubootenv_get("ethaddr", ethaddr_string_)) {
+		if (0 != ubootenv_get("ethaddr", ethaddr_string)) {
 			ERROR_PRINT("Could not read ether address!\n");
 			return -(EBUSY);
 		} else {
-			char *string_;
-			int index_ = 0;
+			char *string;
+			int index = 0;
 			u8 mac_address[6];
 
-			index_ = 0;
-			string_ = ethaddr_string_;
+			index = 0;
+			string = ethaddr_string;
 
-			while ((0 != string_) && (6 > index_)) {
-				char *value_;
-
-				value_ = strsep(&string_, ":");
-				mac_address[index_++] =
-				simple_strtoul(value_, NULL, 16);
+			while ((0 != string) && (6 > index)) {
+				char *value;
+				unsigned long res;
+				value = strsep(&string, ":");
+				if (kstrtoul(value, 16, &res))
+					return -EBUSY;
+				mac_address[index++] = (u8)res;
 			}
 
 			memcpy(device->dev_addr, mac_address, 6);
@@ -3050,14 +2966,14 @@ appnic_init(struct net_device *device)
 
 	}
 
-	write_mac_(((device->dev_addr[4]) << 8) |
-		    (device->dev_addr[5]),
+	write_mac(((device->dev_addr[4]) << 8) |
+		   (device->dev_addr[5]),
 		   APPNIC_SWAP_SOURCE_ADDRESS_2);
-	write_mac_(((device->dev_addr[2]) << 8) |
-		    (device->dev_addr[3]),
+	write_mac(((device->dev_addr[2]) << 8) |
+		   (device->dev_addr[3]),
 		   APPNIC_SWAP_SOURCE_ADDRESS_1);
-	write_mac_(((device->dev_addr[0]) << 8) |
-		    (device->dev_addr[1]),
+	write_mac(((device->dev_addr[0]) << 8) |
+		   (device->dev_addr[1]),
 		   APPNIC_SWAP_SOURCE_ADDRESS_0);
 
 	DEBUG_PRINT("rx_tail=0x%08lx\n",
@@ -3073,15 +2989,15 @@ appnic_init(struct net_device *device)
 		 */
 
 		memset((void *) &adapter->rx_tail_copy,
-		       0, sizeof(appnic_queue_pointer_t));
+		       0, sizeof(union appnic_queue_pointer));
 		memset((void *) &adapter->rx_head,
-		       0, sizeof(appnic_queue_pointer_t));
+		       0, sizeof(union appnic_queue_pointer));
 
-		write_mac_(adapter->rx_desc_dma,
-			   APPNIC_DMA_RX_QUEUE_BASE_ADDRESS);
-		write_mac_((adapter->rx_num_desc *
-			    sizeof(appnic_dma_descriptor_t)) / 1024,
-			   APPNIC_DMA_RX_QUEUE_SIZE);
+		write_mac(adapter->rx_desc_dma,
+			  APPNIC_DMA_RX_QUEUE_BASE_ADDRESS);
+		write_mac((adapter->rx_num_desc *
+			   sizeof(struct appnic_dma_descriptor)) / 1024,
+			  APPNIC_DMA_RX_QUEUE_SIZE);
 
 		/*
 		 * Indicate that all of the receive descriptors
@@ -3090,9 +3006,9 @@ appnic_init(struct net_device *device)
 
 		adapter->rx_head.bits.offset =
 			(adapter->rx_num_desc - 1) *
-			 sizeof(appnic_dma_descriptor_t);
-		write_mac_(adapter->rx_tail_dma,
-			   APPNIC_DMA_RX_TAIL_POINTER_ADDRESS);
+			 sizeof(struct appnic_dma_descriptor);
+		write_mac(adapter->rx_tail_dma,
+			  APPNIC_DMA_RX_TAIL_POINTER_ADDRESS);
 
 		/*
 		 * N.B.
@@ -3106,36 +3022,38 @@ appnic_init(struct net_device *device)
 			    (unsigned long) adapter);
 		DEBUG_PRINT("Initializing RX tail: adapter->rx_tail=0x%lx\n",
 			    (unsigned long) adapter->rx_tail);
-		DEBUG_PRINT("Initializing RX tail: adapter->rx_tail->raw=0x%lx\n",
-			    (unsigned long) adapter->rx_tail->raw);
+		DEBUG_PRINT(
+			"Initializing RX tail: adapter->rx_tail->raw=0x%lx\n",
+			(unsigned long) adapter->rx_tail->raw);
 		adapter->rx_tail->raw =
-		  read_mac_(APPNIC_DMA_RX_TAIL_POINTER_LOCAL_COPY);
+		  read_mac(APPNIC_DMA_RX_TAIL_POINTER_LOCAL_COPY);
 		adapter->rx_tail_copy.raw = adapter->rx_tail->raw;
 		adapter->rx_head.raw = adapter->rx_tail->raw;
 		queue_decrement_(&adapter->rx_head, adapter->rx_num_desc);
 		adapter->rx_head.bits.generation_bit =
 		  (0 == adapter->rx_head.bits.generation_bit) ? 1 : 0;
-		write_mac_(adapter->rx_head.raw,
-			   APPNIC_DMA_RX_HEAD_POINTER);
+		write_mac(adapter->rx_head.raw,
+			  APPNIC_DMA_RX_HEAD_POINTER);
 
 		/*
 		 * Transmitter
 		 */
 
 		memset((void *) &adapter->tx_tail_copy,
-			0, sizeof(appnic_queue_pointer_t));
+			0, sizeof(union appnic_queue_pointer));
 		memset((void *) &adapter->tx_head,
-		       0, sizeof(appnic_queue_pointer_t));
+		       0, sizeof(union appnic_queue_pointer));
 
-		write_mac_(adapter->tx_desc_dma,
-			   APPNIC_DMA_TX_QUEUE_BASE_ADDRESS);
-		write_mac_((adapter->tx_num_desc *
-			    sizeof(appnic_dma_descriptor_t)) / 1024,
-			   APPNIC_DMA_TX_QUEUE_SIZE);
-		DEBUG_PRINT("Writing 0x%lx to APPNIC_DMA_TX_TAIL_POINTER_ADDRESS\n",
-			    (unsigned long) adapter->tx_tail_dma);
-		write_mac_(adapter->tx_tail_dma,
-			   APPNIC_DMA_TX_TAIL_POINTER_ADDRESS);
+		write_mac(adapter->tx_desc_dma,
+			  APPNIC_DMA_TX_QUEUE_BASE_ADDRESS);
+		write_mac((adapter->tx_num_desc *
+			   sizeof(struct appnic_dma_descriptor)) / 1024,
+			  APPNIC_DMA_TX_QUEUE_SIZE);
+		DEBUG_PRINT(
+			"Writing 0x%lx to APPNIC_DMA_TX_TAIL_POINTER_ADDRESS\n",
+			(unsigned long) adapter->tx_tail_dma);
+		write_mac(adapter->tx_tail_dma,
+			  APPNIC_DMA_TX_TAIL_POINTER_ADDRESS);
 
 		/*
 		 * N.B.
@@ -3149,25 +3067,19 @@ appnic_init(struct net_device *device)
 			    (unsigned long) adapter->tx_tail,
 			    (unsigned long) adapter->tx_tail->raw);
 		adapter->tx_tail->raw =
-		  read_mac_(APPNIC_DMA_TX_TAIL_POINTER_LOCAL_COPY);
+		  read_mac(APPNIC_DMA_TX_TAIL_POINTER_LOCAL_COPY);
 		adapter->tx_tail_copy.raw = adapter->tx_tail->raw;
 		adapter->tx_head.raw = adapter->tx_tail->raw;
-		write_mac_(adapter->tx_head.raw,
-			   APPNIC_DMA_TX_HEAD_POINTER);
+		write_mac(adapter->tx_head.raw, APPNIC_DMA_TX_HEAD_POINTER);
 
 	}
 
 	/* Clear statistics */
-
-	{
-		appnic_device_t *device_ = netdev_priv(device);
-		clear_statistics_(device_);
-	}
+	clear_statistics_(adapter);
 
 	/* Initialize the PHY */
-
 #ifndef PHYLESS
-	if (0 != phy_enable_(phy_address_))
+	if (0 != phy_enable(device))
 		WARN_PRINT("Failed to initialize the PHY!\n");
 #endif /* PHYLESS */
 
@@ -3215,12 +3127,12 @@ static int
 appnic_read_proc_(char *page, char **start, off_t offset,
 		  int count, int *eof, void *data)
 {
-	int length_;
+	int length;
 
-	length_ = sprintf(page, "-- appnic.c -- Profiling is disabled\n");
+	length = sprintf(page, "-- appnic.c -- Profiling is disabled\n");
 
 	/* That's all */
-	return length_;
+	return length;
 }
 
 /*
@@ -3235,22 +3147,22 @@ lsinet_init(void)
 	struct net_device *device;
 	struct device_node *np = NULL;
 	const u32 *field;
-	appnic_device_t *appnic_device;
+	struct appnic_device *appnic_device;
+	unsigned char uboot_env_string[40];
 
 	TRACE_BEGINNING();
 
 	/* Allocate space for the device. */
 
-	device = alloc_etherdev(sizeof(appnic_device_t));
+	device = alloc_etherdev(sizeof(struct appnic_device));
 	if ((struct net_device *)0 == device) {
 		ERROR_PRINT("Couldn't allocate net device.");
 		rc = -ENOMEM;
 		goto out;
 	}
 
-
 	this_net_device = device; /* For /proc/reads. */
-	appnic_device = (appnic_device_t *)device;
+	appnic_device = netdev_priv(device);
 
 	/*
 	 * Get the physical addresses, interrupt number, etc. from the
@@ -3318,7 +3230,7 @@ lsinet_init(void)
 
 		if (!field)
 			goto device_tree_failed;
-		 else
+		else
 			appnic_device->phy_address = field[0];
 
 		field = of_get_property(np, "ad-value", NULL);
@@ -3356,6 +3268,11 @@ device_tree_failed:
 		goto out;
 
 	} else {
+		/*
+		 * Attempt to get device settings from the DTB failed, so
+		 * try to grab the ethernet MAC from the u-boot environment
+		 * and use hard-coded values for device base addresses.
+		 */
 		unsigned char ethaddr_string[20];
 
 		if (0 != ubootenv_get("ethaddr", ethaddr_string)) {
@@ -3379,10 +3296,11 @@ device_tree_failed:
 
 			while ((0 != string) && (6 > i)) {
 				char *value;
-
+				unsigned long res;
 				value = strsep(&string, ":");
-				mac_address[i++] =
-				simple_strtoul(value, NULL, 16);
+				if (kstrtoul(value, 16, &res))
+					return -EBUSY;
+				mac_address[i++] = (u8)res;
 			}
 
 			memcpy(device->dev_addr, mac_address, 6);
@@ -3405,6 +3323,50 @@ device_tree_failed:
 	}
 
 device_tree_succeeded:
+
+	/* Override phy_address with u-boot environment variable if set. */
+	if (0 == ubootenv_get("phy_address", uboot_env_string)) {
+		/*
+		 * User may have entered phy_address value in u-boot as
+		 * either a decimal or hex value. Try reading both ways.
+		 */
+		unsigned long res;
+		if (kstrtoul(uboot_env_string, 10, &res))
+			return -EBUSY;
+		appnic_device->phy_address = res;
+		if (appnic_device->phy_address == 0) {
+			unsigned long res;
+			ubootenv_get("phy_address", uboot_env_string);
+			if (kstrtoul(uboot_env_string, 16, &res))
+				return -EBUSY;
+			appnic_device->phy_address = res;
+		}
+	}
+
+	/* Override ad_value with u-boot environment variable if set. */
+	if (0 == ubootenv_get("ad_value", uboot_env_string)) {
+		/*
+		 * Assume ad_value is always entered as a hex value,
+		 * since u-boot defaults this value as hex.
+		 */
+		unsigned long res;
+		if (kstrtoul(uboot_env_string, 16, &res))
+			return -EBUSY;
+		appnic_device->ad_value = res;
+	}
+
+	/* ad_value should never be 0. Use default if so ... */
+	if (appnic_device->ad_value == 0) {
+		appnic_device->ad_value = (PHY_AUTONEG_ADVERTISE_100FULL |
+			   PHY_AUTONEG_ADVERTISE_100 |
+			   PHY_AUTONEG_ADVERTISE_10FULL |
+			   PHY_AUTONEG_ADVERTISE_10);
+		printk(KERN_ERR "Set ad_value to default of 0x%lx\n",
+		       appnic_device->ad_value);
+	}
+
+	printk(KERN_INFO "lsi_acp_net: ad_value = 0x%lx, phy_address = 0x%lx\n",
+	       appnic_device->ad_value, appnic_device->phy_address);
 
 	/* Initialize the device. */
 
