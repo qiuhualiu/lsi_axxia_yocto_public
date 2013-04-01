@@ -104,6 +104,14 @@ config ACP_GPDMA
 	---help---
 	  Enable support for the LSI ACP General Purpose DMA controllers.
 
+config LSI_DMA
+	tristate "LSI DMA-32 General Purpose DMA support"
+	depends on ARCH_AXXIA
+	select DMA_ENGINE
+	select ASYNC_TX_ENABLE_CHANNEL_SWITCH
+	---help---
+	  Enable support for the LSI DMA-32 General Purpose DMA controllers.
+
 config FSL_DMA
 	tristate "Freescale Elo and Elo Plus DMA support"
 	depends on FSL_SOC
