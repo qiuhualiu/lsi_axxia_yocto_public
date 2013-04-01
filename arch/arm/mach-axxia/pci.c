@@ -73,8 +73,9 @@ fixup_axxia_pci_bridge(struct pci_dev *dev)
 	/*
 	 * Set the class appropriately for a bridge device
 	 */
-	printk(KERN_INFO "PCI: Setting PCI Class to PCI_CLASS_BRIDGE_HOST for \
-		 %04x:%04x\n", dev->vendor, dev->device);
+	printk(KERN_INFO
+	       "PCI: Setting PCI Class to PCI_CLASS_BRIDGE_HOST for %04x:%04x\n",
+	       dev->vendor, dev->device);
 	dev->class = PCI_CLASS_BRIDGE_HOST << 8;
 	/*
 	 * Make the bridge transparent
@@ -238,8 +239,8 @@ arm_pciex_axxia_read_config(struct pci_bus *bus, unsigned int devfn,
 	}
 
 #ifdef PRINT_CONFIG_ACCESSES
-	printk("acp_read_config for PEI%d: %3d  fn=0x%04x"
-			"o=0x%04x l=%d a=0x%08x v=0x%08x, dev=%d\n",
+	printk(KERN_INFO
+		"acp_read_config for PEI%d: %3d  fn=0x%04x o=0x%04x l=%d a=0x%08x v=0x%08x, dev=%d\n",
 			port->index, bus->number, devfn, offset, len,
 			bus_addr, *val, PCI_SLOT(devfn));
 #endif
@@ -297,9 +298,9 @@ static int arm_pciex_axxia_write_config(struct pci_bus *bus, unsigned int devfn,
 	}
 
 #ifdef PRINT_CONFIG_ACCESSES
-	printk("acp_write_config: bus=%3d devfn=0x%04x offset=0x%04x len=%d,"
-		"addr=0x%08x val=0x%08x\n", bus->number,
-		devfn, offset, len, bus_addr, val);
+	printk(KERN_INFO
+		"acp_write_config: bus=%3d devfn=0x%04x offset=0x%04x len=%d addr=0x%08x val=0x%08x\n",
+		bus->number, devfn, offset, len, bus_addr, val);
 #endif
 
 	switch (len) {
@@ -325,18 +326,18 @@ static struct pci_ops axxia_pciex_pci_ops = {
 static irqreturn_t
 acp_pcie_isr(int irq, void *arg)
 {
-    u32 intr_status;
-    u32 msg_fifo_stat;
-    u32 msg_fifo_info;
-    u8  externalPciIntr = 0;
+	u32 intr_status;
+	u32 msg_fifo_stat;
+	u32 msg_fifo_info;
+	u8  externalPciIntr = 0;
 	struct axxia_pciex_port *port = (struct axxia_pciex_port *)arg;
 	void __iomem *mbase = (void __iomem *)port->cfg_addr;
 
-    /* read the PEI interrupt status register */
+	/* read the PEI interrupt status register */
 	intr_status = readl(mbase+0x10c0);
 
-    /* check if this is a PCIe message from an external device */
-    if (intr_status & 0x00000010) {
+	/* check if this is a PCIe message from an external device */
+	if (intr_status & 0x00000010) {
 		externalPciIntr = 1;
 
 		msg_fifo_stat = readl(mbase+0x10b4);
@@ -407,8 +408,9 @@ acp_pcie_isr(int irq, void *arg)
 			u32 linkStatus;
 			u32 offset;
 
-			printk(KERN_ERR "ACP_PCIE_ISR: got PEI%d error \
-				interrupt 0x%08x\n", intr_status, port->index);
+			printk(KERN_ERR
+				"ACP_PCIE_ISR: got PEI%d error interrupt 0x%08x\n",
+				intr_status, port->index);
 
 			linkStatus = readl(mbase+0x117c);
 			printk(KERN_ERR "link_status (0x117c) = 0x%08x\n",
@@ -536,8 +538,8 @@ int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 	port->outbound.flags = IORESOURCE_MEM;
 
 	if (request_resource(&iomem_resource, &port->outbound))
-		panic("Request PCIe Memory resource failed for \
-			port %d\n", portno);
+		panic("Request PCIe Memory resource failed for port %d\n",
+		      portno);
 
 	pci_add_resource_offset(&sys->resources, &port->outbound,
 			sys->mem_offset);
@@ -561,8 +563,8 @@ int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 #endif
 
 	/* hookup an interrupt handler */
-    printk(KERN_INFO "PCIE%d mapping interrupt\n", port->index);
-    mappedIrq = irq_of_parse_and_map(port->node, 0);
+	printk(KERN_INFO "PCIE%d mapping interrupt\n", port->index);
+	mappedIrq = irq_of_parse_and_map(port->node, 0);
 
 	if (sys->domain == 0) {
 		/* IRQ# 68 for PEI0 */
@@ -573,8 +575,9 @@ int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 	}
 	printk(KERN_INFO "Requesting irq#%d for PEI%d Legacy INTs\n",
 			mappedIrq, port->index);
-    err = request_irq(mappedIrq, acp_pcie_isr, IRQF_SHARED, "acp_pcie", port);
-    if (err) {
+	err = request_irq(mappedIrq, acp_pcie_isr,
+			  IRQF_SHARED, "acp_pcie", port);
+	if (err) {
 		printk(KERN_ERR "request_irq failed!!!! for IRQ# %d err = %d\n",
 			mappedIrq, err);
 		goto fail;
@@ -584,13 +587,15 @@ int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 	if (sys->domain == 0) {
 		/* IRQ# 73-88 for PEI0 MSI INTs */
 		for (mappedIrq = 73; mappedIrq <= 88; mappedIrq++) {
-			printk(KERN_INFO "Requesting irq#%d for PEI0 MSI INTs\n",
+			printk(KERN_INFO
+				"Requesting irq#%d for PEI0 MSI INTs\n",
 				mappedIrq+32);
 			err = request_irq(mappedIrq+32, acp_pcie_MSI_isr,
 				IRQF_SHARED, "acp_pcie_MSI", port);
 			if (err) {
-				printk(KERN_ERR "request_irq failed!!!! for \
-					IRQ# %d err = %d\n", mappedIrq+32, err);
+				printk(KERN_ERR
+					"request_irq failed!!!! for IRQ# %d err = %d\n",
+					mappedIrq+32, err);
 				goto fail;
 			}
 		}
@@ -604,14 +609,15 @@ int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 
 	pci_status = readl(cfg_addr + 0x1004);
 	link_state = (pci_status & 0x3f00) >> 8;
-	printk(KERN_INFO "PCIE%d status = 0x%08x : \
-			PCI link state = 0x%x\n",
-			port->index, pci_status, link_state);
+	printk(KERN_INFO
+		"PCIE%d status = 0x%08x : PCI link state = 0x%x\n",
+		port->index, pci_status, link_state);
 
 	/* make sure the ACP device is configured as PCI Root Complex */
 	if ((pci_status & 0x18) != 0x18) {
-		printk(KERN_INFO "ACP device is not PCI Root Complex! \
-			 status = 0x%08x\n", pci_status);
+		printk(KERN_INFO
+			"ACP device is not PCI Root Complex! status = 0x%08x\n",
+			pci_status);
 		goto fail;
 	}
 
@@ -754,8 +760,8 @@ static void __devinit axxia_pcie_msi_enable(struct pci_dev *dev)
 				msi_virt = dma_alloc_coherent(&dev->dev,
 					1024, &(port->msi_phys), GFP_KERNEL);
 			} else {
-				printk(KERN_INFO "No suitable DMA available.\
-					MSI cannot be supported\n");
+				printk(KERN_INFO
+					"No suitable DMA available. MSI cannot be supported\n");
 				return;
 			}
 			msi_lower = (u32)port->msi_phys;
@@ -769,9 +775,9 @@ static void __devinit axxia_pcie_msi_enable(struct pci_dev *dev)
 		fn  = PCI_FUNC(dev->devfn) & 0x7;
 		bus_num = dev->bus->number;
 
-		printk(KERN_INFO "PEI%d axxia_pcie_msi_enable Found MSI%d,\
-			msi_lower = 0x%x for bus_num = %d, dev = %d,\
-			fn = %d\n", port->index, msi_count, msi_lower,\
+		printk(KERN_INFO
+			"PEI%d axxia_pcie_msi_enable Found MSI%d, msi_lower = 0x%x for bus_num = %d, dev = %d, fn = %d\n",
+			port->index, msi_count, msi_lower,
 			bus_num, device, fn);
 		pci_write_config_dword(dev, pos + PCI_MSI_ADDRESS_LO,
 			pci_lower);
@@ -898,18 +904,19 @@ static void axxia_probe_pciex_bridge(struct device_node *np)
 		       np->full_name);
 		return;
 	}
-	printk(KERN_INFO "cfg_space start = 0x%012llx,\
-		end = 0x%012llx\n", port->cfg_space.start,\
-		port->cfg_space.end);
+	printk(KERN_INFO
+		"cfg_space start = 0x%012llx, end = 0x%012llx\n",
+		port->cfg_space.start, port->cfg_space.end);
 
 	/* Fetch host bridge internal registers address */
 	if (of_address_to_resource(np, 1, &port->utl_regs)) {
-		printk(KERN_ERR "%s: Can't get UTL register base !",\
+		printk(KERN_ERR "%s: Can't get UTL register base !",
 		       np->full_name);
 		return;
 	}
-	printk(KERN_INFO "utl_regs start = 0x%012llx,\
-		end = 0x%012llx\n", port->utl_regs.start, port->utl_regs.end);
+	printk(KERN_INFO
+		"utl_regs start = 0x%012llx, end = 0x%012llx\n",
+		port->utl_regs.start, port->utl_regs.end);
 
 	field = of_get_property(np, "ranges", &rlen);
 	if (field == NULL)
@@ -947,10 +954,10 @@ static void axxia_probe_pciex_bridge(struct device_node *np)
 		 * within 32 bits space and 1:1 mapping
 		 */
 		if (cpu_addr != 0 || pci_addr > 0xffffffff) {
-			printk(KERN_WARNING "%s: Ignored unsupported dma range"
-				" 0x%016llx...0x%016llx -> 0x%016llx\n",
-				np->full_name,
-				pci_addr, pci_addr + size - 1, cpu_addr);
+			printk(KERN_WARNING
+			       "%s: Ignored unsupported dma range 0x%016llx...0x%016llx -> 0x%016llx\n",
+				np->full_name, pci_addr,
+				pci_addr + size - 1, cpu_addr);
 			continue;
 		}
 		/* Use that */
