@@ -300,16 +300,15 @@
                 0x20 0x20120000 0x0 0x00008000 >;
                 bus-range = <0 0x0f>;
                 /* Outbound ranges */
-                /* < <3-cell PCI addr> <2-cell CPU (PLB) addr> <2-cell size> > *
-/
+                /* < <3-cell PCI addr> <2-cell CPU (PLB) addr> <2-cell size> >*/
                 ranges = <0x03000000 0x00000000 0xa0000000
                           0x30 0x00000000
                           0x00 0x10000000>;
                 /* Inbound ranges */
                 /* < <3-cell PCI addr> <2-cell CPU addr> <2-cell size> > */
-                dma-ranges = <0x03000000 0x00000000 0xa0000000
+                dma-ranges = <0x03000000 0x00000000 0x00000000
                               0x00 0x00000000
-                              0x00 0x10000000>;
+                              0x00 0x40000000>;
                     interrupt-parent = <&gic>;
                 interrupts = <29 2>;
                 interrupt-map-mask = <0000 0 0 7>;
@@ -343,9 +342,9 @@
                           0x00 0x10000000>;
                 /* Inbound ranges */
                 /* < <3-cell PCI addr> <2-cell CPU addr> <2-cell size> > */
-                dma-ranges = <0x03000000 0x00000000 0xb0000000
+                dma-ranges = <0x03000000 0x00000000 0x00000000
                              0x00 0x00000000
-                              0x00 0x10000000>;
+                              0x00 0x40000000>;
                 interrupt-parent = <&gic>;
                 interrupts = <72 2>;
                 interrupt-map-mask = <0000 0 0 7>;
@@ -379,9 +378,9 @@
                           0x00 0x10000000>;
                 /* Inbound ranges */
                 /* < <3-cell PCI addr> <2-cell CPU addr> <2-cell size> > */
-                dma-ranges = <0x03000000 0x00000000 0xc0000000
+                dma-ranges = <0x03000000 0x00000000 0x00000000
                               0x00 0x00000000
-                              0x00 0x10000000>;
+                              0x00 0x40000000>;
 
                 interrupt-parent = <&gic>;
                 interrupts = <73 2>;
