@@ -323,7 +323,7 @@ AI2C_RETURN_LABEL
 	return ai2cStatus;
 }
 
-int ai2c_bus_block_read8_axm5500(
+static int ai2c_bus_block_read8_axm5500(
 	struct ai2c_priv	       *priv,
 	u32    regionId,
 	struct i2c_adapter *adap,
