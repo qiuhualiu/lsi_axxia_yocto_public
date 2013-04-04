@@ -155,9 +155,11 @@ static void gic_mask_irq(struct irq_data *d)
 	if (irqid >= 1020)
 		return;
 
-	/* We should never be disabling the AXM IPI interrupts. */
-	if ((irqid >= IPI0_CPU0) && (irqid < MAX_AXM_IPI_NUM))
+	/* Deal with PPI interrupts directly. */
+	if (irqid > 16 && irqid < 32) {
+		_gic_mask_irq(d);
 		return;
+	}
 
 	/*
 	 * If the cpu that this interrupt is assigned to falls within
@@ -182,20 +184,52 @@ static void gic_mask_irq(struct irq_data *d)
 	}
 }
 
-static void gic_unmask_irq(struct irq_data *d)
+static void _gic_unmask_irq(void *arg)
 {
+	struct irq_data *d = (struct irq_data *)arg;
 	u32 mask = 1 << (gic_irq(d) % 32);
 
-	/*
-	 * No need to run this at all clusters, since the kernel
-	 * also calls gic_set_affinity when unmasking interrupts.
-	 * In that routine we also unmask the interrupt, so doing
-	 * it here would be redundant.
-	 */
 	raw_spin_lock(&irq_controller_lock);
 	writel_relaxed(mask, gic_dist_base(d) + GIC_DIST_ENABLE_SET
-			+ (gic_irq(d) / 32) * 4);
+				+ (gic_irq(d) / 32) * 4);
 	raw_spin_unlock(&irq_controller_lock);
+}
+
+static void gic_unmask_irq(struct irq_data *d)
+{
+	u32 pcpu = cpu_logical_map(smp_processor_id());
+	u32 irqid = gic_irq(d);
+
+	if (irqid >= 1020)
+		return;
+
+	/* Deal with PPI interrupts directly. */
+	if (irqid > 15 && irqid < 32) {
+		_gic_unmask_irq(d);
+		return;
+	}
+
+	/*
+	 * If the cpu that this interrupt is assigned to falls within
+	 * the same cluster as the cpu we're currently running on, do
+	 * the IRQ masking directly. Otherwise, use the IPI mechanism
+	 * to remotely do the masking.
+	 */
+	if ((cpu_logical_map(irq_cpuid[irqid]) / 4) == (pcpu / 4)) {
+		_gic_unmask_irq(d);
+	} else {
+		/*
+		 * We are running here with local interrupts
+		 * disabled. Temporarily re-enable them to
+		 * avoid possible deadlock when calling
+		 * smp_call_function_single().
+		 */
+		local_irq_enable();
+		smp_call_function_single(irq_cpuid[irqid],
+					 _gic_unmask_irq,
+					 d, 1);
+		local_irq_disable();
+	}
 }
 
 static void gic_eoi_irq(struct irq_data *d)
