@@ -14,6 +14,7 @@
 #include <linux/device.h>
 #include <linux/io.h>
 #include <linux/jiffies.h>
+#include <linux/of.h>
 #include <linux/of_fdt.h>
 #include <asm/smp_plat.h>
 #include <asm/cacheflush.h>
@@ -125,52 +126,30 @@ int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 	return pen_release != -1 ? -ENOSYS : 0;
 }
 
-static int __init axxia_dt_cpus_num(unsigned long node, const char *uname,
-		int depth, void *data)
-{
-	static int prev_depth = -1;
-	static int nr_cpus = -1;
-
-	if (prev_depth > depth && nr_cpus > 0)
-		return nr_cpus;
-
-	if (nr_cpus < 0 && strcmp(uname, "cpus") == 0)
-		nr_cpus = 0;
-
-	if (nr_cpus >= 0) {
-		const char *device_type = of_get_flat_dt_prop(node,
-				"device_type", NULL);
-
-		if (device_type && strcmp(device_type, "cpu") == 0)
-			nr_cpus++;
-	}
-
-	prev_depth = depth;
-
-	return 0;
-}
-
 /*
  * Initialise the CPU possible map early - this describes the CPUs
  * which may be present or become present in the system.
  */
 void __init smp_init_cpus(void)
 {
-	int ncores = 0, i;
+	int ncores = 0;
+	struct device_node *np;
+	u32 cpu_num;
 
-	ncores = of_scan_flat_dt(axxia_dt_cpus_num, NULL);
-
-	if (ncores < 2)
-		return;
-
-	if (ncores > nr_cpu_ids) {
-		pr_warn("SMP: %u cores greater than maximum (%u), clipping\n",
+	for_each_node_by_name(np, "cpu") {
+		if (++ncores > nr_cpu_ids) {
+			pr_warn("SMP: More cores (%u) in DTB than max (%u)\n",
 				ncores, nr_cpu_ids);
-		ncores = nr_cpu_ids;
+			break;
+		}
+		if (!of_property_read_u32(np, "reg", &cpu_num)) {
+			if (cpu_num >= 0 && cpu_num < 16)
+				set_cpu_possible(cpu_num, true);
+			else
+				pr_warn("SMP: Invalid cpu number (%u)\n",
+					 cpu_num);
+		}
 	}
-
-	for (i = 0; i < ncores; ++i)
-		set_cpu_possible(i, true);
 
 	set_smp_cross_call(axxia_gic_raise_softirq);
 }
