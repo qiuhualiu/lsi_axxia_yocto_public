@@ -165,7 +165,7 @@ extern int AI2C_MSG_TRACE_LEVEL;
 #define AI2C_EDEV_BUS_ENFORCE_ORDERING()
 
 #define AI2C_BUS_READ8(addr) \
-	readb((volatile u8 *) (addr))
+	readb((volatile u8 __iomem *) (addr))
 
 #define AI2C_BUS_READ16_ENDIAN(endian, addr) \
 	in_##endian##16((volatile u16 __iomem *) (addr))
@@ -193,7 +193,7 @@ extern int AI2C_MSG_TRACE_LEVEL;
 
 
 #define AI2C_BUS_WRITE8(addr, data) \
-	writeb((data), (volatile u8 *) (addr))
+	writeb((data), (volatile u8 __iomem *) (addr))
 
 #define AI2C_BUS_WRITE16_ENDIAN(endian, addr, data) \
 	do { \

@@ -809,7 +809,7 @@ AI2C_RETURN_LABEL
 				for (i = 0; i < AI2C_DEV_PAGE_END_MARKER; i++)
 					if (priv->pageAddr[i] != 0)
 						iounmap(
-						    (void *)priv->pageAddr[i]);
+						    (void __iomem *)priv->pageAddr[i]);
 				ai2c_free(priv->pageAddr);
 			}
 			ai2c_free(priv);
@@ -830,7 +830,7 @@ int ai2c_memDestroy(struct ai2c_priv *inPriv)
 		if (inPriv->pageAddr) {
 			for (i = 0; i < AI2C_DEV_PAGE_END_MARKER; i++)
 				if (inPriv->pageAddr[i] != 0)
-					iounmap((void *)inPriv->pageAddr[i]);
+					iounmap((void __iomem *)inPriv->pageAddr[i]);
 
 			ai2c_free(inPriv->pageAddr);
 		}
