@@ -28,8 +28,6 @@
 #include <linux/msi.h>
 
 #define AXXIA55xx_NUM_MSI_IRQS 256
-static DECLARE_BITMAP(msi_irq_in_use, AXXIA55xx_NUM_MSI_IRQS);
-
 
 #undef PRINT_CONFIG_ACCESSES
 /*#define PRINT_CONFIG_ACCESSES*/
@@ -510,7 +508,9 @@ int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 	int i, num_pages, err;
 	u32 mpage_lower, pciah, pcial;
 	u64 size, bar0_size;
-	void __iomem *cfg_addr, *cfg_data, *tpage_base;
+	void __iomem *cfg_addr = NULL;
+	void __iomem *cfg_data = NULL;
+	void __iomem *tpage_base;
 	int mappedIrq;
 	u32 inbound_size;
 
@@ -556,7 +556,8 @@ int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 		goto fail;
 	}
 	port->cfg_addr = cfg_addr;
-	printk("cfg_addr for port %d = 0x%8x\n", port->index, port->cfg_addr);
+	printk(KERN_INFO "cfg_addr for port %d = 0x%8x\n", port->index,
+		(unsigned int)port->cfg_addr);
 	pci_config = readl(cfg_addr);
 #ifdef PRINT_CONFIG_ACCESSES
 	printk(KERN_INFO "pci_vendor = 0x%08x\n", pci_config);
@@ -755,7 +756,7 @@ static void __devinit axxia_pcie_msi_enable(struct pci_dev *dev)
 
 			if ((!dma_set_coherent_mask(&dev->dev,
 				DMA_BIT_MASK(64))) ||
-				(!dma_set_coherent_mask(dev,
+				(!dma_set_coherent_mask(&dev->dev,
 				DMA_BIT_MASK(32)))) {
 				msi_virt = dma_alloc_coherent(&dev->dev,
 					1024, &(port->msi_phys), GFP_KERNEL);
@@ -802,7 +803,7 @@ DECLARE_PCI_FIXUP_HEADER(PCI_ANY_ID, PCI_ANY_ID, axxia_pcie_msi_enable);
 
 /* Port definition struct
  * Please note: PEI core#1 is not used in AXM5500 */
-static struct hw_pci axxia_pcie_hw[] = {
+static struct hw_pci __refdata axxia_pcie_hw[] = {
 	[0] = {
 		.nr_controllers = 1,
 		.domain = 0,
@@ -848,7 +849,7 @@ void __init axxia_pcie_init(void)
 static void axxia_probe_pciex_bridge(struct device_node *np)
 {
 	struct axxia_pciex_port *port;
-	const u32 pval;
+	u32 pval;
 	int portno;
 	const char *val;
 	const u32 *field;
@@ -856,6 +857,7 @@ static void axxia_probe_pciex_bridge(struct device_node *np)
 	int pna = of_n_addr_cells(np);
 	int num = pna + 5;
 	u64 size;
+	u64 pci_addr;
 
 	/* Get the port number from the device-tree */
 	if (!of_property_read_u32(np, "port", &pval)) {
@@ -922,7 +924,7 @@ static void axxia_probe_pciex_bridge(struct device_node *np)
 	if (field == NULL)
 		printk("not able to get ranges\n");
 
-	u64 pci_addr = of_read_number(field + 1, 2);
+	pci_addr = of_read_number(field + 1, 2);
 	printk(KERN_INFO "pci_addr = 0x%012llx\n", pci_addr);
 	port->pci_addr = pci_addr;
 
