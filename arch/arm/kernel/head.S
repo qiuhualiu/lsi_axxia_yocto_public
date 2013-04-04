@@ -289,6 +289,9 @@ __create_page_tables:
 #else
 	orr	r3, r3, #PMD_SECT_XN
 #endif
+#ifdef CONFIG_ARCH_AXXIA
+	orr	r7, r7, #0x20
+#endif
 1:	str	r3, [r0], #4
 #ifdef CONFIG_ARM_LPAE
 	str	r7, [r0], #4
