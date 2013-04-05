@@ -167,7 +167,6 @@ static int ai2c_master_xfer(
 		}
 	}
 
-ai2c_return:
 	AI2C_LOG(AI2C_MSG_EXIT, ">>>Exit ai2c_master_xfer %d\n", err);
 	return err;
 }
