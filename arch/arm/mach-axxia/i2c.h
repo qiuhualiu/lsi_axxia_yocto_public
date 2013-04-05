@@ -23,23 +23,13 @@
 
 
 /*
- * Minimum number of I2C busses to expect for an AXXIA platform.
- * Runtime checks will determine the actual number of busses that
- * are present depending upon chip type / chip version / etc.
+ * Default bus id to expect for an AXXIA platform.
  */
 #define ARCH_AXXIA_MAX_I2C_BUSSES       1
 #define ARCH_AXXIA_MAX_I2C_BUS_NR       2
 
-/*
- * Maximum byte size of I2C bus name string including null terminator
- */
-#define MAX_AXXIA_I2C_HWMOD_NAME_LEN    16
-
-
-#define AXXIA_I2C_SIZE                  0x0000003f
-#define AXXIA1_I2C_BASE                 0x00000000
-
 
 extern int axxia_register_i2c_busses(void);
+
 
 #endif /* __ASM__ARCH_AXXIA_I2C_H */
