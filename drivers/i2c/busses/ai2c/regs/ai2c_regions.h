@@ -49,8 +49,7 @@
 
 
 #define AI2C_REGION_ID(node, target) \
-	((u32) \
-	((((node) & AI2C_NODE_MASK) << 16) | ((target) & AI2C_TARGET_MASK)))
+	((((node) & AI2C_NODE_MASK) << 16) | ((target) & AI2C_TARGET_MASK))
 
 
 /* ---------------------------------- */
