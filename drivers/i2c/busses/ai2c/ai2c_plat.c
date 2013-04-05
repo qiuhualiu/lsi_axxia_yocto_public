@@ -50,7 +50,7 @@
 #define AI2C_CHIP_VER=<verNum>
 */
 
-#include "ai2c_plat_pvt.h"
+#include "ai2c_bus.h"
 #include "regs/ai2c_cfg_node_reg_defines.h"
 #include "regs/ai2c_cfg_node_regs.h"
 #include "asm/lsi/acp_ncr.h"
@@ -64,199 +64,56 @@
  *
  * IMPORTANT: ALL BUS GROUPINGS MUST BE MAINTAINED
  */
-/* Note: This table now contains the length of the block for wrap checking
- *       and such (when implemented).  Note that each table is arranged in
- *       order of the "AI2C_DEV_PAGE_xxx" enumeration.
- */
-static struct ai2c_dev_page ai2c_dev_page_34xx[AI2C_DEV_PAGE_END_MARKER] = {
-	/* Begin: I2C_0 */
+static struct ai2c_dev_page_s ai2c_dev_page[AI2C_DEV_PAGE_END_MARKER] = {
 	{
-		AI2C_DEV_PAGE_I2C_0, "AXXIA_I2C", 0x02000403000ULL,
+		AI2C_DEV_PAGE_I2C_0, "AXXIA_I2C0", 0, 0x00000000000ULL,
 		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_acp3400_cfg
+		AI2C_PAGE_FLAGS_I2CBUS, NULL,
 	},
 	{
-		AI2C_DEV_PAGE_END_MARKER, NULL, 0x00000000000ULL, 0, 0,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_END_MARKER, NULL, 0x00000000000ULL, 0, 0,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_END_MARKER, NULL, 0x00000000000ULL, 0, 0,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_GPIO_0, NULL, 0x02000400000ULL, /*aka APB1/GPIO0*/
+		AI2C_DEV_PAGE_I2C_1, "AXXIA_I2C1", 0, 0x00000000000ULL,
 		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
+		AI2C_PAGE_FLAGS_I2CBUS, NULL,
 	},
 	{
-		AI2C_DEV_PAGE_RESET_CTRL, NULL, 0x02000003800ULL,
-		AI2C_DEV_SIZE_1KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_TIMER, NULL, 0x02000408000ULL,
+		AI2C_DEV_PAGE_I2C_2, "AXXIA_I2C2", 0, 0x00000000000ULL,
 		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
+		AI2C_PAGE_FLAGS_I2CBUS, NULL,
 	},
 	{
-		AI2C_DEV_PAGE_GPREG, NULL, 0x0200040C000ULL,
+		AI2C_DEV_PAGE_I2C_3, "AXXIA_SMB", 0, 0x00000000000ULL,
 		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
+		AI2C_PAGE_FLAGS_I2CBUS, NULL,
 	},
-	/* End: I2C_0 */
+	{
+		AI2C_DEV_PAGE_END_MARKER, NULL, 0, 0x00000000000ULL, 0, 0,
+		AI2C_PAGE_FLAGS_NONE, NULL,
+	},
+	{
+		AI2C_DEV_PAGE_END_MARKER, NULL, 0, 0x00000000000ULL, 0, 0,
+		AI2C_PAGE_FLAGS_NONE, NULL,
+	},
+	{
+		AI2C_DEV_PAGE_END_MARKER, NULL, 0, 0x00000000000ULL, 0, 0,
+		AI2C_PAGE_FLAGS_NONE, NULL,
+	},
+	{
+		AI2C_DEV_PAGE_END_MARKER, NULL, 0, 0x00000000000ULL, 0, 0,
+		AI2C_PAGE_FLAGS_NONE, NULL,
+	},
 };
 
-static struct ai2c_dev_page ai2c_dev_page_25xx[AI2C_DEV_PAGE_END_MARKER] = {
-	/* Begin: I2C_0, I2C_1 */
-	{
-		AI2C_DEV_PAGE_I2C_0, "AXXIA_I2C0", 0x02000427000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_acp3400_cfg
-	},
-	{
-		AI2C_DEV_PAGE_I2C_1, "AXXIA_I2C1", 0x02000428000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_acp3400_cfg},
-	{
-		AI2C_DEV_PAGE_END_MARKER, NULL, 0x00000000000ULL, 0, 0,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_END_MARKER, NULL, 0x00000000000ULL, 0, 0,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_GPIO_0, NULL, 0x02000420000ULL,/*aka APB1/GPIO0*/
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_RESET_CTRL, NULL, 0x02000005c00ULL,
-		AI2C_DEV_SIZE_1KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_TIMER, NULL, 0x02000429000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_GPREG, NULL, 0x02000400000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	/* End: I2C_0, I2C_1 */
+static struct ai2c_dev_chip_entry_s ai2c_chip_id[] = {
+	{ AI2C_CHIP_ACP55xx, "AXM55xx", 4, &ai2c_axm5500_cfg, },
+	{ AI2C_CHIP_ACP35xx, "AXM35xx", 3, &ai2c_axm5500_cfg, },
 };
 
-static struct ai2c_dev_page ai2c_dev_page_55xx[AI2C_DEV_PAGE_END_MARKER] = {
-	/* Begin: I2C_0, I2C_1, I2C_2, I2C_3 (SMB) */
-	{
-		AI2C_DEV_PAGE_I2C_0, "AXXIA_I2C0", 0x02010084000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_axm5500_cfg
-	},
-	{
-		AI2C_DEV_PAGE_I2C_1, "AXXIA_I2C1", 0x02010085000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_axm5500_cfg
-	},
-	{
-		AI2C_DEV_PAGE_I2C_2, "AXXIA_I2C2", 0x02010086000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_axm5500_cfg
-	},
-	{
-		AI2C_DEV_PAGE_I2C_3, "AXXIA_SMB", 0x02010087000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_axm5500_cfg
-	},
-	{
-		AI2C_DEV_PAGE_GPIO_0, NULL, 0x02010092000ULL, /*aka APB1/GPIO1*/
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_RESET_CTRL, NULL, 0x02022060000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_TIMER, NULL, 0x02010091000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_GPREG, NULL, 0x02010094000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	/* End: I2C_1 */
-};
-
-static struct ai2c_dev_page ai2c_dev_page_35xx[AI2C_DEV_PAGE_END_MARKER] = {
-	/* Begin: I2C_0 */
-	{
-		AI2C_DEV_PAGE_I2C_0, "AXXIA_I2C0", 0x02000426000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_axm5500_cfg
-	},
-	{
-		AI2C_DEV_PAGE_I2C_1, "AXXIA_I2C1", 0x02000427000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_axm5500_cfg
-	},
-	{
-		AI2C_DEV_PAGE_I2C_2, "AXXIA_I2C2", 0x02000428000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_I2CBUS, &ai2c_axm5500_cfg
-	},
-	{
-		AI2C_DEV_PAGE_END_MARKER, NULL, 0x00000000000ULL, 0, 0,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_GPIO_0, NULL, 0x02000420000ULL, /*aka APB1/GPIO0*/
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_RESET_CTRL, NULL, 0x02000003800ULL,
-		AI2C_DEV_SIZE_1KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_TIMER, NULL, 0x02000429000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	{
-		AI2C_DEV_PAGE_GPREG, NULL, 0x02000400000ULL,
-		AI2C_DEV_SIZE_4KB, AI2C_DEV_ACCESS_LITTLE_ENDIAN,
-		AI2C_PAGE_FLAGS_NONE, NULL
-	},
-	/* End: I2C_0 */
-};
-
-static struct ai2c_dev_page_entry ai2c_dev_page_index[] = {
-	{ AI2C_CHIP_ACP34xx, "ACP34xx", FALSE, ai2c_dev_page_34xx, 2, },
-	{ AI2C_CHIP_ACP32xx, "ACP32xx", FALSE, ai2c_dev_page_34xx, 2, },
-	{ AI2C_CHIP_ACP25xx, "ACP25xx", FALSE, ai2c_dev_page_25xx, 2, },
-	{ AI2C_CHIP_ACP55xx, "AXM55xx", TRUE, ai2c_dev_page_55xx, 4, },
-	{ AI2C_CHIP_ACP35xx, "AXM35xx", TRUE, ai2c_dev_page_35xx, 3, },
-};
-
-static int ai2c_dev_page_index_cnt = sizeof(ai2c_dev_page_index) /
-				     sizeof(struct ai2c_dev_page_entry);
+static u32 ai2c_chip_id_count = sizeof(ai2c_chip_id)/
+				sizeof(struct ai2c_dev_chip_entry_s);
 
 	/* Region Map
-	 *   Note: Must be same number of entries (and in same order) in the
-	 *	 arrays of type 'ai2c_dev_page_entry_t' above.  Note that
-	 *	 each table is arranged in order of the "AI2C_DEV_PAGE_xxx"
-	 *	 enumeration.
+	 *   Note: Must be same number of entries (and in same order) as
+	 *	 the "AI2C_DEV_PAGE_xxx" enumeration.
 	 */
 
 static struct ai2c_access_map ai2cDummyRegionMap[] = AI2C_DUMMY_REGION_MAP_INIT;
@@ -385,7 +242,8 @@ int ai2c_dev_direct_read(
 		for (i = 0; i < count; i++, busAddr += 4, offset += 4) {
 			buffer[i] = AI2C_BUS_READ32(busAddr, endianness);
 			AI2C_MSG(AI2C_MSG_IOR,
-				"direct_read: region=%x offset = %llx busAddr=%lx v=%x\n",
+				"direct_read: region=%x offset = %llx "
+				"busAddr=%lx v=%x\n",
 				region->regionId, offset, busAddr, buffer[i]);
 		}
 		break;
@@ -457,7 +315,8 @@ int ai2c_dev_direct_write(
 		for (i = 0; i < count; i++, busAddr += 4, offset += 4) {
 			AI2C_BUS_WRITE32(busAddr, buffer[i], endianness);
 			AI2C_MSG(AI2C_MSG_IOW,
-				"direct_write: region=%x offset=%llx busAddr=%lx v=%x\n",
+				"direct_write: region=%x offset=%llx "
+				"busAddr=%lx v=%x\n",
 				region->regionId, offset, busAddr, buffer[i]);
 		}
 		break;
@@ -468,7 +327,8 @@ int ai2c_dev_direct_write(
 			for (i = 0; i < count; i++, busAddr += 2) {
 				AI2C_BUS_WRITE16(busAddr, buf16[i], endianness);
 				AI2C_MSG(AI2C_MSG_IOW,
-					"direct_write: region=%x offset=%llx busAddr=%lx v=%x\n",
+					"direct_write: region=%x offset=%llx "
+					"busAddr=%lx v=%x\n",
 					region->regionId,
 					offset, busAddr, buf16[i]);
 			}
@@ -480,7 +340,8 @@ int ai2c_dev_direct_write(
 			for (i = 0; i < count; i++, busAddr++) {
 				AI2C_BUS_WRITE8(busAddr, buf8[i]);
 				AI2C_MSG(AI2C_MSG_IOW,
-					"direct_write: region=%x offset=%llx busAddr=%lx v=%x\n",
+					"direct_write: region=%x offset=%llx "
+					"busAddr=%lx v=%x\n",
 					region->regionId,
 					offset, busAddr, buf8[i]);
 			}
@@ -622,9 +483,10 @@ int ai2c_dev_dcr_write(
 
 static int ai2c_getChipType(struct ai2c_priv *priv)
 {
-	int                  ai2cStatus = AI2C_ST_SUCCESS;
+	int            ai2cStatus = AI2C_ST_SUCCESS;
+	u32	       i;
 #ifdef CONFIG_LSI_UBOOTENV
-	ai2c_bool_t                has_ECID = TRUE;
+	ai2c_bool_t    has_ECID = TRUE;
 	u32	       rev_reg;
 	u32	       pt_reg;
 	ai2c_cfg_node_node_cfg_r_t  node_cfg;
@@ -707,20 +569,32 @@ static int ai2c_getChipType(struct ai2c_priv *priv)
 	}
 #endif
 
-	AI2C_LOG(AI2C_MSG_INFO, "AI2C %d.%d.%d %s\n",
+	for (i = 0; i < ai2c_chip_id_count; i++) {
+		if (ai2c_chip_id[i].chipType == priv->hw_rev.chipType) {
+			priv->busCfg = &ai2c_chip_id[i];
+			priv->numActiveBusses = ai2c_chip_id[i].numActiveBusses;
+		}
+	}
+	if (priv->busCfg == NULL) {
+		ai2cStatus = -ENXIO;
+		goto ai2c_return;
+	}
+
+	AI2C_LOG(AI2C_MSG_INFO, "%s %d.%d.%d %s\n",
+		priv->busCfg->chipName,
 		priv->hw_rev.chipType, priv->hw_rev.chipVersion,
 		priv->hw_rev.packageType,
 		(priv->hw_rev.isFpga) ? "FPGA" : "ASIC");
 
-AI2C_RETURN_LABEL
+ai2c_return:
 	return ai2cStatus;
 }
 
-int ai2c_memSetup(struct ai2c_priv **outPriv)
+int ai2c_stateSetup(
+    struct ai2c_priv           **outPriv)
 {
-	int           ai2cStatus = AI2C_ST_SUCCESS;
+	int                     ai2cStatus = AI2C_ST_SUCCESS;
 	struct ai2c_priv        *priv = NULL;
-	int                 i;
 
 	/* Now for the private memory for this module. */
 	priv = ai2c_malloc(sizeof(struct ai2c_priv));
@@ -737,71 +611,115 @@ int ai2c_memSetup(struct ai2c_priv **outPriv)
 	if (ai2cStatus != AI2C_ST_SUCCESS)
 		goto ai2c_return;
 
-	/* What is the page mapping scheme for this platform? */
-	for (i = 0; i < ai2c_dev_page_index_cnt; i++) {
+ai2c_return:
+	if (ai2cStatus != AI2C_ST_SUCCESS)
+		(*outPriv) = NULL;
+	else
+		(*outPriv) = priv;
 
-		if (ai2c_dev_page_index[i].chipType == priv->hw_rev.chipType) {
-			priv->pages = ai2c_dev_page_index[i].pages;
-			priv->busCfg = &ai2c_dev_page_index[i];
-			priv->numActiveBusses =
-				ai2c_dev_page_index[i].numActiveBusses;
-		}
-	}
-	if (priv->pages == NULL) {
+	return ai2cStatus;
+}
+
+int ai2c_memSetup(
+    struct platform_device      *pdev,
+    struct ai2c_priv            *priv)
+{
+	int                     ai2cStatus = AI2C_ST_SUCCESS;
+	struct axxia_i2c_bus_platform_data  *pdata;
+	u32                     busNdx;
+	int                     i;
+
+	/* Where is the current I2C device found on this platform? */
+	pdata = (struct axxia_i2c_bus_platform_data *) pdev->dev.platform_data;
+	if (pdata == NULL) {
 		AI2C_LOG(AI2C_MSG_ERROR,
-			"Can't select memory cfg for chip ver %d\n",
-			priv->hw_rev.chipType);
+			"Can't find platform-specific data!\n");
+		ai2cStatus = -ENXIO;
+		goto ai2c_return;
+	}
+	busNdx = pdata->index;
+
+	priv->pages = ai2c_dev_page;
+
+	if (busNdx > (priv->numActiveBusses-1)) {
+		AI2C_LOG(AI2C_MSG_ERROR, "Invalid I2C bus index (%d)\n",
+			busNdx);
 		ai2cStatus = -ENXIO;
 		goto ai2c_return;
 	}
 
+	priv->pages[busNdx].busName = &pdata->name[0];
+	priv->pages[busNdx].bus_nr  = pdata->bus_nr;
+	priv->pages[busNdx].busAddr = pdata->dev_space.start;
+	priv->pages[busNdx].size    =
+		pdata->dev_space.end - pdata->dev_space.start + 1;
+	priv->pages[busNdx].pdata   = pdata;
+
+	AI2C_LOG(AI2C_MSG_DEBUG,
+		"[%d] ba=0x%010llx (%llx, %llx) sz=0x%x\n",
+		busNdx,
+		priv->pages[busNdx].busAddr,
+		pdata->dev_space.start, pdata->dev_space.end,
+		priv->pages[busNdx].size);
+
+	/*
+	* Interrupt for this bus is in priv->pdata[i].int_space.start
+	*/
+
+
 	/*
 	* Program Address Map driver tables
-	*   Set up the base offsets for SRIO RAB and GRIO access via paged
-	*   PLB access.
 	*/
-	priv->pageAddr =
-		ai2c_malloc(AI2C_DEV_PAGE_END_MARKER * sizeof(u32));
 	if (priv->pageAddr == NULL) {
-		AI2C_LOG(AI2C_MSG_ERROR,
-			"Could not allocate AI2C pageAddr memory!\n");
-		ai2cStatus = -ENOMEM;
-		goto ai2c_return;
+		priv->pageAddr =
+			ai2c_malloc(AI2C_DEV_PAGE_END_MARKER * sizeof(u32));
+		if (priv->pageAddr == NULL) {
+			AI2C_LOG(AI2C_MSG_ERROR,
+				"Could not allocate AI2C pageAddr memory!\n");
+			ai2cStatus = -ENOMEM;
+			goto ai2c_return;
+		}
+		memset(priv->pageAddr, 0,
+			AI2C_DEV_PAGE_END_MARKER * sizeof(u32));
 	}
-	memset(priv->pageAddr, 0,
-		AI2C_DEV_PAGE_END_MARKER * sizeof(u32));
+
 	for (i = 0; i < AI2C_DEV_PAGE_END_MARKER; i++) {
 
-		if (priv->pages[i].pageId != AI2C_DEV_PAGE_END_MARKER) {
-			priv->pageAddr[i] =
-				(u32) ioremap(priv->pages[i].busAddr,
-			priv->pages[i].size);
-			if (priv->pageAddr[i] == 0) {
-				AI2C_LOG(AI2C_MSG_ERROR,
-					"Could not ioremap AI2C pageAddr memory %d!\n",
-					i);
-				ai2cStatus = -ENOMEM;
-				goto ai2c_return;
+		if (priv->pageAddr[i] ||
+		    (priv->pages[i].busAddr == 0) ||
+		    (priv->pages[i].size == 0) ||
+		    (priv->pages[i].pageId == AI2C_DEV_PAGE_END_MARKER))
+			continue;
 
-			} else {
-
-				AI2C_LOG(AI2C_MSG_DEBUG,
-					"Map page %d (%08x) / %llx for %x => %x\n",
-					priv->pages[i].pageId,
-					ai2c_page_to_region(priv,
-					priv->pages[i].pageId),
-					(unsigned long long)
-						priv->pages[i].busAddr,
-					priv->pages[i].size,
-					priv->pageAddr[i]);
-			}
+		priv->pageAddr[i] =
+			(u32) ioremap(priv->pages[i].busAddr,
+					priv->pages[i].size);
+		if (priv->pageAddr[i] == 0) {
+			AI2C_LOG(AI2C_MSG_ERROR,
+				"Could not ioremap AI2C pageAddr memory %d!\n",
+				i);
+			AI2C_LOG(AI2C_MSG_DEBUG,
+				"ba=0x%010llx sz=0x%x\n",
+				priv->pages[i].busAddr,
+				priv->pages[i].size);
+			ai2cStatus = -ENOMEM;
+			goto ai2c_return;
+		} else {
+			AI2C_LOG(AI2C_MSG_DEBUG,
+				"Map page %d (%08x) / %llx for %x => %x\n",
+				priv->pages[i].pageId,
+				ai2c_page_to_region(priv,
+						priv->pages[i].pageId),
+				(unsigned long long) priv->pages[i].busAddr,
+				priv->pages[i].size,
+				priv->pageAddr[i]);
 		}
 	}
 
 	AI2C_SPINLOCK_INIT(&priv->regLock);
 	AI2C_SPINLOCK_INIT(&priv->ioLock);
 
-AI2C_RETURN_LABEL
+ai2c_return:
 
 	if (ai2cStatus != AI2C_ST_SUCCESS) {
 		if (priv) {
@@ -809,14 +727,13 @@ AI2C_RETURN_LABEL
 				for (i = 0; i < AI2C_DEV_PAGE_END_MARKER; i++)
 					if (priv->pageAddr[i] != 0)
 						iounmap(
-						    (void __iomem *)priv->pageAddr[i]);
+						    (void __iomem *)
+						    priv->pageAddr[i]);
 				ai2c_free(priv->pageAddr);
 			}
 			ai2c_free(priv);
 		}
-		(*outPriv) = NULL;
-	} else
-		(*outPriv) = priv;
+	}
 
 	return ai2cStatus;
 }
@@ -824,13 +741,13 @@ AI2C_RETURN_LABEL
 int ai2c_memDestroy(struct ai2c_priv *inPriv)
 {
 	int	    ai2cStatus = AI2C_ST_SUCCESS;
-	int             i;
+	int         i;
 
 	if (inPriv) {
 		if (inPriv->pageAddr) {
 			for (i = 0; i < AI2C_DEV_PAGE_END_MARKER; i++)
 				if (inPriv->pageAddr[i] != 0)
-					iounmap((void __iomem *)inPriv->pageAddr[i]);
+					iounmap((void *)inPriv->pageAddr[i]);
 
 			ai2c_free(inPriv->pageAddr);
 		}

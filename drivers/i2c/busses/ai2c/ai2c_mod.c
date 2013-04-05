@@ -52,7 +52,7 @@
 #define CONFIG_I2C
 */
 
-#include "ai2c_plat_pvt.h"
+#include "ai2c_bus.h"
 #include "regs/ai2c_cfg_node_reg_defines.h"
 #include "regs/ai2c_cfg_node_regs.h"
 #include "asm/lsi/acp_ncr.h"
@@ -102,7 +102,7 @@ static struct ai2c_priv *ai2cState;
 
 struct local_state {
 	struct i2c_adapter	  adapter;
-	struct i2c_client	   *client;
+	struct i2c_client	  *client;
 };
 
 static  struct local_state *ai2cModState;
@@ -114,7 +114,7 @@ static  struct local_state *ai2cModState;
 static int ai2c_master_xfer(
 	struct i2c_adapter  *adap,
 	struct i2c_msg       msgs[],
-	int		  num)
+	int		     num)
 {
 	u32  regionId = (u32) i2c_get_adapdata(adap);
 	struct ai2c_priv	 *priv = ai2cState;
@@ -135,8 +135,8 @@ static int ai2c_master_xfer(
 			strcat(buf, "mstRead:");
 #endif /* DATA_STREAM_DEBUG */
 
-			err = priv->pages[i].api->rdFn(priv, regionId,
-			adap, &msgs[i], stop);
+			err = priv->busCfg->api->rdFn(priv, regionId,
+						      adap, &msgs[i], stop);
 
 #ifdef DATA_STREAM_DEBUG
 			for (j = 0; j < msgs[i].len; j++) {
@@ -162,12 +162,12 @@ static int ai2c_master_xfer(
 			printk(KERN_INFO "%s\n", buf);
 #endif /* DATA_STREAM_DEBUG */
 
-			err = priv->pages[i].api->wrFn(priv, regionId,
-				adap, &msgs[i], stop);
+			err = priv->busCfg->api->wrFn(priv, regionId,
+						      adap, &msgs[i], stop);
 		}
 	}
 
-AI2C_RETURN_LABEL
+ai2c_return:
 	AI2C_LOG(AI2C_MSG_EXIT, ">>>Exit ai2c_master_xfer %d\n", err);
 	return err;
 }
@@ -189,82 +189,99 @@ static const struct i2c_algorithm ai2c_algorithm = {
  * Device Probe/Setup
  *****************************************************************************/
 
-#ifdef AI2C_PLATFORM_BUILD
 static int __devinit ai2c_probe(struct platform_device *pdev)
-#else
-static int __devinit ai2c_init(void)
-#endif
 {
-	int  ai2cStatus = AI2C_ST_SUCCESS;
-	struct ai2c_priv	 *priv = NULL;
-	int			  i;
+	int                     ai2cStatus = AI2C_ST_SUCCESS;
+	struct ai2c_priv	*priv = NULL;
+	struct axxia_i2c_bus_platform_data  *pdata;
+	u32                     busNdx;
+	u32                     rid;
 
 	/* Initialization of externals, initial state */
 	AI2C_MSG_TRACE_LEVEL = (AI2C_MSG_INFO | AI2C_MSG_ERROR);
 	ai2c_chip_ver = -1;
-	ai2cState = NULL;
 
 	AI2C_LOG(AI2C_MSG_ENTRY, ">>>Enter ai2c_probe/init\n");
 
-	AI2C_CALL(ai2c_memSetup(&priv));
-	ai2cState = priv;
-
-	/* Hook up bus driver(s) and devices to tree */
-	ai2cModState =
-		ai2c_malloc(priv->numActiveBusses * sizeof(struct local_state));
-	if (!ai2cModState) {
-		ai2cStatus = -ENOMEM;
-		goto exit_release;
+	/* Global state across all of the same kind of platforms */
+	if (ai2cState == NULL) {
+		AI2C_CALL(ai2c_stateSetup(&priv));
+		ai2cState = priv;
+	} else {
+		priv = ai2cState;
 	}
-	memset(ai2cModState, 0,
-		priv->numActiveBusses * sizeof(struct local_state));
 
-	for (i = 0; i < priv->numActiveBusses; i++) {
-		u32 rid;
-
-		if (priv->pages[i].busName == NULL)
-			continue;
-
-		rid = ai2c_page_to_region(priv, priv->pages[i].pageId);
-		i2c_set_adapdata(&ai2cModState[i].adapter, (void *)rid);
-
-		snprintf(ai2cModState[i].adapter.name,
-			sizeof(ai2cModState[i].adapter.name),
-			"%s", ai2cState->pages[i].busName);
-		ai2cModState[i].adapter.algo = &ai2c_algorithm;
-		ai2cModState[i].adapter.owner = THIS_MODULE;
-		ai2cModState[i].adapter.class = I2C_CLASS_HWMON | I2C_CLASS_SPD;
-		ai2cModState[i].adapter.retries = 3;
-		/* Retry up to 3 times on lost
-		 * arbitration */
-#ifdef AI2C_PLATFORM_BUILD
-		ai2cModState[i].adapter.dev.parent = &pdev->dev;
-#else
-		ai2cModState[i].adapter.dev.parent  = NULL;
-#endif
-		ai2cModState[i].adapter.dev.of_node = NULL;
-
-		/* Add I2C adapter to I2C tree */
-		ai2cStatus = i2c_add_adapter(&ai2cModState[i].adapter);
-		if (ai2cStatus) {
-			printk(KERN_ERR "Failed to add I2C adapter [%d]\n", i);
+	/* State memory for each instance of the platform */
+	if (ai2cModState == NULL) {
+		ai2cModState =
+			ai2c_malloc(priv->numActiveBusses *
+				    sizeof(struct local_state));
+		if (!ai2cModState) {
+			ai2cStatus = -ENOMEM;
 			goto exit_release;
 		}
-
-		/* Any detailed bus-specific initialization */
-		ai2cStatus = priv->pages[i].api->initFn(priv, rid);
-		if (ai2cStatus)
-			goto exit_release;
+		memset(ai2cModState, 0,
+			priv->numActiveBusses * sizeof(struct local_state));
 	}
 
-#ifdef AI2C_PLATFORM_BUILD
+	/* Associate this platform with the correct bus entry */
+	AI2C_CALL(ai2c_memSetup(pdev, priv));
+	pdata = (struct axxia_i2c_bus_platform_data *) pdev->dev.platform_data;
+	busNdx = pdata->index;
+
+	/* Hook up bus driver(s) and devices to tree */
+	if ((busNdx > (priv->numActiveBusses-1)) ||
+	    (priv->pages[busNdx].busName == NULL)) {
+		printk(KERN_ERR
+			"Invalid description for adding I2C adapter [%d]\n",
+			busNdx);
+		goto exit_release;
+	}
+	if (ai2cModState[busNdx].adapter.algo != NULL) {
+		printk(KERN_ERR
+			"Duplicate I2C bus %d description found\n", busNdx);
+		goto exit_release;
+	}
+
+	rid = ai2c_page_to_region(priv, priv->pages[busNdx].pageId);
+	i2c_set_adapdata(&ai2cModState[busNdx].adapter, (void *)rid);
+
+	snprintf(ai2cModState[busNdx].adapter.name,
+		sizeof(ai2cModState[busNdx].adapter.name),
+		"%s", ai2cState->pages[busNdx].busName);
+	ai2cModState[busNdx].adapter.algo = &ai2c_algorithm;
+	ai2cModState[busNdx].adapter.owner = THIS_MODULE;
+	ai2cModState[busNdx].adapter.class = I2C_CLASS_HWMON | I2C_CLASS_SPD;
+	ai2cModState[busNdx].adapter.retries = 3;
+		/* Retry up to 3 times on lost
+		 * arbitration */
+	ai2cModState[busNdx].adapter.dev.parent = &pdev->dev;
+	ai2cModState[busNdx].adapter.dev.of_node = NULL;
+
+	/* Add I2C adapter to I2C tree */
+	if (priv->pages[busNdx].bus_nr != (~0)) {
+		ai2cModState[busNdx].adapter.nr = priv->pages[busNdx].bus_nr;
+		ai2cStatus =
+			i2c_add_numbered_adapter(&ai2cModState[busNdx].adapter);
+	} else {
+		ai2cStatus = i2c_add_adapter(&ai2cModState[busNdx].adapter);
+	}
+	if (ai2cStatus) {
+		printk(KERN_ERR "Failed to add I2C adapter [%d]\n", busNdx);
+		goto exit_release;
+	}
+
+	/* Any detailed bus-specific initialization */
+	ai2cStatus = priv->busCfg->api->initFn(priv, rid);
+	if (ai2cStatus)
+		goto exit_release;
+
 	platform_set_drvdata(pdev, priv);
-#endif
 
 	AI2C_LOG(AI2C_MSG_EXIT, ">>>Exit ai2c_probe/init %d\n", 0);
 	return 0;
 
-AI2C_RETURN_LABEL
+ai2c_return:
 	if (ai2cStatus != -ENOMEM)
 		ai2cStatus = -ENOSYS;
 
@@ -275,11 +292,7 @@ exit_release:
 	return ai2cStatus;
 }
 
-#ifdef AI2C_PLATFORM_BUILD
 static int __devexit ai2c_remove(struct platform_device *dev)
-#else
-static void __devexit ai2c_exit(void)
-#endif
 {
 	int	 i;
 
@@ -302,20 +315,14 @@ static void __devexit ai2c_exit(void)
 		ai2c_memDestroy(ai2cState);
 	}
 
-#ifdef AI2C_PLATFORM_BUILD
 	platform_set_drvdata(dev, NULL);
-#endif
 
 	AI2C_LOG(AI2C_MSG_EXIT, ">>>Exit ai2c_remove/exit %d\n", 0);
 
-#ifdef AI2C_PLATFORM_BUILD
 	return 0;
-#endif
 }
 
 /* ------------------------------------------------------------------------- */
-
-#ifdef AI2C_PLATFORM_BUILD
 
 #define ai2c_suspend	NULL
 #define ai2c_resume	NULL
@@ -343,8 +350,6 @@ static void __exit ai2c_exit(void)
 	AI2C_LOG(AI2C_MSG_ENTRY, ">>>Enter ai2c_exit\n");
 	platform_driver_unregister(&ai2c_driver);
 }
-
-#endif  /* AI2C_PLATFORM_BUILD */
 
 module_init(ai2c_init);
 module_exit(ai2c_exit);

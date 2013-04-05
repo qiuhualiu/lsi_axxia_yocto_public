@@ -22,7 +22,8 @@
 
 /* #define EXTRA_DEBUG */
 
-#include "ai2c_plat_pvt.h"
+#include "ai2c_bus.h"
+#include "ai2c_plat.h"
 #include "ai2c_dev_clock_ext.h"
 #include "regs/ai2c_i2c_regs.h"
 #include "regs/ai2c_axi_timer_regs.h"
@@ -75,12 +76,14 @@ static int ai2c_bus_init_axm5500(struct ai2c_priv *priv,
 
 
 		AI2C_LOG(AI2C_MSG_DEBUG,
-			"bus_init_axm5500: 0x%04x.0x%04x.0x%x = 0x%08x (0x%08x)\n",
+			"bus_init_axm5500: 0x%04x.0x%04x.0x%x = 0x%08x "
+			"(0x%08x)\n",
 			AI2C_NODE_ID(inRegionId), AI2C_TARGET_ID(inRegionId),
 			AI2C_REG_I2C_X7_UDID_W7,
 			v0, AI2C_REG_I2C_X7_UDID_W7_DEFAULT);
 		AI2C_LOG(AI2C_MSG_DEBUG,
-			"bus_init_axm5500: 0x%04x.0x%04x.0x%x = 0x%08x (0x%08x)\n",
+			"bus_init_axm5500: 0x%04x.0x%04x.0x%x = 0x%08x "
+			"(0x%08x)\n",
 			AI2C_NODE_ID(inRegionId), AI2C_TARGET_ID(inRegionId),
 			AI2C_REG_I2C_X7_UDID_W4,
 			v1, AI2C_REG_I2C_X7_UDID_W4_DEFAULT);
@@ -140,7 +143,7 @@ static int ai2c_bus_init_axm5500(struct ai2c_priv *priv,
 	AI2C_CALL(ai2c_dev_write32(priv, inRegionId,
 		AI2C_REG_I2C_X7_WAIT_TIMER_CONTROL, 0x00008989));
 
-AI2C_RETURN_LABEL
+ai2c_return:
 
 	AI2C_LOG(AI2C_MSG_EXIT,
 		"bus_init_axm5500: exit (%d)\n", ai2cStatus);
@@ -315,7 +318,7 @@ static int ai2c_bus_block_read8_axm5500_internal(
 		buffer[0], buffer[1], buffer[2], buffer[3],
 		buffer[4], buffer[5], buffer[6], buffer[7]);
 
-AI2C_RETURN_LABEL
+ai2c_return:
 
 	AI2C_LOG(AI2C_MSG_EXIT,
 		"read8_i: exit; st=%d; rcvd=%d\n", ai2cStatus, (*actCount));
@@ -323,7 +326,7 @@ AI2C_RETURN_LABEL
 	return ai2cStatus;
 }
 
-static int ai2c_bus_block_read8_axm5500(
+int ai2c_bus_block_read8_axm5500(
 	struct ai2c_priv	       *priv,
 	u32    regionId,
 	struct i2c_adapter *adap,
@@ -367,7 +370,7 @@ static int ai2c_bus_block_read8_axm5500(
 		bytesRead += actCount;
 	}
 
-AI2C_RETURN_LABEL
+ai2c_return:
 
 	AI2C_LOG(AI2C_MSG_EXIT,
 		"read8: exit; st=%d l=%d\n", ai2cStatus, actCount);
@@ -542,7 +545,7 @@ static int ai2c_bus_block_write8_axm5500_internal(
 
 	(*actCount) = (numInFifo & 0xFF);
 
-AI2C_RETURN_LABEL
+ai2c_return:
 
 	AI2C_LOG(AI2C_MSG_EXIT,
 		"write8_i: exit; st=%d; num of bytes sent is %d (%d)\n",
@@ -605,7 +608,8 @@ static int ai2c_bus_block_write8_axm5500(
 			goto ai2c_return;
 
 		AI2C_LOG(AI2C_MSG_DEBUG,
-			"write8: tbm %d l %d aw %d c %d cu %d[%x,%x,%x,%x,%x,%x,%x,%x]\n",
+			"write8: tbm %d l %d aw %d c %d cu %d"
+			"[%x,%x,%x,%x,%x,%x,%x,%x]\n",
 			lTenBitMode, thisXfr, actWid, count, countUsed,
 			inOutTxd[0], inOutTxd[1], inOutTxd[2], inOutTxd[3],
 			 inOutTxd[4], inOutTxd[5], inOutTxd[6], inOutTxd[7]);
@@ -614,7 +618,7 @@ static int ai2c_bus_block_write8_axm5500(
 		countRem -= actWid;
 	}
 
-AI2C_RETURN_LABEL
+ai2c_return:
 
 	AI2C_LOG(AI2C_MSG_EXIT,
 		"write8: exit; st=%d\n", ai2cStatus);

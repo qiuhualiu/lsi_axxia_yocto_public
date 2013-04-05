@@ -20,7 +20,7 @@
  * MA 02111-1307 USA
  */
 
-#include "ai2c_plat_pvt.h"
+#include "ai2c_plat.h"
 #include "ai2c_dev_clock_ext.h"
 
 /*
@@ -488,7 +488,7 @@ int ai2c_dev_clock_mhz(
 
 	(*clockMhz) = SYSCLK;
 
-AI2C_RETURN_LABEL
+ai2c_return:
 	return ai2cStatus;
 }
 
