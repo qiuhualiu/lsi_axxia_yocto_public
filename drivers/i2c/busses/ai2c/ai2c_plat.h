@@ -24,10 +24,12 @@
 #define _AI2C_LINUX_H_
 
 #include <linux/i2c.h>
-#include <asm/io.h>
+#include <linux/io.h>
+#include <linux/platform_device.h>
+#include <linux/i2c-axxia.h>
 
 #include "ai2c_sal.h"
-#include "ai2c_dev_pvt.h"
+#include "ai2c_dev.h"
 
 /**************************************************************************
 * Constants                                                               *
@@ -170,22 +172,22 @@ enum {
 #define AI2C_PAGE_FLAGS_NONE            (0x00000000)
 #define AI2C_PAGE_FLAGS_I2CBUS          (0x00000001)
 
-struct ai2c_dev_page {
+struct ai2c_dev_page_s {
 	int    pageId;
 	char   *busName;
+	u32    bus_nr;
 	u64    busAddr; /* 38-bit PCI address */
 	u32    size;
 	u32    endianness;
 	u32    flags;
-	struct ai2c_i2c_access *api;
+	struct axxia_i2c_bus_platform_data  *pdata;
 };
 
-struct ai2c_dev_page_entry {
+struct ai2c_dev_chip_entry_s {
 	u32	chipType;
 	char	*chipName;
-	bool	supportDsFns;
-	struct ai2c_dev_page *pages;
 	u32	numActiveBusses;
+	struct ai2c_i2c_access *api;
 };
 
 
@@ -200,12 +202,11 @@ struct ai2c_priv {
 	struct ai2c_rev_id hw_rev;
 
 	/* Static configuration describing selected ACP I2C bus region */
-	struct ai2c_dev_page_entry *busCfg;
-	/* Per module default config */
-	u32 numActiveBusses;
+	struct ai2c_dev_chip_entry_s *busCfg;
 
 	/* Memory Mapping/Management constructs */
-	struct ai2c_dev_page *pages;
+	u32 numActiveBusses;
+	struct ai2c_dev_page_s *pages;
 	/* Per module memory pages */
 
 	/* Memory indexing support to reach selected ACP regions */
@@ -278,6 +279,58 @@ int ai2c_dev_dcr_write(
 	u32     flags,
 	u32     cmdType,
 	u32     xferWidth);
+
+/*****************************************************************************
+* Externally Visible Function Prototypes				     *
+*****************************************************************************/
+
+/*! @fn u32 ai2c_page_to_region(struct ai2c_priv *priv,
+ *                                           u32 pageId);
+ *  @brief Map a memory page handle to a regionId handle.
+    @param[in] inPriv Created device state structure
+    @param[in] inPageId Original page id to be mapped
+    @Returns mapped value
+ */
+extern u32 ai2c_page_to_region(struct ai2c_priv *priv, u32 pageId);
+
+/*! @fn u32 *ai2c_region_lookup(struct ai2c_priv *priv,
+ *                                           u32 regionId);
+ *  @brief Map a memory region handle to a region description structure.
+    @param[in] inPriv Created device state structure
+    @param[in] inRegionId Original region id to be mapped
+    @Returns mapped value
+ */
+extern struct ai2c_region_io *ai2c_region_lookup(
+	struct ai2c_priv *priv,
+	u32 regionId);
+
+/*! @fn int ai2c_stateSetup(struct ai2c_priv **outPriv);
+    @brief This is a one time initialization for the state linking all
+	   of the I2C protocol layers to be called by the device
+	   initialization step.
+    @param[out] outPriv Created device state structure
+    @Returns success/failure status of the operation
+*/
+extern int ai2c_stateSetup(struct ai2c_priv       **outPriv);
+
+/*! @fn int ai2c_memSetup(struct platform_device *pdev,
+			  struct ai2c_priv *priv);
+    @brief This is a per-device to-be-mapped setup for the I2C protocol
+	   layers to be called by the device initialization step.
+    @param[in] inPDev Source platform device data strucure
+    @param[in] inPriv Created device state structure
+    @Returns success/failure status of the operation
+*/
+extern int ai2c_memSetup(struct platform_device *pdev,
+			 struct ai2c_priv       *priv);
+
+/*! @fn int ai2c_memDestroy(struct ai2c_priv  *inPriv);
+    @brief This function will release resources acquired for the specified
+	   I2C device driver.
+    @param[in] inPriv Created device state structure
+    @Returns success/failure status of the operation
+*/
+extern int ai2c_memDestroy(struct ai2c_priv *inPriv);
 
 
 #endif /* _AI2C_PLAT_H_ */

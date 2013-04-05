@@ -52,8 +52,8 @@
 */
 #define AI2C_I2CPROT_MAX_BUF_SIZE           8
 
-#define AI2C_I2C_CHECK_COUNT				0xFFFFF
 /* Max number of tries at looking for an I/O success */
+#define AI2C_I2C_CHECK_COUNT				0xFFFFF
 
 	/*****************************
 	* ACP3400                    *
@@ -90,61 +90,6 @@
 					AI2C_I2CPROT_MASK_TENBIT_CONSECUTIVE)
 
 #define DEV_10BIT_AUTO(ioc)          TENBIT_SETENABLED(ioc)
-
-
-/*
- * Application-specific (BUS) timing constants, types, etc.
- */
-
-#define CFG_CLK_CONFIG_SCL_LOW   (1000) /* (MCC-0x143.0x0.0x1c)
-					   bits 9:0 (MCC LPD) */
-#define CFG_CLK_CONFIG_SCL_HIGH  (1000) /* (MCC-0x143.0x0.0x1c)
-					   bits 25:16 (MCC HPD) */
-#define CFG_START_SETUP_PERIOD   (940)  /* (MSTSHC-0x143.0x0.0x20)
-					   bits 9:0 (MSTSHC SETDU) */
-#define CFG_START_HOLD_PERIOD    (800)  /* (MSTSHC-0x143.0x0.0x20)
-					   bits 25:16 (MSTSHC HLDDU) */
-#define CFG_STOP_SETUP_PERIOD    (800)  /* (MSPSHC-0x143.0x0.0x24)
-					   bits 9:0 (MSPSHC SETDU) */
-#define CFG_STOP_HOLD_PERIOD     (0)    /* (MSPSHC-0x143.0x0.0x24)
-					   bits 25:16 (MSPSHC HLDDU) */
-#define CFG_DATA_SETUP_PERIOD    (50)   /* (MDSHC-0x143.0x0.0x28)
-					   bits 9:0 (MDSHC SETDU) */
-#define CFG_DATA_HOLD_PERIOD     (0)    /* (MSPSHC-0x143.0x0.0x28)
-					   bits 25:16 (MDSHC HLDDU) */
-
-/*! @def AI2C_I2C_IOCONFIG_READ_DEFAULT
- *  @brief Easy default initialization for ai2c_i2c_config_acp3400_t.readTiming.
- */
-#define AI2C_I2C_IOCONFIG_READ_DEFAULT \
-{ \
-	CFG_CLK_CONFIG_SCL_HIGH, \
-	CFG_CLK_CONFIG_SCL_LOW, \
-	CFG_START_SETUP_PERIOD, \
-	CFG_START_HOLD_PERIOD, \
-	CFG_STOP_SETUP_PERIOD, \
-	CFG_STOP_HOLD_PERIOD, \
-	CFG_DATA_SETUP_PERIOD, \
-	CFG_DATA_HOLD_PERIOD, \
-}
-
-/*! @def AI2C_I2C_IOCONFIG_WRITE_DEFAULT
- *  @brief Easy default initialization for ai2c_i2c_config_acp3400_t.writeTiming.
- */
-#define AI2C_I2C_IOCONFIG_WRITE_DEFAULT \
-{ \
-	CFG_CLK_CONFIG_SCL_HIGH, \
-	CFG_CLK_CONFIG_SCL_LOW, \
-	CFG_START_SETUP_PERIOD, \
-	CFG_START_HOLD_PERIOD, \
-	CFG_STOP_SETUP_PERIOD, \
-	CFG_STOP_HOLD_PERIOD, \
-	CFG_DATA_SETUP_PERIOD, \
-	CFG_DATA_HOLD_PERIOD, \
-}
-
-#define AI2C_I2C_IOCONFIG_WAITPOSTWRITE_DEFAULT    (5000) /* 5ms for each */
-#define AI2C_I2C_IOCONFIG_WAITPOSTREAD_DEFAULT     (0)    /* 0ms for each */
 
 
 /*****************************************************************************
@@ -216,42 +161,6 @@ struct ai2c_i2c_access {
 	void                    *extra;
 };
 
-    /*********************************************
-     * ACP3400-like I2C Devices Definitions, etc.
-     ********************************************/
-
-/*! @struct ai2c_i2c_ioconfig
-    @brief  Timing Control Configuration for I2C registers
-*/
-struct ai2c_i2c_ioconfig {
-	u32 clkPulseWidthHigh:10;
-	/*!< Number of pclk durations that equal
-	* high period of SCL*/
-	u32 clkPulseWidthLow:10;
-	/*!< Number of pclk durations that equal
-	* low period of SCL */
-	u32 startSetupTime:10;
-	/*!< Number of pclk durations that equal
-	* setup condition on SDA */
-	u32 startHoldTime:10;
-	/*!< Number of pclk durations that equal
-	* hold condition on SDA */
-	u32 stopSetupTime:10;
-	/*!< Number of pclk durations that equal
-	* stop condition on SDA */
-	u32 stopHoldTime:10;
-	/*!< Number of pclk durations that equal
-	* setup condition on SDA */
-	u32 dataSetupTime:10;
-	/*!< Number of pclk durations that equal
-	* setup condition on SDA for data changing*/
-	u32 dataHoldTime:10;
-	/*!< Number of pclk durations that equal
-	* hold condition on SDA for data changing*/
-};
-
-
-extern struct ai2c_i2c_access       ai2c_acp3400_cfg;
 
     /*********************************************
      * AXM5500-like I2C Devices Definitions, etc.
