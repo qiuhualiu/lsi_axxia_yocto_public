@@ -8,12 +8,10 @@ obj-$(CONFIG_I2C_AXXIA)		+= $(MODULE).o
 
 $(MODULE)-objs			:= ai2c_mod.o \
 				   ai2c_plat.o \
-				   ai2c_bus_acp3400.o \
 				   ai2c_bus_axm5500.o \
 				   ai2c_dev_clock.o \
 				   ai2c_sal.o
 
 ccflags-$(CONFIG_I2C_AXXIA) := -DAI2C_MOD_NAME=\"ai2c\" \
 				-DAI2C_MSG_TRACE_LEVEL=ai2c_trace_level \
-				-DLINUX -DAI2C_PLATFORM_BUILD \
-				-DAI2C_CHIP_VER=9
+				-DLINUX -DAI2C_CHIP_VER=9
