@@ -27,7 +27,7 @@
 #ifndef _AI2C_DEV_CLOCK_EXT_H_
 #define _AI2C_DEV_CLOCK_EXT_H_
 
-#include "ai2c_dev_pvt.h"
+#include "ai2c_dev.h"
 
 /**************************************************************************
 * Support Functions APIs                                                  *

@@ -37,10 +37,11 @@ void *ai2c_malloc(size_t size)
 	if (size <= 0) {
 #ifdef AI2C_DEBUG
 		AI2C_MSG(AI2C_MSG_DEBUG,
-			"WARNING: ai2c_malloc(%d) passed a zero or less size.\n",
+			"WARNING: ai2c_malloc(%d) passed a zero or "
+			"less size.\n",
 			size);
 #endif
-	return NULL;
+	return 0;
 	}
 
 	p = __ai2c_malloc(size);
@@ -57,10 +58,11 @@ void *ai2c_calloc(size_t no, size_t size)
 	if (size <= 0 || no <= 0) {
 #ifdef AI2C_DEBUG
 		AI2C_MSG(AI2C_MSG_DEBUG,
-			"WARNING: ai2c_calloc(no=%d, size=%d) passed a zero or less size.\n",
+			"WARNING: ai2c_calloc(no=%d, size=%d) "
+			"passed a zero or less size.\n",
 			no, size);
 #endif
-		return NULL;
+		return 0;
 	}
 
 	p = __ai2c_calloc(no, size);
@@ -76,10 +78,11 @@ void *ai2c_realloc(void *ptr, size_t size)
 	if (size <= 0) {
 #ifdef AI2C_DEBUG
 		AI2C_MSG(AI2C_MSG_DEBUG,
-			"WARNING: ai2c_realloc(%d) passed a zero or less size.\n",
+			"WARNING: ai2c_realloc(%d) passed a zero or "
+			"less size.\n",
 			size);
 #endif
-		return NULL;
+		return 0;
 	}
 
 	ptr = __ai2c_realloc(ptr, size);
