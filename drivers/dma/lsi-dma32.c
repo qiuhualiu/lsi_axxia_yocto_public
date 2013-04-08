@@ -40,8 +40,6 @@
 #define rd32(_addr)         readl((_addr))
 #define wr32(_value, _addr) writel((_value), (_addr))
 
-#define MAX_DMA_DESCRIPTORS 80
-
 #ifdef DEBUG
 #define engine_dbg(engine, fmt, ...) \
 	do { \
@@ -71,19 +69,24 @@ static void reset_channel(struct gpdma_channel *dmac)
 	const int WAIT = 1024;
 	int i;
 
+	/* Pause channel */
+	wr32(DMA_STATUS_CH_PAUS_WR_EN | DMA_STATUS_CH_PAUSE,
+	     dmac->base+DMA_STATUS);
+	wmb();
+
 	/* Disable channel */
 	wr32(0, dmac->base+DMA_CHANNEL_CONFIG);
 	for (i = 0; rd32(dmac->base+DMA_CHANNEL_CONFIG) && i < WAIT; i++)
 		cpu_relax();
 	if (i == WAIT)
-		ch_dbg(dmac, "Reset when not idle\n");
+		ch_dbg(dmac, "Failed to DISABLE channel\n");
 
 	/* Clear FIFO */
 	wr32(DMA_CONFIG_CLEAR_FIFO, dmac->base+DMA_CHANNEL_CONFIG);
 	for (i = 0; rd32(dmac->base+DMA_CHANNEL_CONFIG) && i < WAIT; i++)
 		cpu_relax();
 	if (i == WAIT)
-		ch_dbg(dmac, "Clear FIFO failed\n");
+		ch_dbg(dmac, "Failed to clear FIFO\n");
 }
 
 static void soft_reset(struct gpdma_engine *engine)
@@ -91,8 +94,13 @@ static void soft_reset(struct gpdma_engine *engine)
 	int i;
 	u32 cfg;
 
+	/* Reset all channels */
+	for (i = 0; i < engine->chip->num_channels; i++)
+		reset_channel(&engine->channel[i]);
+
 	/* Reset GPDMA by writing Magic Number to reset reg */
 	wr32(GPDMA_MAGIC, engine->gbase + SOFT_RESET);
+	wmb();
 
 	/*
 	 *  Set has to be done twice???
@@ -109,21 +117,30 @@ static void soft_reset(struct gpdma_engine *engine)
 	wr32(cfg, engine->gbase + GEN_CONFIG);
 	engine_dbg(engine, "engine->desc.phys & 0xfff00000 == %llx\n",
 		   (engine->pool.phys & 0xfff00000));
-	/* Reset all channels */
-	for (i = 0; i < engine->chip->num_channels; i++)
-		reset_channel(&engine->channel[i]);
+
+	engine->ch_busy = 0;
 }
 
 static int alloc_desc_table(struct gpdma_engine *engine)
 {
+	/*
+	 * For controllers that doesn't support full descriptor addresses, all
+	 * descriptors must be in the same 1 MB page, i.e address bits 31..20
+	 * must be the same for all descriptors.
+	 */
+	u32 order = 20 - PAGE_SHIFT;
 	int i;
-#ifdef CONFIG_DMA32_FULL_DESC_ADDR
-	u32 order =
-		ilog2((ALIGN(GPDMA_MAX_DESCRIPTORS * sizeof(struct gpdma_desc),
-		PAGE_SIZE)) >> PAGE_SHIFT);
-#else
-	u32 order = 8;
-#endif
+
+	if (engine->chip->flags & LSIDMA_NEXT_FULL) {
+		/*
+		 * Controller can do full descriptor addresses, then we need no
+		 * special alignment on the descriptor block.
+		 */
+		order = ilog2((ALIGN(GPDMA_MAX_DESCRIPTORS *
+				     sizeof(struct gpdma_desc),
+				     PAGE_SIZE)) >> PAGE_SHIFT);
+	}
+
 	engine->pool.va = (struct gpdma_desc *)
 			  __get_free_pages(GFP_KERNEL|GFP_DMA, order);
 	if (!engine->pool.va)
@@ -170,29 +187,65 @@ free_descriptor(struct gpdma_engine *engine, struct gpdma_desc *desc)
 	raw_spin_unlock_irqrestore(&engine->lock, flags);
 }
 
-static void gpdma_start_job(struct gpdma_channel *dmac, struct gpdma_desc *desc)
+static int segment_match(struct gpdma_engine *engine, struct gpdma_desc *desc)
 {
-	void __iomem         *base = BASE(dmac);
-	struct descriptor    *d = &desc->hw;
-	phys_addr_t           paddr = virt_to_phys(d);
+	unsigned int gpreg_dma = rd32(engine->gpreg);
+	unsigned int seg_src = (gpreg_dma >> 0) & 0x3f;
+	unsigned int seg_dst = (gpreg_dma >> 8) & 0x3f;
 
+	return (seg_src == ((desc->src >> 32) & 0x3f) &&
+		seg_dst == ((desc->dst >> 32) & 0x3f));
+}
+
+static int gpdma_start_job(struct gpdma_channel *dmac)
+{
+	void __iomem      *base = BASE(dmac);
+	struct gpdma_desc *desc;
+	struct descriptor *d;
+	phys_addr_t        paddr;
+
+	desc = list_first_entry(&dmac->waiting, struct gpdma_desc, node);
+	d = &desc->hw;
+	paddr = virt_to_phys(d);
 	WARN_ON(paddr & 0xf);
 
+	if (!(dmac->engine->chip->flags & LSIDMA_SEG_REGS)) {
+		/*
+		 * No segment registers -> descriptor address bits must match
+		 * running descriptor on any other channel.
+		 */
+		if (dmac->engine->ch_busy && !segment_match(dmac->engine, desc))
+			return -EBUSY;
+	}
+
+	/* Remove from 'waiting' list and mark as active */
+	list_del(&desc->node);
+	desc->dma_status = DMA_IN_PROGRESS;
+	dmac->active = desc;
+	set_bit(dmac->channel, &dmac->engine->ch_busy);
 	ch_dbg(dmac, "Load desc va=%p pa=%llx\n", d, paddr);
-	if (dmac->engine->chip->flags & LSIDMA_NEXT_FULLADDR) {
+
+	if (dmac->engine->chip->flags & LSIDMA_NEXT_FULL) {
 		/* Physical address of descriptor to load */
 		wr32((u32)paddr | 0x8, base+DMA_NXT_DESCR);
 	} else {
 		wr32((u32)paddr & 0xfffff, base+DMA_NXT_DESCR);
 	}
-	if (dmac->engine->chip->flags & LSIDMA_SEGMENT_REGS) {
+
+	if (dmac->engine->chip->flags & LSIDMA_SEG_REGS) {
 		/* Segment bits [39..32] of descriptor, src and dst addresses */
 		wr32(paddr >> 32, base+DMA_DESCR_ADDR_SEG);
 		wr32(desc->src >> 32, base+DMA_SRC_ADDR_SEG);
 		wr32(desc->dst >> 32, base+DMA_DST_ADDR_SEG);
+	} else {
+		unsigned int seg_src = (desc->src >> 32) & 0x3f;
+		unsigned int seg_dst = (desc->dst >> 32) & 0x3f;
+		wr32((seg_dst << 8) | seg_src, dmac->engine->gpreg);
 	}
 	wmb();
 	wr32(DMA_CONFIG_DSC_LOAD, base+DMA_CHANNEL_CONFIG);
+
+	return 0;
 }
 
 static inline void
@@ -205,10 +258,24 @@ gpdma_job_complete(struct gpdma_channel *dmac, struct gpdma_desc *desc)
 	ch_dbg(dmac, "cookie %d status %d\n",
 		desc->txd.cookie, desc->dma_status);
 	free_descriptor(dmac->engine, desc);
+	clear_bit(dmac->channel, &dmac->engine->ch_busy);
 }
 
-static void flush_channel_job(struct gpdma_channel *dmac, int tmo)
+static void flush_channel(struct gpdma_channel *dmac)
 {
+	struct gpdma_desc *desc, *tmp;
+
+	ch_dbg(dmac, "active=%p\n", dmac->active);
+	reset_channel(dmac);
+	if (dmac->active) {
+		gpdma_job_complete(dmac, dmac->active);
+		dmac->active = NULL;
+	}
+	list_for_each_entry_safe(desc, tmp, &dmac->waiting, node) {
+		ch_dbg(dmac, "del wating %p\n", desc);
+		list_del(&desc->node);
+		gpdma_job_complete(dmac, desc);
+	}
 }
 
 static inline void gpdma_sched_job_handler(struct gpdma_engine *engine)
@@ -223,9 +290,10 @@ static void job_tasklet(unsigned long data)
 	unsigned long        flags;
 	int i;
 
+	/* Handle completed jobs */
 	for (i = 0; i < engine->chip->num_channels; i++) {
 		struct gpdma_channel *dmac = &engine->channel[i];
-		struct gpdma_desc    *desc;
+		struct gpdma_desc    *desc = dmac->active;
 
 		desc = dmac->active;
 		if (desc != NULL) {
@@ -235,17 +303,20 @@ static void job_tasklet(unsigned long data)
 				gpdma_job_complete(dmac, desc);
 			}
 		}
+	}
+
+	/* Start new jobs */
+	for (i = 0; i < engine->chip->num_channels; i++) {
+		struct gpdma_channel *dmac = &engine->channel[i];
 
 		raw_spin_lock_irqsave(&dmac->lock, flags);
 
 		if (dmac->active == NULL && !list_empty(&dmac->waiting)) {
 			/* Start next job */
-			desc = list_first_entry(&dmac->waiting,
-				struct gpdma_desc, node);
-			list_del(&desc->node);
-			desc->dma_status = DMA_IN_PROGRESS;
-			dmac->active = desc;
-			gpdma_start_job(dmac, desc);
+			if (gpdma_start_job(dmac) != 0) {
+				raw_spin_unlock_irqrestore(&dmac->lock, flags);
+				break;
+			}
 		}
 
 		raw_spin_unlock_irqrestore(&dmac->lock, flags);
@@ -303,6 +374,55 @@ static irqreturn_t gpdma_isr(int irqno, void *_dmac)
 	return IRQ_HANDLED;
 }
 
+/*
+ * Perform soft reset procedure on DMA Engine.  Needed occasionally to work
+ * around nasty bug ACP3400 sRIO HW.
+ */
+static ssize_t __ref
+reset_engine(struct device *dev,
+	     struct device_attribute *attr,
+	     const char *buf, size_t count)
+{
+	struct gpdma_engine *engine = dev_get_drvdata(dev);
+	int i;
+
+	if (!engine)
+		return -EINVAL;
+
+	/* Disable interrupts and acquire each channel lock */
+	for (i = 0; i < engine->chip->num_channels; i++)
+		disable_irq(engine->channel[i].irq);
+
+	/* Disable tasklet (synchronized) */
+	tasklet_disable(&engine->job_task);
+
+	soft_reset(engine);
+
+	/* Re-queue any active jobs */
+	for (i = 0; i < engine->chip->num_channels; i++) {
+		struct gpdma_channel *dmac = &engine->channel[i];
+		struct gpdma_desc  *active;
+		raw_spin_lock(&engine->channel[i].lock);
+		active = dmac->active;
+		if (active && active->dma_status == DMA_IN_PROGRESS) {
+			/* Restart active job after soft reset */
+			list_add(&active->node, &dmac->waiting);
+			dmac->active = NULL;
+		}
+		raw_spin_unlock(&engine->channel[i].lock);
+	}
+
+	tasklet_enable(&engine->job_task);
+
+	for (i = 0; i < engine->chip->num_channels; i++)
+		enable_irq(engine->channel[i].irq);
+
+	gpdma_sched_job_handler(engine);
+
+	return count;
+}
+
+static DEVICE_ATTR(soft_reset, S_IWUSR, NULL, reset_engine);
 
 /*
  *===========================================================================
@@ -469,12 +589,10 @@ static enum dma_status gpdma_tx_status(struct dma_chan *chan,
 				       struct dma_tx_state *txstate)
 {
 	struct gpdma_channel *dmac = dchan_to_gchan(chan);
-	dma_cookie_t last_used = cookie;
 	enum dma_status ret = 0;
 
-	last_used = chan->cookie;
-	ret = dma_async_is_complete(cookie, dmac->last_completed, last_used);
-	dma_set_tx_state(txstate, dmac->last_completed, last_used, 0);
+	ret = dma_async_is_complete(cookie, dmac->last_completed, chan->cookie);
+	dma_set_tx_state(txstate, dmac->last_completed, chan->cookie, 0);
 
 	return ret;
 }
@@ -497,7 +615,7 @@ static int gpdma_device_control(struct dma_chan *dchan,
 	switch (cmd) {
 	case DMA_TERMINATE_ALL:
 		tasklet_disable(&dmac->engine->job_task);
-		flush_channel_job(dmac, 1);
+		flush_channel(dmac);
 		tasklet_enable(&dmac->engine->job_task);
 		break;
 
@@ -529,20 +647,22 @@ static int gpdma_of_remove(struct platform_device *op)
 	dev_dbg(&op->dev, "%s\n", __func__);
 
 	if (engine) {
-		if (test_bit(GPDMA_INIT, &engine->state))
+		if (test_and_clear_bit(GPDMA_INIT, &engine->state)) {
+			device_remove_file(&op->dev, &dev_attr_soft_reset);
 			dma_async_device_unregister(&engine->dma_device);
+		}
 
 		tasklet_disable(&engine->job_task);
 		tasklet_kill(&engine->job_task);
 
+		if (engine->err_irq)
+			free_irq(engine->err_irq, engine);
+
 		for (i = 0; i < engine->chip->num_channels; i++) {
 			struct gpdma_channel *dmac = &engine->channel[i];
 
-			if (dmac->channel == i) {
-				/* Initialized ok */
-				iounmap(dmac->base);
+			if (dmac->irq)
 				free_irq(dmac->irq, dmac);
-			}
 		}
 
 		free_desc_table(engine);
@@ -561,7 +681,7 @@ setup_channel(struct gpdma_engine *engine, struct device_node *child, int id)
 	int rc = -ENODEV;
 
 	if (id >= engine->chip->num_channels) {
-		dev_dbg(engine->dev, "MAX_GPDMA_CHANNELS reached\n");
+		dev_dbg(engine->dev, "Too many channels (%d)\n", id);
 		goto err_init;
 	}
 
@@ -572,24 +692,11 @@ setup_channel(struct gpdma_engine *engine, struct device_node *child, int id)
 	INIT_LIST_HEAD(&dmac->waiting);
 	dmac->chan.device = &engine->dma_device;
 
-	dmac->base = (char *)engine->iobase + id*engine->chip->chregs_offset;
+	dmac->base = engine->iobase + id*engine->chip->chregs_offset;
 	dev_dbg(engine->dev, "channel%d base @ %p\n", id, dmac->base);
 
-	/* find the IRQ line, if it exists in the device tree */
-	if (child) {
-		dmac->irq = irq_of_parse_and_map(child, 0);
-	} else {
-		struct device_node *intctl;
-		u32 spec[2];
-		intctl = of_find_node_by_name(NULL, "interrupt-controller");
-		dev_dbg(engine->dev, "intctl %p\n", intctl);
-		spec[0] = 35 + id;
-		spec[1] = 2;
-		dmac->irq = irq_create_of_mapping(intctl, spec,
-						  ARRAY_SIZE(spec));
-		dev_dbg(engine->dev, "irq = %d\n", dmac->irq);
-	}
-
+	/* Find the IRQ line, if it exists in the device tree */
+	dmac->irq = irq_of_parse_and_map(child, 0);
 	dev_dbg(engine->dev, "channel %d, irq %d\n", id, dmac->irq);
 	rc = request_irq(dmac->irq, gpdma_isr, IRQF_SHARED, "lsi-dma", dmac);
 	if (rc) {
@@ -607,8 +714,8 @@ static struct lsidma_hw lsi_dma32 = {
 	.num_channels   = 2,
 	.chregs_offset  = 0x80,
 	.genregs_offset = 0xF00,
-	.flags          = (LSIDMA_NEXT_FULLADDR |
-			   LSIDMA_SEGMENT_REGS |
+	.flags          = (LSIDMA_NEXT_FULL |
+			   LSIDMA_SEG_REGS  |
 			   LSIDMA_EDGE_INT)
 };
 
@@ -625,7 +732,7 @@ static const struct of_device_id gpdma_of_ids[] = {
 		.data       = &lsi_dma32
 	},
 	{
-		.compatible = "lsi,dma32",
+		.compatible = "lsi,dma31",
 		.data       = &lsi_dma31
 	},
 	{
@@ -647,9 +754,9 @@ static const struct of_device_id gpdma_of_ids[] = {
 static int __devinit gpdma_of_probe(struct platform_device *op)
 {
 	struct gpdma_engine *engine;
+	struct dma_device   *dma;
 	struct device_node *child;
 	const struct of_device_id *match;
-	struct resource res;
 	int rc = -ENOMEM;
 	int id = 0;
 
@@ -661,70 +768,72 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 	if (!engine)
 		return -ENOMEM;
 
-	kref_init(&engine->kref);
-
-	engine->dev = engine->dma_device.dev = &op->dev;
-	engine->chip = match->data;
 	dev_set_drvdata(&op->dev, engine);
 
-	/* Initialize dma_device struct */
-	dma_cap_zero(engine->dma_device.cap_mask);
-	dma_cap_set(DMA_MEMCPY, engine->dma_device.cap_mask);
-	engine->dma_device.copy_align = 2;
-	engine->dma_device.chancnt = engine->chip->num_channels;
-	engine->dma_device.device_alloc_chan_resources =
-		gpdma_alloc_chan_resources;
-	engine->dma_device.device_free_chan_resources =
-		gpdma_free_chan_resources;
-	engine->dma_device.device_tx_status = gpdma_tx_status;
-	engine->dma_device.device_prep_dma_memcpy = gpdma_prep_memcpy;
-	engine->dma_device.device_issue_pending = gpdma_issue_pending;
-	engine->dma_device.device_control = gpdma_device_control;
-
-	INIT_LIST_HEAD(&engine->dma_device.channels);
+	kref_init(&engine->kref);
 	raw_spin_lock_init(&engine->lock);
+	engine->dev = &op->dev;
+	engine->chip = match->data;
+
+	/* Initialize dma_device struct */
+	dma = &engine->dma_device;
+	dma->dev = &op->dev;
+	dma_cap_zero(dma->cap_mask);
+	dma_cap_set(DMA_MEMCPY, dma->cap_mask);
+	dma->copy_align = 2;
+	dma->chancnt = engine->chip->num_channels;
+	dma->device_alloc_chan_resources = gpdma_alloc_chan_resources;
+	dma->device_free_chan_resources = gpdma_free_chan_resources;
+	dma->device_tx_status = gpdma_tx_status;
+	dma->device_prep_dma_memcpy = gpdma_prep_memcpy;
+	dma->device_issue_pending = gpdma_issue_pending;
+	dma->device_control = gpdma_device_control;
+	INIT_LIST_HEAD(&dma->channels);
 
 	/*
 	 * Map device I/O memory
 	 */
-	if (op->dev.of_node) {
-		rc = of_address_to_resource(op->dev.of_node, 0, &res);
-		if (rc != 0)
-			goto err_init;
-		engine->iobase = ioremap(res.start, resource_size(&res));
-
-		engine->err_irq = irq_of_parse_and_map(op->dev.of_node, 0);
-		rc = request_irq(engine->err_irq, gpdma_isr_err, IRQF_SHARED,
-				 "lsi-dma-err", engine);
-		if (rc)
-			dev_err(engine->dev,
-				"failed to request_irq %d, error = %d\n",
-				engine->err_irq, rc);
-	} else {
-		engine->iobase = ioremap(0x20004E0000ULL, 4<<10);
+	engine->iobase = of_iomap(op->dev.of_node, 0);
+	if (!engine->iobase) {
+		rc = -EINVAL;
+		goto err_init;
 	}
-
 	dev_dbg(&op->dev, "mapped base @ %p\n", engine->iobase);
 
-	/* General registes at offset 0xF00 */
-	engine->gbase = (char *)engine->iobase + engine->chip->genregs_offset;
+	engine->err_irq = irq_of_parse_and_map(op->dev.of_node, 0);
+	if (engine->err_irq) {
+		rc = request_irq(engine->err_irq, gpdma_isr_err,
+				 IRQF_SHARED, "lsi-dma-err", engine);
+		if (rc) {
+			dev_err(engine->dev,
+				"failed to request irq%d\n",
+				engine->err_irq);
+			engine->err_irq = 0;
+		}
+	}
+
+	if (!(engine->chip->flags & LSIDMA_SEG_REGS)) {
+		struct device_node *gp_node;
+		gp_node = of_find_compatible_node(NULL, NULL, "lsi,gpreg");
+		if (!gp_node) {
+			dev_err(engine->dev, "FDT is missing node 'gpreg'\n");
+			rc = -EINVAL;
+			goto err_init;
+		}
+		engine->gpreg = of_iomap(gp_node, 0);
+	}
+
+	/* General registes at device specific offset */
+	engine->gbase = engine->iobase + engine->chip->genregs_offset;
 
 	if (alloc_desc_table(engine))
 		goto err_init;
 
 	/* Setup channels */
-	if (op->dev.of_node) {
-		for_each_child_of_node(op->dev.of_node, child) {
-			rc = setup_channel(engine, child, id++);
-			if (rc != 0)
-				goto err_init;
-		}
-	} else {
-		for (id = 0; id < engine->chip->num_channels; id++) {
-			rc = setup_channel(engine, NULL, id);
-			if (rc != 0)
-				goto err_init;
-		}
+	for_each_child_of_node(op->dev.of_node, child) {
+		rc = setup_channel(engine, child, id++);
+		if (rc != 0)
+			goto err_init;
 	}
 
 	soft_reset(engine);
@@ -735,6 +844,8 @@ static int __devinit gpdma_of_probe(struct platform_device *op)
 		goto err_init;
 	}
 	tasklet_init(&engine->job_task, job_tasklet, (unsigned long)engine);
+	device_create_file(&op->dev, &dev_attr_soft_reset);
+
 	set_bit(GPDMA_INIT, &engine->state);
 
 	return 0;
@@ -757,13 +868,11 @@ static struct platform_driver gpdma_of_driver = {
 
 static __init int gpdma_init(void)
 {
-	pr_warn("gpdma: init\n");
 	return platform_driver_register(&gpdma_of_driver);
 }
 
 static void __exit gpdma_exit(void)
 {
-	pr_warn("gpdma: exit\n");
 	platform_driver_unregister(&gpdma_of_driver);
 }
 
