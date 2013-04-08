@@ -201,6 +201,27 @@
                                 ad-value = <0>;
                                 mac-address = [00 00 00 00 00 00];
                         };
+			gpreg@0040c000 {
+				compatible = "lsi,gpreg";
+				reg = <0x0040c000 0x1000>;
+			};
+			gpdma@004e0000 {
+				compatible = "lsi,dma31";
+				reg = <0x004e0000 0x20000>;
+				interrupt-parent = <&MPIC>;
+				channel0 {
+					interrupts = <35 2>;
+				};
+				channel1 {
+					interrupts = <36 2>;
+				};
+				channel2 {
+					interrupts = <37 2>;
+				};
+				channel3 {
+					interrupts = <38 2>;
+				};
+			};
                 };
         };
 
