@@ -20,7 +20,7 @@
 #include <linux/types.h>
 
 #define MAX_GPDMA_CHANNELS      4
-#define GPDMA_MAX_DESCRIPTORS  20
+#define GPDMA_MAX_DESCRIPTORS  128
 #define GPDMA_MAGIC            0xABCD1234UL
 
 #define DMA_X_SRC_COUNT				0x00
@@ -161,7 +161,7 @@ struct gpdma_channel {
 	/* Channel registers */
 	void __iomem			*base;
 	/* Channel id */
-	unsigned int			channel;
+	int			        channel;
 	/* IRQ number as passed to request_irq() */
 	int				irq;
 	/* Cookie for last completed transaction */
@@ -183,18 +183,20 @@ struct lsidma_hw {
 	unsigned int chregs_offset;
 	unsigned int genregs_offset;
 	unsigned int flags;
-#define LSIDMA_NEXT_FULLADDR (1<<0)
-#define LSIDMA_SEGMENT_REGS  (1<<1)
+#define LSIDMA_NEXT_FULL     (1<<0)
+#define LSIDMA_SEG_REGS      (1<<1)
 #define LSIDMA_EDGE_INT      (1<<2)
 };
 
 struct gpdma_engine {
-	volatile unsigned long          state;
+	unsigned long                   state;
 #define GPDMA_INIT      0U
 	struct kref                     kref;
 	struct device			*dev;
 	struct lsidma_hw		*chip;
 	struct gpdma_channel		channel[MAX_GPDMA_CHANNELS];
+	/* Bit mask where bit[n] == 1 if channel busy */
+	unsigned long                   ch_busy;
 	struct tasklet_struct           job_task;
 	int                             err_irq;
 	void __iomem			*iobase;
