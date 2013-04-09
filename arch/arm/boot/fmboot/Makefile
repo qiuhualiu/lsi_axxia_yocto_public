@@ -10,12 +10,12 @@ ZIMAGE = ../zImage
 all: clean linux.img
 
 clean:
-	rm -f linux.img fmboot.o zImage.fm axm55xxsim.dtb
+	rm -f linux.img fmboot.o image.fm axm55xxsim.dtb
 
-linux.img: fmboot.o fmboot.lds zImage.fm
+linux.img: fmboot.o fmboot.lds image.fm
 	$(LD) -o $@ --script=fmboot.lds
 
-zImage.fm: $(ZIMAGE) axm55xxsim.dtb
+image.fm: $(ZIMAGE) axm55xxsim.dtb
 	python pack.py $(ZIMAGE) axm55xxsim.dtb > $@
 
 axm55xxsim.dtb: $(DTS)

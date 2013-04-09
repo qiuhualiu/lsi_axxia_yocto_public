@@ -118,7 +118,7 @@ atags:
 	@ ATAG_CMDLINE
 	.long	(1f - .) >> 2
 	.long	0x54410009
-	.asciz	"root=/dev/mmcblk0 rootwait ip=none mem=1024M console=ttyAMA0 earlyprintk"
+	.asciz	"root=/dev/ram initrd=0x2000000 mem=1024M console=ttyAMA0 earlyprintk"
 
 	.align	2
 1:
