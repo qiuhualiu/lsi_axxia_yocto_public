@@ -39,13 +39,15 @@
 #include <linux/init.h>
 #include <linux/irq.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
 #include <linux/dma-mapping.h>
 
 #include <linux/uaccess.h>
 #include <linux/io.h>
 #include <asm/dma.h>
 
-#include <asm/acp3400-version.h>
+/*#include <asm/acp3400-version.h>*/
 
 extern int acp_mdio_read(unsigned long,
 			 unsigned long,
@@ -158,8 +160,8 @@ EXPORT_SYMBOL(lsinet_counts);
 #if defined(PHY_DEBUG)
 #define PHY_DEBUG_PRINT(format, args...)				\
 	do {								\
-		printk(KERN_DEBUG "net:%d - PHY_DEBUG - ", __LINE__);	\
-		printk(KERN_DEBUG format, ##args);			\
+		printk(KERN_ERR "net:%d - PHY_DEBUG - ", __LINE__);	\
+		printk(KERN_ERR format, ##args);			\
 	} while (0);
 #else
 #define PHY_DEBUG_PRINT(format, args...)
@@ -242,13 +244,13 @@ EXPORT_SYMBOL(lsinet_counts);
 /* -- control -- */
 
 #define PHY_CONTROL 0x00
-#define __LITLE_ENDIAN
+/*#define __LITLE_ENDIAN*/
 
 typedef union {
 	unsigned short raw;
 
 	struct {
-#ifdef __LITTLE_ENDIAN
+#if 0
 		unsigned short soft_reset:1;
 		unsigned short loop_back:1;
 		unsigned short force100:1;	/* speedBit0 */
@@ -282,7 +284,7 @@ typedef union {
 	unsigned short raw;
 
 	struct {
-#ifdef __LITTLE_ENDIAN
+#if 0
 		unsigned short t4_capable:1;
 		unsigned short tx_fdx_capable:1;
 		unsigned short tx_capable:1;
@@ -334,7 +336,7 @@ typedef union {
 	unsigned short raw;
 
 	struct {
-#ifdef __LITTLE_ENDIAN
+#if 0
 		unsigned short id:6;
 		unsigned short model:6;
 		unsigned short revision:4;
@@ -353,6 +355,64 @@ typedef union {
 /* -- link_partner_ability -- */
 
 #define PHY_LINK_PARTNER_ABILITY 0x05
+
+/* -- -- */
+
+#define BC_PHY_INTERRUPT_ 0x1a
+
+typedef union {
+
+	unsigned short raw;
+
+	struct {
+
+		unsigned short status             : 1;
+		unsigned short link_change        : 1;
+		unsigned short speed_change       : 1;
+		unsigned short duplex_change      : 1;
+		unsigned short                    : 4;
+		unsigned short mask               : 1;
+		unsigned short link_mask          : 1;
+		unsigned short speed_mask         : 1;
+		unsigned short duplex_mask        : 1;
+		unsigned short                    : 2;
+		unsigned short enable             : 1;
+		unsigned short duplex_led_enable  : 1;
+
+	} __attribute__ ( ( packed ) ) bits;
+
+} __attribute__ ( ( packed ) ) bc_phy_interrupt_t;
+
+/* -- -- */
+
+#define M_PHY_INTERRUPT_ 0x1b
+
+typedef union {
+
+	unsigned short raw;
+
+	struct {
+
+		unsigned short link_up                 : 1;
+		unsigned short remote_fault            : 1;
+		unsigned short link_down               : 1;
+		unsigned short link_partner_ack        : 1;
+		unsigned short parallel_detect         : 1;
+		unsigned short page_receive            : 1;
+		unsigned short receive_error           : 1;
+		unsigned short jabber                  : 1;
+		unsigned short enable_link_up          : 1;
+		unsigned short enable_remote_fault     : 1;
+		unsigned short enable_link_down        : 1;
+		unsigned short enable_link_partner_ack : 1;
+		unsigned short enable_parallel_detect  : 1;
+		unsigned short enable_page_receive     : 1;
+		unsigned short enable_receive_error    : 1;
+		unsigned short enable_jabber           : 1;
+
+	} __attribute__ ( ( packed ) ) bits;
+
+} __attribute__ ( ( packed ) ) m_phy_interrupt_t;
 
 /* -- -- */
 
@@ -389,19 +449,18 @@ typedef union {
 #define PHY_AUTONEG_ADVERTISE_10FULL	0x041
 #define PHY_AUTONEG_ADVERTISE_10	0x021
 
-#define PHY_ADDRESS_ 0x00
-static int phy_address_ = PHY_ADDRESS_;
-
 #define UNKNOWN_PHY_ 0x0
 #define BCM5221_PHY_ 0x1
 #define MICREL_PHY_  0x2
+
+static int phy_type_ = UNKNOWN_PHY_;
 
 static int phy_read_(int, int, unsigned short *);
 static int phy_write_(int, int, unsigned short);
 static int phy_speed_(int);
 static int phy_duplex_(int);
 static int phy_renegotiate_(int);
-static int phy_enable_(int);
+static int phy_enable_(struct net_device *);
 
 #endif /* PHYLESS */
 
@@ -434,7 +493,7 @@ static int enable_(struct net_device *);
 
 typedef struct {
 
-#ifdef CONFIG_ACP
+#ifndef CONFIG_ARM
 
 	/* Word 0 */
 	unsigned long unused:24;
@@ -469,7 +528,7 @@ typedef struct {
 	unsigned long interrupt_on_completion:1;
 	unsigned long error:1;
 	/* big endian to little endian */
-	unsigned long byte_swapping_on:1; 00 : 02 : 2d : 84 : 11 : da
+	unsigned long byte_swapping_on:1;
 	unsigned long unused:24;
 
 	/* Word 1 */
@@ -491,7 +550,7 @@ typedef union {
 	unsigned long raw;
 
 	struct {
-#ifdef CONFIG_ACP
+#ifndef CONFIG_ARM
 		unsigned long unused:11;
 		unsigned long generation_bit:1;
 		unsigned long offset:20;
@@ -519,7 +578,9 @@ typedef struct {
 	unsigned long rx_base;
 	unsigned long tx_base;
 	unsigned long dma_base;
-	unsigned long interrupt;
+	unsigned long tx_interrupt;
+	unsigned long rx_interrupt;
+	unsigned long dma_interrupt;
 	unsigned long mdio_clock;
 	unsigned long phy_address;
 	unsigned long ad_value;
@@ -995,11 +1056,14 @@ writedescriptor(unsigned long address,
 	return;
 }
 
-static inline unsigned long
-swab_queue_pointer(unsigned long old_queue)
+static inline appnic_queue_pointer_t
+swab_queue_pointer(const appnic_queue_pointer_t *old_queue)
 {
-	return old_queue;
+	return *old_queue;
 }
+
+#define SWAB_QUEUE_POINTER(pointer) \
+swab_queue_pointer((const appnic_queue_pointer_t *)(pointer))
 
 #endif /* CONFIG_ACP */
 
@@ -1147,6 +1211,234 @@ static struct timer_list appnic_timer_;
   ======================================================================
   ======================================================================
 */
+
+/*
+  ------------------------------------------------------------------------------
+  htonmemcpy
+*/
+
+static void *
+htonmemcpy(void *destination, const void *source, size_t bytes)
+{
+	unsigned long *to = destination;
+	unsigned long *from = source;
+
+	while (0 < bytes--) {
+		*to++ = htonl(*from++);
+	}
+
+	return destination;
+}
+
+/*
+  ----------------------------------------------------------------------
+  dump_packet
+*/
+
+int dumprx = 0;
+int dumptx = 0;
+
+void
+dump_packet(const char *header, void *packet, int length)
+{
+	int i;
+
+	printk(KERN_ERR
+	       "---------- %s (%d bytes)----------\n", header, length);
+
+	for (i = 0; i < (length / 2); i += 8) {
+		unsigned short *data;
+
+		data = &(((unsigned short *)packet)[i]);
+		printk(KERN_ERR
+		       "%04x %04x %04x %04x %04x %04x %04x %04x ",
+		       htons(data[0]), htons(data[1]),
+		       htons(data[2]), htons(data[3]),
+		       htons(data[4]), htons(data[5]),
+		       htons(data[6]), htons(data[7]));
+	}
+
+	printk(KERN_ERR
+	       "--------------------\n");
+}
+
+/*
+  ------------------------------------------------------------------------------
+  dump_registers
+*/
+
+static void
+dump_registers(struct net_device *device)
+{
+	appnic_device_t *adapter = netdev_priv(device);
+	int rc;
+	int i;
+
+	unsigned long phy_registers[] =	{
+		1, 15, 0x1e, 0x1f
+	};
+
+	unsigned long rx_registers[] = {
+		APPNIC_RX_CONF,
+		APPNIC_RX_STAT_OVERFLOW,
+		APPNIC_RX_STAT_UNDERSIZE,
+		APPNIC_RX_STAT_OVERSIZE,
+		APPNIC_RX_STAT_MULTICAST,
+		APPNIC_RX_STAT_PACKET_OK,
+		APPNIC_RX_STAT_CRC_ERROR,
+		APPNIC_RX_STAT_ALIGN_ERROR,
+	};
+
+	unsigned long tx_registers[] = {
+		APPNIC_TX_CONF,
+		APPNIC_TX_STAT_UNDERRUN,
+		APPNIC_TX_STAT_PACKET_OK,
+		APPNIC_TX_STAT_UNDERSIZE,
+		APPNIC_TX_STATUS_LATE_COLLISION,
+		APPNIC_TX_STATUS_EXCESSIVE_COLLISION,
+		APPNIC_TX_STAT_COLLISION_ABOVE_WATERMARK
+	};
+
+	/*
+	  PHY
+	*/
+
+	printk(KERN_ERR
+	       "%s:%d - PHY Registers\n", __FILE__, __LINE__);
+
+	for (i = 0; i < sizeof(phy_registers) / sizeof(unsigned long); ++i) {
+		unsigned short value;
+
+		rc = acp_mdio_read(adapter->phy_address,
+				   phy_registers[i], &value);
+
+		if (rc) {
+			printk(KERN_ERR
+			       "%s:%d - Error reading PHY register %d!\n",
+			       __FILE__, __LINE__, phy_registers[i]);
+		} else {
+			printk(KERN_ERR
+			       "0x%08x: 0x%08x\n", phy_registers[i], value);
+		}
+	}
+
+	/*
+	  MAC RX
+	*/
+
+	printk(KERN_ERR
+	       "%s:%d - MAC RX Registers\n", __FILE__, __LINE__);
+
+	for (i = 0; i < sizeof(rx_registers) / sizeof(unsigned long); ++i) {
+		unsigned long value;
+
+		value = readl(rx_registers[i]);
+		printk(KERN_ERR
+		       "0x%08x: 0x%08x\n", rx_registers[i], value);
+	}
+
+	/*
+	  MAC TX
+	*/
+
+	printk(KERN_ERR
+	       "%s:%d - MAC TX Registers\n", __FILE__, __LINE__);
+
+	for (i = 0; i < sizeof(tx_registers) / sizeof(unsigned long); ++i) {
+		unsigned long value;
+
+		value = readl(tx_registers[i]);
+		printk(KERN_ERR
+		       "0x%08x: 0x%08x\n", tx_registers[i], value);
+	}
+
+	/*
+	  MAC DMA
+	*/
+
+	return;
+}
+
+/*
+  ----------------------------------------------------------------------
+  dump_descriptor
+*/
+
+static void dump_descriptor(const char *title,
+			    appnic_dma_descriptor_t *descriptor) {
+
+	printk("-- %s -- descriptor at 0x%p\n", title, descriptor );
+	printk("        byte_swapping_on=%d\n" \
+	       " interrupt_on_completion=%d\n"	\
+	       "           end_of_packet=%d\n"	\
+	       "         start_of_packet=%d\n"	\
+	       "                   write=%d\n"	  \
+	       "           transfer_type=0x%x\n"  \
+	       "              pdu_length=0x%x\n"  \
+	       "    data_transfer_length=0x%x\n"  \
+	       "   target_memory_address=0x%x\n"	\
+	       "host_data_memory_pointer=0x%x\n",
+	       (unsigned int ) ( descriptor->byte_swapping_on ),
+	       (unsigned int ) ( descriptor->interrupt_on_completion ),
+	       (unsigned int ) ( descriptor->end_of_packet ),
+	       (unsigned int ) ( descriptor->start_of_packet ),
+	       (unsigned int ) ( descriptor->write ),
+	       (unsigned int ) ( descriptor->transfer_type ),
+	       (unsigned int ) ( descriptor->pdu_length ),
+	       (unsigned int ) ( descriptor->data_transfer_length ),
+	       (unsigned int ) ( descriptor->target_memory_address ),
+	       (unsigned int ) ( descriptor->host_data_memory_pointer ) );
+
+}
+
+/*
+  ------------------------------------------------------------------------------
+  dump_descriptors
+*/
+
+static void
+dump_descriptors(struct net_device *device)
+{
+	appnic_device_t *adapter = netdev_priv(device);
+	appnic_dma_descriptor_t *descriptor;
+	char buffer[256];
+	int i;
+
+	printk("Address/Size: RX 0x%p/0x%x TX 0x%p/0x%x\n",
+	       adapter->rx_desc, adapter->rx_num_desc,
+	       adapter->tx_desc, adapter->tx_num_desc);
+
+	printk("RX Pointers: tail=0b%d:0x%x tail_copy=0b%d:0x%x head=0b%d:0x%x\n",
+	       adapter->rx_tail->bits.generation_bit,
+	       adapter->rx_tail->bits.offset,
+	       adapter->rx_tail_copy.bits.generation_bit,
+	       adapter->rx_tail_copy.bits.offset,
+	       adapter->rx_head.bits.generation_bit,
+	       adapter->rx_head.bits.offset);
+
+	printk("----RX Descriptors\n");
+	descriptor = adapter->rx_desc;
+
+	for (i = 0; i < adapter->rx_num_desc; ++i) {
+		sprintf(buffer, "RX:%d", i);
+		dump_descriptor(buffer, descriptor++);
+	}
+
+	printk("TX Pointers: tail=0b%d:0x%x tail_copy=0b%d:0x%x head=0b%d:0x%x\n",
+	       adapter->tx_tail->bits.generation_bit,
+	       adapter->tx_tail->bits.offset,
+	       adapter->tx_tail_copy.bits.generation_bit,
+	       adapter->tx_tail_copy.bits.offset,
+	       adapter->tx_head.bits.generation_bit,
+	       adapter->tx_head.bits.offset);
+	printk("----TX Descriptors\n");
+	descriptor = adapter->tx_desc;
+
+	for (i = 0; i < adapter->tx_num_desc; ++i) {
+		sprintf(buffer, "TX:%d", i);
+		dump_descriptor(buffer, descriptor++);
+	}
+}
 
 /*
   ----------------------------------------------------------------------
@@ -1434,6 +1726,7 @@ static int enable_(struct net_device *device)
 	unsigned long rx_configuration_;
 	unsigned long tx_configuration_ = 0;
 	phy_status_t phy_status_;
+	appnic_device_t *apnd = netdev_priv(device);
 
 	rx_configuration_ =
 		(APPNIC_RX_CONF_STRIPCRC |
@@ -1453,11 +1746,11 @@ static int enable_(struct net_device *device)
 	 * status to set speed/duplex and check the link status).
 	 */
 
-	if ((0 == phy_read_(phy_address_, PHY_STATUS, &phy_status_.raw)) &&
-	    (0 == phy_read_(phy_address_, PHY_STATUS, &phy_status_.raw))) {
+	if ((0 == phy_read_(apnd->phy_address, PHY_STATUS, &phy_status_.raw)) &&
+	    (0 == phy_read_(apnd->phy_address, PHY_STATUS, &phy_status_.raw))) {
 
 		PHY_DEBUG_PRINT("phy_status_.raw=0x%x phy address= 0x%x\n",
-				phy_status_.raw, phy_address_);
+				phy_status_.raw, apnd->phy_address);
 		PHY_DEBUG_PRINT("phy_status_.bits.link_status=0x%x\n",
 				phy_status_.bits.link_status);
 		PHY_DEBUG_PRINT("phy_status_.bits.autoneg_comp=0x%x\n",
@@ -1465,7 +1758,7 @@ static int enable_(struct net_device *device)
 
 		if (1 == phy_status_.bits.autoneg_comp) {
 			if (1 == phy_status_.bits.link_status) {
-				if (1 == phy_speed_(phy_address_)) {
+				if (1 == phy_speed_(apnd->phy_address)) {
 					rx_configuration_ |=
 						APPNIC_RX_CONF_SPEED;
 					tx_configuration_ |=
@@ -1474,7 +1767,7 @@ static int enable_(struct net_device *device)
 					 "RX/TX conf after phy_speed\n");
 				}
 
-				if (1 == phy_duplex_(phy_address_)) {
+				if (1 == phy_duplex_(apnd->phy_address)) {
 					rx_configuration_ |=
 						APPNIC_RX_CONF_DUPLEX;
 					tx_configuration_ |=
@@ -1599,14 +1892,48 @@ phy_write_(int phy, int reg, unsigned short value)
 static int
 phy_speed_(int phy)
 {
+	int rc;
+	unsigned short oui;
 	unsigned short aux;
-	aux = phy_read_(phy, BC_AUX_ERROR_AND_GEN_STATUS_REG, &aux);
 
-	if (aux & 2)
-		/* 100BASE-X*/
-		return 1;
+	rc = phy_read_(phy, PHY_ID_HIGH, &oui);
 
+	if (rc)
+		goto error;
+
+	if (0x22 == oui) {
+		rc = phy_read_(phy, 0x1e, &aux);
+
+		if (rc)
+			goto error;
+
+		aux &= 0x7;
+
+		if (0x6 == aux || 0x2 == aux)
+			goto return_100;
+		else
+			goto return_10;
+	} else {
+		rc = phy_read_(phy, BC_AUX_ERROR_AND_GEN_STATUS_REG, &aux);
+
+		if (rc)
+			goto error;
+
+		if (aux & 2)
+			goto return_100;
+		else
+			goto return_10;
+	}
+
+error:
+	ERROR_PRINT("phy_speed_() failed!\n");
+	return -1;
+
+return_10:
 	return 0;
+
+return_100:
+	return 1;
 }
 
 /*
@@ -1619,15 +1946,48 @@ phy_speed_(int phy)
 static int
 phy_duplex_(int phy)
 {
+	int rc;
+	unsigned short oui;
 	unsigned short aux;
 
-	phy_read_(phy,  BC_AUX_ERROR_AND_GEN_STATUS_REG, &aux);
+	rc = phy_read_(phy, PHY_ID_HIGH, &oui);
 
-	if (aux & 0x1)
-		/* Full-duplex active */
-		return 1;
+	if (rc)
+		goto error;
 
+	if (0x22 == oui) {
+		rc = phy_read_(phy, 0x1e, &aux);
+
+		if (rc)
+			goto error;
+
+		aux &= 0x7;
+
+		if (0x6 == aux || 0x5 == aux)
+			goto return_full;
+		else
+			goto return_half;
+	} else {
+		rc = phy_read_(phy, BC_AUX_ERROR_AND_GEN_STATUS_REG, &aux);
+
+		if (rc)
+			goto error;
+
+		if (aux & 2)
+			goto return_full;
+		else
+			goto return_half;
+	}
+
+error:
+	ERROR_PRINT("phy_duplex_() failed!\n");
+	return -1;
+
+return_half:
 	return 0;
+
+return_full:
+	return 1;
 }
 
 /*
@@ -1641,7 +2001,7 @@ phy_renegotiate_(int phy)
 	phy_control_t control;
 	phy_status_t status;
 	int autoneg_retries = 4;
-	int autoneg_complete_retries = 80;
+	int autoneg_complete_retries = 20;
 
 	printk(KERN_INFO "Initiating Auto Negotiation");
 	phy_write_(phy, PHY_AUTONEG_ADVERTISE, 0x61);
@@ -1669,7 +2029,7 @@ phy_renegotiate_(int phy)
 		phy_write_(phy, PHY_CONTROL, control.raw);
 		PHY_DEBUG_PRINT("control.raw Written to: 0x%x\n", control.raw);
 		do {
-			udelay(50000);
+			mdelay(500);
 			phy_read_(phy, PHY_STATUS, &status.raw);
 			PHY_DEBUG_PRINT(" PHY_STATUS raw: 0x%x\n", status.raw);
 		} while ((0 < --autoneg_complete_retries) &&
@@ -1682,9 +2042,7 @@ phy_renegotiate_(int phy)
 		printk(KERN_INFO ".");
 	} while (0 < --autoneg_retries);
 
-	printk(KERN_INFO "\n");
-
-	if (0 == status.bits.autoneg_comp) {
+	if (0 == status.bits.autoneg_comp || 0 == autoneg_retries) {
 		printk(KERN_INFO "Auto Negotiation Failed\n");
 		return -1;
 	}
@@ -1698,31 +2056,24 @@ phy_renegotiate_(int phy)
  * phy_enable_
  */
 
-extern int ubootenv_get(const char *, char *);
-
-static int phy_enable_(int phy)
+static int phy_enable_(struct net_device *device)
 {
-
+	appnic_device_t *apnd = netdev_priv(device);
 	phy_id_high_t phy_id_high_;
 	phy_id_low_t phy_id_low_;
 	unsigned char phyaddr_string_[40];
 
-	if (0 != ubootenv_get("phy_address", phyaddr_string_))
-		phy_address_ = PHY_ADDRESS_;
-	else
-		phy_address_ = simple_strtoul(phyaddr_string_, NULL, 10);
-
-	if (0 == phy_read_(phy_address_, PHY_ID_HIGH, &phy_id_high_.raw)) {
+	if (0 == phy_read_(apnd->phy_address, PHY_ID_HIGH, &phy_id_high_.raw)) {
 		PHY_DEBUG_PRINT("Read PHY_ID_HIGH as 0x%x on mdio addr 0x%x.\n",
-		phy_id_high_.raw, phy_address_);
+		phy_id_high_.raw, apnd->phy_address);
 	}
 
-	if (0 == phy_read_(phy_address_, PHY_ID_LOW, &phy_id_low_.raw)) {
+	if (0 == phy_read_(apnd->phy_address, PHY_ID_LOW, &phy_id_low_.raw)) {
 		PHY_DEBUG_PRINT("Read PHY_ID_LOW as 0x%x on mdio addr 0x%x.\n",
-		phy_id_low_.raw, phy_address_);
+		phy_id_low_.raw, apnd->phy_address);
 	}
 
-	phy_renegotiate_(phy_address_);
+	phy_renegotiate_(apnd->phy_address);
 
 	return 0;
 }
@@ -1780,7 +2131,7 @@ static void handle_transmit_interrupt_(struct net_device *device)
  * lsinet_rx_packet
  */
 
-static void
+void
 lsinet_rx_packet(struct net_device *device)
 {
 	appnic_device_t *adapter = netdev_priv(device);
@@ -1812,6 +2163,8 @@ lsinet_rx_packet(struct net_device *device)
 		spin_unlock(&adapter->extra_lock);
 		return;
 	}
+
+	/*dump_registers(device);*/
 
 	ok_ = read_mac_(APPNIC_RX_STAT_PACKET_OK);
 	overflow_ = read_mac_(APPNIC_RX_STAT_OVERFLOW);
@@ -1905,6 +2258,11 @@ LSINET_COUNTS_INC(LSINET_COUNTS_RX_SENT);
 						(LSINET_COUNTS_RX_DRPD);
 				}
 			} else {
+#if 0
+				dump_packet("Dropped Packet",
+					    sk_buff_->data,
+					    sk_buff_->len); /* ZZZ */
+#endif
 				dev_kfree_skb(sk_buff_);
 			}
 		} else {
@@ -2101,6 +2459,7 @@ static irqreturn_t appnic_isr_(int irq, void *device_id)
 	appnic_device_t *dev_ = netdev_priv(device_);
 	unsigned long dma_interrupt_status_;
 	unsigned long flags;
+	appnic_device_t *appnic_device = netdev_priv(device_);
 
 	TRACE_BEGINNING();
 	LSINET_COUNTS_INC(LSINET_COUNTS_ISR_START);
@@ -2109,7 +2468,7 @@ static irqreturn_t appnic_isr_(int irq, void *device_id)
 	spin_lock_irqsave(&dev_->lock, flags);
 
 #if !defined(PHYLESS) && !defined(CONFIG_ACP)
-	if (INT_MAC_RX == irq) {
+	if (appnic_device->rx_interrupt == irq) {
 
 		PHY_DEBUG_PRINT("Handling PHY interrupt.\n");
 
@@ -2117,12 +2476,12 @@ static irqreturn_t appnic_isr_(int irq, void *device_id)
 
 			bc_phy_interrupt_t bc_phy_interrupt_;
 
-			(void) phy_read_(phy_address_,
+			(void) phy_read_(appnic_device->phy_address,
 					 BC_PHY_INTERRUPT_,
 					 &bc_phy_interrupt_.raw);
 			bc_phy_interrupt_.raw = 0;
 			bc_phy_interrupt_.bits.enable = 1;
-			(void) phy_write_(phy_address_,
+			(void) phy_write_(appnic_device->phy_address,
 					  BC_PHY_INTERRUPT_,
 					  bc_phy_interrupt_.raw);
 
@@ -2130,10 +2489,10 @@ static irqreturn_t appnic_isr_(int irq, void *device_id)
 
 			m_phy_interrupt_t m_phy_interrupt_;
 
-			(void) phy_read_(phy_address_,
+			(void) phy_read_(appnic_device->phy_address,
 					 M_PHY_INTERRUPT_,
 					 &m_phy_interrupt_.raw);
-			(void) phy_write_(phy_address_,
+			(void) phy_write_(appnic_device->phy_address,
 					  M_PHY_INTERRUPT_,
 					  m_phy_interrupt_.raw);
 
@@ -2237,9 +2596,10 @@ int appnic_open(struct net_device *device)
 	/* install the interrupt handlers */
 	return_code_ = request_irq(device->irq, appnic_isr_, IRQF_DISABLED,
 				   APPNIC_NAME, device);
+
 	if (0 != return_code_) {
-		ERROR_PRINT("request_irq() failed, returned 0x%x/%d\n",
-			    return_code_, return_code_);
+		ERROR_PRINT("request_irq() for %d failed, returned 0x%x/%d\n",
+			    device->irq, return_code_, return_code_);
 		return return_code_;
 	}
 
@@ -2335,7 +2695,7 @@ int appnic_stop(struct net_device *device)
 		if (0 != dev_->polling)
 			del_timer(&appnic_timer_);
 		else
-			free_irq(INT_MAC_RX, device);
+			free_irq(dev_->rx_interrupt, device);
 #else
 		del_timer(&appnic_timer_);
 #endif
@@ -2376,12 +2736,13 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 	length_ = skb->len < ETH_ZLEN ? ETH_ZLEN : skb->len;
 	buf_per_desc_ = adapter->tx_buf_sz / adapter->tx_num_desc;
 
+	/*dump_registers(device);*/
+	/*dump_descriptors(device);*/
+	/*dump_packet("TX Packet", (void *)skb->data, skb->len);*/
+
 	/*
 	 * If enough transmit descriptors are available, copy and transmit.
 	 */
-
-	DEBUG_PRINT("length_=%d buf_per_desc_=%d tx_tail=0x%x\n",
-		    length_, buf_per_desc_, swab32(adapter->tx_tail->raw));
 
 	while (((length_ / buf_per_desc_) + 1) >=
 		queue_uninitialized_(adapter->tx_head,
@@ -2410,22 +2771,22 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 
 			if ((length_ - bytes_copied_) > buf_per_desc_) {
 				memcpy((void *)
-					(descriptor.host_data_memory_pointer +
-					 adapter->dma_alloc_offset),
+				       (descriptor.host_data_memory_pointer +
+					adapter->dma_alloc_offset),
 				       (void *) ((unsigned long) skb->data +
-					bytes_copied_),
-					buf_per_desc_);
+						 bytes_copied_),
+				       buf_per_desc_);
 				descriptor.data_transfer_length = buf_per_desc_;
 				descriptor.end_of_packet = 0;
 				descriptor.interrupt_on_completion = 0;
 				bytes_copied_ += buf_per_desc_;
 			} else {
 				memcpy((void *)
-					(descriptor.host_data_memory_pointer +
-					 adapter->dma_alloc_offset),
+				       (descriptor.host_data_memory_pointer +
+					adapter->dma_alloc_offset),
 				       (void *) ((unsigned long) skb->data +
-					bytes_copied_),
-					(length_ - bytes_copied_));
+						 bytes_copied_),
+				       (length_ - bytes_copied_));
 				descriptor.data_transfer_length =
 				 (length_ - bytes_copied_);
 				descriptor.end_of_packet = 1;
@@ -2545,6 +2906,8 @@ appnic_set_mac_address(struct net_device *device, void *data)
 static int
 appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 {
+	appnic_device_t *apnd = netdev_priv(device);
+
 	memset(command, 0, sizeof(struct ethtool_cmd));
 
 	/* What the hardware supports. */
@@ -2561,7 +2924,7 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 	{
 		unsigned short ad_value_;
 
-		if (0 != phy_read_(phy_address_,
+		if (0 != phy_read_(apnd->phy_address,
 				   PHY_AUTONEG_ADVERTISE,
 				   &ad_value_)) {
 			ERROR_PRINT("PHY read failed!");
@@ -2600,7 +2963,7 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 	{
 		int speed_;
 
-		speed_ = phy_speed_(phy_address_);
+		speed_ = phy_speed_(apnd->phy_address);
 		if (-1 == speed_) {
 			ERROR_PRINT("PHY read failed!");
 			return -EIO;
@@ -2616,7 +2979,7 @@ appnic_get_settings(struct net_device *device, struct ethtool_cmd *command)
 	{
 		int duplex_;
 
-		duplex_ = phy_duplex_(phy_address_);
+		duplex_ = phy_duplex_(apnd->phy_address);
 		if (-1 == duplex_) {
 			ERROR_PRINT("PHY read failed!");
 			return -EIO;
@@ -2683,21 +3046,6 @@ appnic_init(struct net_device *device)
 	 */
 
 	write_mac_(0x80000000, APPNIC_DMA_PCI_CONTROL);
-
-	/*
-	 * -- WORKAROUND -- WORKAROUND -- WORKAROUND -- WORKAROUND --
-	 * This is the software workaround for defect 15129. Use 64
-	 * byte buffers for receive descriptors for all dma.
-	 * - WORKAROUND -- WORKAROUND -- WORKAROUND -- WORKAROUND --
-	 */
-#ifndef CONFIG_ACP
-	if (1 >= (APP3XX_REVISION_REGISTER & 0x1f)) {
-		printk(KERN_WARN
-		       "++ Using work around for defect 15129\n");
-		rx_num_desc = (8 * DESCRIPTOR_GRANULARITY);
-		rx_buf_sz = 32768;
-	}
-#endif
 
 	/*
 	 * Allocate memory and initialize the descriptors
@@ -2804,6 +3152,13 @@ appnic_init(struct net_device *device)
 		 * dma_alloc_coherent()
 		 */
 
+#if defined(CONFIG_ARM)
+		adapter->dma_alloc = (void *)
+			dma_alloc_coherent(NULL,
+					   adapter->dma_alloc_size,
+					   &adapter->dma_alloc_dma,
+					   GFP_KERNEL);
+#else
 		device->dev.archdata.dma_ops = &dma_direct_ops;
 
 		adapter->dma_alloc = (void *)
@@ -2811,6 +3166,7 @@ appnic_init(struct net_device *device)
 					   adapter->dma_alloc_size,
 					   &adapter->dma_alloc_dma,
 					   GFP_KERNEL);
+#endif
 
 		if ((void *) 0 == adapter->dma_alloc) {
 			ERROR_PRINT("Could not allocate %d bytes of DMA-able memory!\n",
@@ -2837,6 +3193,9 @@ appnic_init(struct net_device *device)
 		adapter->rx_tail = (appnic_queue_pointer_t *) dma_offset_;
 		adapter->rx_tail_dma = (int) adapter->rx_tail -
 			(int) adapter->dma_alloc_offset;
+		printk("%s:%d - rx_tail=0x%08x rx_tail_dma=0x%08x\n",
+		       __FILE__, __LINE__,
+		       adapter->rx_tail, adapter->rx_tail_dma); /* ZZZ */
 		dma_offset_ += sizeof(appnic_queue_pointer_t);
 		memset((void *) adapter->rx_tail, 0,
 		       sizeof(appnic_queue_pointer_t));
@@ -3004,7 +3363,8 @@ appnic_init(struct net_device *device)
 	write_mac_(0x1, APPNIC_RX_MODE);
 	write_mac_(0x0, APPNIC_TX_SOFT_RESET);
 	write_mac_(0x1, APPNIC_TX_MODE);
-	write_mac_(0x300a, APPNIC_TX_WATERMARK);
+	/*write_mac_(0x300a, APPNIC_TX_WATERMARK);*/
+	write_mac_(0x307f, APPNIC_TX_WATERMARK);
 	write_mac_(0x1, APPNIC_TX_HALF_DUPLEX_CONF);
 	write_mac_(0xffff, APPNIC_TX_TIME_VALUE_CONF);
 	write_mac_(0x1, APPNIC_TX_INTERRUPT_CONTROL);
@@ -3019,36 +3379,6 @@ appnic_init(struct net_device *device)
 	/*
 	 * Set the MAC address
 	 */
-
-	{
-		unsigned char ethaddr_string_[40];
-
-		if (0 != ubootenv_get("ethaddr", ethaddr_string_)) {
-			ERROR_PRINT("Could not read ether address!\n");
-			return -(EBUSY);
-		} else {
-			char *string_;
-			int index_ = 0;
-			u8 mac_address[6];
-
-			index_ = 0;
-			string_ = ethaddr_string_;
-
-			while ((0 != string_) && (6 > index_)) {
-				char *value_;
-
-				value_ = strsep(&string_, ":");
-				mac_address[index_++] =
-				simple_strtoul(value_, NULL, 16);
-			}
-
-			memcpy(device->dev_addr, mac_address, 6);
-			memcpy(device->perm_addr, mac_address, 6);
-			device->addr_len = 6;
-
-		}
-
-	}
 
 	write_mac_(((device->dev_addr[4]) << 8) |
 		    (device->dev_addr[5]),
@@ -3167,7 +3497,7 @@ appnic_init(struct net_device *device)
 	/* Initialize the PHY */
 
 #ifndef PHYLESS
-	if (0 != phy_enable_(phy_address_))
+	if (0 != phy_enable_(device))
 		WARN_PRINT("Failed to initialize the PHY!\n");
 #endif /* PHYLESS */
 
@@ -3188,7 +3518,7 @@ appnic_init(struct net_device *device)
 		return -EBUSY;
 	}
 #else
-	device->irq = INT_MAC_DMA;
+	device->irq = adapter->dma_interrupt;
 #endif
 
 	device->netdev_ops = &appnic_netdev_ops;
@@ -3236,6 +3566,10 @@ lsinet_init(void)
 	struct device_node *np = NULL;
 	const u32 *field;
 	appnic_device_t *appnic_device;
+	u64 value64;
+	u64 dt_size;
+	u32 value32;
+	int length;
 
 	TRACE_BEGINNING();
 
@@ -3250,7 +3584,7 @@ lsinet_init(void)
 
 
 	this_net_device = device; /* For /proc/reads. */
-	appnic_device = (appnic_device_t *)device;
+	appnic_device = netdev_priv(device);
 
 	/*
 	 * Get the physical addresses, interrupt number, etc. from the
@@ -3263,146 +3597,99 @@ lsinet_init(void)
 	while (np && !of_device_is_compatible(np, "acp-femac"))
 		np = of_find_node_by_type(np, "network");
 
-	if (np) {
-		u64 value64;
-		u32 value32;
-		int length;
+	if (!np)
+		goto device_tree_failed;
 
-		field = of_get_property(np, "enabled", NULL);
+#if defined(CONFIG_ARM)
+	rx_base = of_iomap(np, 0);
+	tx_base = of_iomap(np, 1);
+	dma_base = of_iomap(np, 2);
+#else
+	field = of_get_property(np, "reg", NULL);
 
-		if (!field || (field && (0 == *field))) {
-			ERROR_PRINT("Not Enabled\n");
-			rc = -EINVAL;
-			goto out;
-		}
+	if (!field)
+		goto device_tree_failed;
 
-		field = of_get_property(np, "reg", NULL);
+	value64 = of_translate_address(np, field);	
+	value32 = (u32)field[1];
+	field += 2;
+	rx_base = ioremap(value64, value32);
+	netdev_dbg(device, "rx_base=0x%x/0x%llx\n", rx_base, value64);
+	value64 = of_translate_address(np, field);
+	value32 = (u32)field[1];
+	field += 2;
+	tx_base = ioremap(value64, value32);
+	value64 = of_translate_address(np, field);
+	value32 = (u32)field[1];
+	field += 2;
+	dma_base = ioremap(value64, value32);
+#endif
 
-		if (!field) {
-			ERROR_PRINT("Couldn't get \"reg\" property.\n");
-			rc = -EINVAL;
-			goto out;
-		}
+	appnic_device->rx_base = (unsigned long)rx_base;
+	appnic_device->tx_base = (unsigned long)tx_base;
+	appnic_device->dma_base = (unsigned long)dma_base;
 
-		value64 = of_translate_address(np, field);
-		value32 = field[1];
-		field += 2;
-		rx_base = ioremap(value64, value32);
-		appnic_device->rx_base = (unsigned long)rx_base;
-		value64 = of_translate_address(np, field);
-		value32 = field[1];
-		field += 2;
-		tx_base = ioremap(value64, value32);
-		appnic_device->tx_base = (unsigned long)tx_base;
-		value64 = of_translate_address(np, field);
-		value32 = field[1];
-		field += 2;
-		dma_base = ioremap(value64, value32);
-		appnic_device->dma_base = (unsigned long)dma_base;
+#if defined(CONFIG_ARM)
+	appnic_device->tx_interrupt = irq_of_parse_and_map(np, 0);
+	appnic_device->rx_interrupt = irq_of_parse_and_map(np, 1);
+	appnic_device->dma_interrupt = irq_of_parse_and_map(np, 2);
+#else
+	field = of_get_property(np, "interrupts", NULL);
 
-		field = of_get_property(np, "interrupts", NULL);
+	if (!field)
+		goto device_tree_failed;
 
-		if (!field)
-			goto device_tree_failed;
-		else
-			appnic_device->interrupt = field[0];
+	appnic_device->dma_interrupt = field[0];
+#endif
 
-		field = of_get_property(np, "mdio-clock", NULL);
+	field = of_get_property(np, "mdio-clock", NULL);
 
-		if (!field)
-			goto device_tree_failed;
-		else
-			appnic_device->mdio_clock = field[0];
+	if (!field)
+		goto device_tree_failed;
 
-		field = of_get_property(np, "phy-address", NULL);
+	appnic_device->mdio_clock = field[0];
 
-		if (!field)
-			goto device_tree_failed;
-		 else
-			appnic_device->phy_address = field[0];
+	field = of_get_property(np, "phy-address", NULL);
 
-		field = of_get_property(np, "ad-value", NULL);
+	if (!field)
+		goto device_tree_failed;
 
-		if (!field)
-			goto device_tree_failed;
-		else
-			appnic_device->ad_value = field[0];
+	appnic_device->phy_address = field[0];
 
-		field = of_get_property(np, "mac-address", &length);
+	field = of_get_property(np, "ad-value", NULL);
 
-		if (!field || 6 != length) {
-			goto device_tree_failed;
-		} else {
-			int i;
-			u8 *value;
+	if (!field)
+		goto device_tree_failed;
 
-			value = (u8 *)field;
+	appnic_device->ad_value = field[0];
 
-			for (i = 0; i < 6; ++i)
-				appnic_device->mac_addr[i] = value[i];
-		}
+	field = of_get_property(np, "mac-address", &length);
 
-		memcpy(device->dev_addr, &appnic_device->mac_addr[0], 6);
-		memcpy(device->perm_addr, &appnic_device->mac_addr[0], 6);
+	if (!field || 6 != length) {
+		goto device_tree_failed;
+	} else {
+		int i;
+		u8 *value;
 
-		goto device_tree_succeeded;
+		value = (u8 *)field;
+
+		for (i = 0; i < 6; ++i)
+			appnic_device->mac_addr[i] = value[i];
+	}
+
+	memcpy(device->dev_addr, &appnic_device->mac_addr[0], 6);
+	memcpy(device->perm_addr, &appnic_device->mac_addr[0], 6);
+
+	goto device_tree_succeeded;
 
 device_tree_failed:
-		ERROR_PRINT("Reading Device Tree Failed\n");
-		iounmap(rx_base);
-		iounmap(tx_base);
-		iounmap(dma_base);
-		rc = -EINVAL;
-		goto out;
-
-	} else {
-		unsigned char ethaddr_string[20];
-
-		if (0 != ubootenv_get("ethaddr", ethaddr_string)) {
-			ERROR_PRINT("Could not read ethernet address!\n");
-			return -EBUSY;
-		}
-
-		{
-			char *string;
-			int i = 0;
-			u8 mac_address[6];
-
-			printk(KERN_INFO "ubootenv_get { ");
-			for (i = 0; i < 20; i++)
-				printk(KERN_INFO "0x%2.2x, ",
-					ethaddr_string[i]);
-			printk(KERN_INFO "}\n");
-
-			i = 0;
-			string = ethaddr_string;
-
-			while ((0 != string) && (6 > i)) {
-				char *value;
-
-				value = strsep(&string, ":");
-				mac_address[i++] =
-				simple_strtoul(value, NULL, 16);
-			}
-
-			memcpy(device->dev_addr, mac_address, 6);
-			memcpy(device->perm_addr, mac_address, 6);
-			device->addr_len = 6;
-
-			printk(KERN_INFO
-			 "LSI FEMAC: Using Static Addresses and Interrupts.\n");
-			rx_base = ioremap(0x002000480000ULL, 0x1000);
-			appnic_device->rx_base =
-			 (unsigned long)ioremap(0x002000480000ULL, 0x1000);
-			tx_base = ioremap(0x002000481000ULL, 0x1000);
-			 appnic_device->tx_base =
-			(unsigned long)ioremap(0x002000481000ULL, 0x1000);
-			 dma_base = ioremap(0x002000482000ULL, 0x1000);
-			appnic_device->dma_base =
-			 (unsigned long)ioremap(0x002000482000ULL, 0x1000);
-			appnic_device->interrupt = 33;
-		}
-	}
+	printk(KERN_WARNING "%s:%d - Unable to read the device tree!\n",
+	       __FILE__, __LINE__);
+	iounmap(rx_base);
+	iounmap(tx_base);
+	iounmap(dma_base);
+	rc = -EINVAL;
+	goto out;
 
 device_tree_succeeded:
 
@@ -3431,6 +3718,7 @@ device_tree_succeeded:
 				appnic_read_proc_, NULL);
 
 out:
+
 	TRACE_ENDING();
 	return rc;
 }
