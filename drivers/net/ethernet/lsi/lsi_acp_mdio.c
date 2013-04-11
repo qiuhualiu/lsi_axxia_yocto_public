@@ -22,6 +22,8 @@
 #include <linux/of.h>
 #include <asm/irq.h>
 #include <linux/io.h>
+#include <linux/of_address.h>
+#include <linux/irqdomain.h>
 
 #include <linux/acp_ncr.h>
 
@@ -45,6 +47,14 @@ static DEFINE_SPINLOCK(mdio_lock);
 #define MDIO_CLK_OFFSET      ((void *)(mdio_base + 0x8))
 #define MDIO_CLK_PERIOD      ((void *)(mdio_base + 0xc))
 
+#ifdef CONFIG_ARM
+#define READ(a) readl((a))
+#define WRITE(a, v) writel((v), (a))
+#else
+#define READ(a) in_le32((a))
+#define WRITE(a, v) out_le32((a), (v))
+#endif
+
 /*
   ------------------------------------------------------------------------------
   acp_mdio_read
@@ -61,26 +71,26 @@ acp_mdio_read(unsigned long address, unsigned long offset,
 	spin_lock_irqsave(&mdio_lock, flags);
 #if defined(BZ33327_WA)
 	/* Set the mdio_busy (status) bit. */
-	status = in_le32(MDIO_STATUS_RD_DATA);
+	status = READ(MDIO_STATUS_RD_DATA);
 	status |= 0x40000000;
-	out_le32(MDIO_STATUS_RD_DATA, status);
+	WRITE(MDIO_STATUS_RD_DATA, status);
 #endif				/* BZ33327_WA */
 
 	/* Write the command. */
 	command |= 0x10000000;	/* op_code: read */
 	command |= (address & 0x1f) << 16;	/* port_addr (target device) */
 	command |= (offset & 0x1f) << 21;/* device_addr (target register) */
-	out_le32(MDIO_CONTROL_RD_DATA, command);
+	WRITE(MDIO_CONTROL_RD_DATA, command);
 
 #if defined(BZ33327_WA)
 	/* Wait for the mdio_busy (status) bit to clear. */
 	do {
-		status = in_le32(MDIO_STATUS_RD_DATA);
+		status = READ(MDIO_STATUS_RD_DATA);
 	} while (0 != (status & 0x40000000));
 
 	/* Wait for the mdio_busy (control) bit to clear. */
 	do {
-		command = in_le32(MDIO_CONTROL_RD_DATA);
+		command = READ(MDIO_CONTROL_RD_DATA);
 	} while (0 != (command & 0x80000000));
 
 	*value = (unsigned short)(command & 0xffff);
@@ -108,14 +118,14 @@ acp_mdio_write(unsigned long address, unsigned long offset,
 
 	/* Wait for mdio_busy (control) to be clear. */
 	do {
-		command = in_le32(MDIO_CONTROL_RD_DATA);
+		command = READ(MDIO_CONTROL_RD_DATA);
 	} while (0 != (command & 0x80000000));
 
 #if defined(BZ33327_WA)
 	/* Set the mdio_busy (status) bit. */
-	status = in_le32(MDIO_STATUS_RD_DATA);
+	status = READ(MDIO_STATUS_RD_DATA);
 	status |= 0x40000000;
-	out_le32(MDIO_STATUS_RD_DATA, status);
+	WRITE(MDIO_STATUS_RD_DATA, status);
 #endif				/* BZ33327_WA */
 
 	/* Write the command. */
@@ -123,18 +133,18 @@ acp_mdio_write(unsigned long address, unsigned long offset,
 	command |= (address & 0x1f) << 16;	/* port_addr (target device) */
 	command |= (offset & 0x1f) << 21;/* device_addr (target register) */
 	command |= (value & 0xffff);	/* value */
-	out_le32(MDIO_CONTROL_RD_DATA, command);
+	WRITE(MDIO_CONTROL_RD_DATA, command);
 
 #if defined(BZ33327_WA)
 	/* Wait for the mdio_busy (status) bit to clear. */
 	do {
-		status = in_le32(MDIO_STATUS_RD_DATA);
+		status = READ(MDIO_STATUS_RD_DATA);
 	} while (0 != (status & 0x40000000));
 #endif				/* BZ33327_WA */
 
 	/* Wait for the mdio_busy (control) bit to clear. */
 	do {
-		command = in_le32(MDIO_CONTROL_RD_DATA);
+		command = READ(MDIO_CONTROL_RD_DATA);
 	} while (0 != (command & 0x80000000));
 
 	spin_unlock_irqrestore(&mdio_lock, flags);
@@ -151,13 +161,8 @@ EXPORT_SYMBOL(acp_mdio_write);
 static int
 acp_mdio_initialize(void)
 {
-	if (is_asic()) {
-		out_le32(MDIO_CLK_OFFSET, 0x10);
-		out_le32(MDIO_CLK_PERIOD, 0x2c);
-	} else {
-		out_le32(MDIO_CLK_OFFSET, 0x05);
-		out_le32(MDIO_CLK_PERIOD, 0x0c);
-	}
+	WRITE(MDIO_CLK_OFFSET, 0x10);
+	WRITE(MDIO_CLK_PERIOD, 0x2c);
 
 	return 0;
 }
@@ -192,57 +197,41 @@ EXPORT_SYMBOL(acp_irq_create_mapping);
 int __init
 acp_wrappers_init(void)
 {
-	int rc = -1;
+	int rc = -ENODEV;
 	struct device_node *np = NULL;
 	const u32 *field;
-	u64 mdio_phys_address;
+	u64 mdio_address;
 	u32 mdio_size;
 
-	printk(KERN_INFO "Initializing ACP Wrappers.\n");
+	printk(KERN_INFO "Initializing Axxia Wrappers.\n");
 
 #ifndef CONFIG_ACPISS
-
 	np = of_find_node_by_type(np, "network");
 
 	while (np && !of_device_is_compatible(np, "acp-femac"))
 		np = of_find_node_by_type(np, "network");
 
-	if (np) {
-		field = of_get_property(np, "enabled", NULL);
+	if (!np)
+		goto error;
 
-		if (!field || (field && (0 == *field))) {
-			printk(KERN_WARNING "Networking is Not Enabled.\n");
-			goto acp_wrappers_init_done;
-		}
+	field = of_get_property(np, "mdio-reg", NULL);
 
-		field = of_get_property(np, "mdio-reg", NULL);
+	if (!field)
+		goto error;
 
-		if (!field) {
-			printk(KERN_ERR
-			       "Couldn't get \"mdio-reg\" property.\n");
-		} else {
-			mdio_phys_address = of_translate_address(np, field);
-			mdio_size = field[1];
-			rc = 0;
-		}
-	}
-
-	if (0 != rc) {
-		mdio_phys_address = 0x002000409000ULL;
-		mdio_size = 0x1000;
-		printk(KERN_WARNING
-		       "** MDIO Address Not Specified in Device Tree.\n");
-	}
-
-	mdio_base = (unsigned long)ioremap(mdio_phys_address, mdio_size);
+	mdio_address = of_translate_address(np, field);
+	mdio_size = field[1];
+	mdio_base = (unsigned long)ioremap(mdio_address, mdio_size);
+	printk(KERN_INFO "%s:%d - mdio_address=0x%llx mdio_size=0x%x mdio_base=0x%x\n",
+	       __FILE__, __LINE__, mdio_address, mdio_size, mdio_base);
 	rc = acp_mdio_initialize();
+#else
+	rc = 0;
 #endif
 
-	if (0 != rc)
-		printk(KERN_ERR "MDIO Initiailzation Failed!\n");
+error:
 
-acp_wrappers_init_done:
-	return 0;
+	return rc;
 }
 module_init(acp_wrappers_init);
 
