@@ -104,6 +104,22 @@
 		reg = <0x20 0x10094000 0 0x1000>;
 	};
 
+        femac@0x2010120000 {
+                compatible = "acp-femac";
+		device_type = "network";
+		reg = <0x20 0x10120000 0 0x1000>,
+   		      <0x20 0x10121000 0 0x1000>,
+		      <0x20 0x10122000 0 0x1000>;
+		interrupts = <0 2 4>,
+		             <0 3 4>,
+		             <0 4 4>;
+		mdio-reg = <0x20 0x10090000 0 0x1000>;
+		mdio-clock = <0>;
+		phy-address = <0x3>;
+		ad-value = <0x61>;
+		mac-address = [00 02 2d 84 11 f8];
+	};
+
         amba {
 		compatible = "arm,amba-bus";
 		#address-cells = <2>;
