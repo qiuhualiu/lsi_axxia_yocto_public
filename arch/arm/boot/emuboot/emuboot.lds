@@ -23,7 +23,7 @@ SECTIONS
 	. = PHYS_OFFSET + 0x8000 - 0x0;
 	kernel = . + 0x0;
 	.kernel : { ./image.emu }
-	. = PHYS_OFFSET + 0x01c00000;
+	. = PHYS_OFFSET + 0x00800000;
 	filesystem = .;
 	.data : { *(.data) }
 	.bss : { *(.bss) }
