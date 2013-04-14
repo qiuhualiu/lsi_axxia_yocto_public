@@ -1213,53 +1213,40 @@ static struct timer_list appnic_timer_;
 */
 
 /*
-  ------------------------------------------------------------------------------
-  htonmemcpy
-*/
-
-static void *
-htonmemcpy(void *destination, const void *source, size_t bytes)
-{
-	unsigned long *to = destination;
-	unsigned long *from = source;
-
-	while (0 < bytes--) {
-		*to++ = htonl(*from++);
-	}
-
-	return destination;
-}
-
-/*
   ----------------------------------------------------------------------
   dump_packet
-*/
 
-int dumprx = 0;
-int dumptx = 0;
+  The format is so you can import to WireShark...
+*/
 
 void
 dump_packet(const char *header, void *packet, int length)
 {
+	char buffer[256];
+	char *string;
+	unsigned long offset = 0;
 	int i;
+	unsigned char *data = packet;
 
-	printk(KERN_ERR
-	       "---------- %s (%d bytes)----------\n", header, length);
+	printk("---- %s\n", header);
 
-	for (i = 0; i < (length / 2); i += 8) {
-		unsigned short *data;
+	while (0 < length) {
+		int this_line;
 
-		data = &(((unsigned short *)packet)[i]);
-		printk(KERN_ERR
-		       "%04x %04x %04x %04x %04x %04x %04x %04x ",
-		       htons(data[0]), htons(data[1]),
-		       htons(data[2]), htons(data[3]),
-		       htons(data[4]), htons(data[5]),
-		       htons(data[6]), htons(data[7]));
+		string = buffer;
+		string += sprintf(string, "%06lx ", offset);
+		this_line = (16 > length) ? length : 16;
+
+		for (i = 0; i < this_line; ++i) {
+			string += sprintf(string, "%02x ", *data++);
+			--length;
+			++offset;
+		}
+
+		printk("%s\n", buffer);
 	}
 
-	printk(KERN_ERR
-	       "--------------------\n");
+	printk("\n");
 }
 
 /*
@@ -1278,7 +1265,7 @@ dump_registers(struct net_device *device)
 		1, 15, 0x1e, 0x1f
 	};
 
-	unsigned long rx_registers[] = {
+	void *rx_registers[] = {
 		APPNIC_RX_CONF,
 		APPNIC_RX_STAT_OVERFLOW,
 		APPNIC_RX_STAT_UNDERSIZE,
@@ -1289,7 +1276,7 @@ dump_registers(struct net_device *device)
 		APPNIC_RX_STAT_ALIGN_ERROR,
 	};
 
-	unsigned long tx_registers[] = {
+	void *tx_registers[] = {
 		APPNIC_TX_CONF,
 		APPNIC_TX_STAT_UNDERRUN,
 		APPNIC_TX_STAT_PACKET_OK,
@@ -1314,11 +1301,11 @@ dump_registers(struct net_device *device)
 
 		if (rc) {
 			printk(KERN_ERR
-			       "%s:%d - Error reading PHY register %d!\n",
+			       "%s:%d - Error reading PHY register %lu!\n",
 			       __FILE__, __LINE__, phy_registers[i]);
 		} else {
 			printk(KERN_ERR
-			       "0x%08x: 0x%08x\n", phy_registers[i], value);
+			       "0x%08lx: 0x%08x\n", phy_registers[i], value);
 		}
 	}
 
@@ -1334,7 +1321,7 @@ dump_registers(struct net_device *device)
 
 		value = readl(rx_registers[i]);
 		printk(KERN_ERR
-		       "0x%08x: 0x%08x\n", rx_registers[i], value);
+		       "0x%08lx: 0x%08lx\n", rx_registers[i], value);
 	}
 
 	/*
@@ -1416,6 +1403,7 @@ dump_descriptors(struct net_device *device)
 	       adapter->rx_head.bits.generation_bit,
 	       adapter->rx_head.bits.offset);
 
+#if 0
 	printk("----RX Descriptors\n");
 	descriptor = adapter->rx_desc;
 
@@ -1423,6 +1411,7 @@ dump_descriptors(struct net_device *device)
 		sprintf(buffer, "RX:%d", i);
 		dump_descriptor(buffer, descriptor++);
 	}
+#endif
 
 	printk("TX Pointers: tail=0b%d:0x%x tail_copy=0b%d:0x%x head=0b%d:0x%x\n",
 	       adapter->tx_tail->bits.generation_bit,
@@ -2156,7 +2145,6 @@ lsinet_rx_packet(struct net_device *device)
 
 	sk_buff_ = dev_alloc_skb(1600);
 
-
 	if ((struct sk_buff *) 0 == sk_buff_) {
 		ERROR_PRINT("dev_alloc_skb() failed! Dropping packet.\n");
 		TRACE_ENDING();
@@ -2165,7 +2153,6 @@ lsinet_rx_packet(struct net_device *device)
 	}
 
 	/*dump_registers(device);*/
-
 	ok_ = read_mac_(APPNIC_RX_STAT_PACKET_OK);
 	overflow_ = read_mac_(APPNIC_RX_STAT_OVERFLOW);
 	crc_ = read_mac_(APPNIC_RX_STAT_CRC_ERROR);
@@ -3364,7 +3351,7 @@ appnic_init(struct net_device *device)
 	write_mac_(0x0, APPNIC_TX_SOFT_RESET);
 	write_mac_(0x1, APPNIC_TX_MODE);
 	/*write_mac_(0x300a, APPNIC_TX_WATERMARK);*/
-	write_mac_(0x307f, APPNIC_TX_WATERMARK);
+	write_mac_(0x7f007f, APPNIC_TX_WATERMARK);
 	write_mac_(0x1, APPNIC_TX_HALF_DUPLEX_CONF);
 	write_mac_(0xffff, APPNIC_TX_TIME_VALUE_CONF);
 	write_mac_(0x1, APPNIC_TX_INTERRUPT_CONTROL);
