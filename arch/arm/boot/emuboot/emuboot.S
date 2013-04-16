@@ -45,7 +45,7 @@ _start:
 	lsr	r0, r0, #16
 	ands	r0, r0, #1			@ Check generic timer support
 	beq	1f
-	ldr	r0, =4096000			@ 4.096 MHz timer frequency
+	ldr	r0, =6250000			@ 6.25 MHz timer frequency
 	mcr	p15, 0, r0, c14, c0, 0		@ CNTFRQ
 1:
 
