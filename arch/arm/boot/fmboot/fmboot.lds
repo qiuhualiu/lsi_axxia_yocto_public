@@ -12,7 +12,7 @@ OUTPUT_ARCH(arm)
 TARGET(binary)
 
 INPUT(./fmboot.o)
-INPUT(./zImage.fm)
+INPUT(./image.fm)
 
 PHYS_OFFSET = 0x00000000;
 
@@ -22,7 +22,7 @@ SECTIONS
 	.text : { fmboot.o }
 	. = PHYS_OFFSET + 0x8000 - 0x0;
 	kernel = . + 0x0;
-	.kernel : { ./zImage.fm }
+	.kernel : { ./image.fm }
 	. = PHYS_OFFSET + 0x00800000;
 	filesystem = .;
 	.data : { *(.data) }

@@ -828,6 +828,8 @@ static struct hw_pci __refdata axxia_pcie_hw[] = {
 void __init axxia_pcie_init(void)
 {
 	struct device_node *np;
+	int found_a_port = 0;
+
 	/* allocate memory */
 	axxia_pciex_ports = kzalloc(axxia_pciex_port_count
 		* sizeof(struct axxia_pciex_port), GFP_KERNEL);
@@ -836,12 +838,17 @@ void __init axxia_pcie_init(void)
 		printk(KERN_WARNING "PCIE: failed to allocate ports array\n");
 		return;
 	}
-	for_each_compatible_node(np, NULL, "lsi,plb-pciex")
-		axxia_probe_pciex_bridge(np);
 
-	pci_common_init(&axxia_pcie_hw[0]);
-	pci_common_init(&axxia_pcie_hw[1]);
-	pci_common_init(&axxia_pcie_hw[2]);
+	for_each_compatible_node(np, NULL, "lsi,plb-pciex") {
+		++found_a_port;
+		axxia_probe_pciex_bridge(np);
+	}
+
+	if (0 != found_a_port) {
+		pci_common_init(&axxia_pcie_hw[0]);
+		pci_common_init(&axxia_pcie_hw[1]);
+		pci_common_init(&axxia_pcie_hw[2]);
+	}
 
 	return;
 }

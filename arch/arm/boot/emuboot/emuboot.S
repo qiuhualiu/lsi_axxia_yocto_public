@@ -93,7 +93,6 @@ _start:
 	str	r2, [r0, #0]			@ ensure initially zero
 	mov	pc, r1				@ branch to the relocated code
 1:
-	wfe
 	ldr	r1, [r0]
 	cmp	r1, #0
 	beq	1b
@@ -118,7 +117,7 @@ atags:
 	@ ATAG_CMDLINE
 	.long	(1f - .) >> 2
 	.long	0x54410009
-	.asciz	"root=/dev/mmcblk0 rootwait ip=none mem=1024M console=ttyAMA0 earlyprintk"
+	.asciz	"root=/dev/nfs initrd=0x2000000 mem=1024M console=ttyAMA0 ip=dhcp loglevel=7"
 
 	.align	2
 1:
