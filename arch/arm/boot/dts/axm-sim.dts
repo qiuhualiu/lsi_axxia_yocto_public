@@ -1,5 +1,5 @@
 /*
- * arch/arm/boot/dts/axm5500-sim.dts
+ * arch/arm/boot/dts/axm-sim.dts
  *
  * Copyright (C) 2012 LSI
  *
@@ -64,6 +64,78 @@
 			compatible = "arm,cortex-a15";
 			reg = <3>;
 		};
+
+		cpu@4 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <4>;
+		};
+
+		cpu@5 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <5>;
+		};
+
+		cpu@6 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <6>;
+		};
+
+		cpu@7 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <7>;
+		};
+
+		cpu@8 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <8>;
+		};
+
+		cpu@9 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <9>;
+		};
+
+		cpu@10 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <10>;
+		};
+
+		cpu@11 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <11>;
+		};
+
+		cpu@12 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <12>;
+		};
+
+		cpu@13 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <13>;
+		};
+
+		cpu@14 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <14>;
+		};
+
+		cpu@15 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <15>;
+		};
 	};
 
 	memory@00000000 {
@@ -76,8 +148,10 @@
 		#interrupt-cells = <3>;
 		#address-cells = <0>;
 		interrupt-controller;
-		reg = <0x20 0x01001000 0 0x1000>,
-		      <0x20 0x01002000 0 0x100>;
+		reg = <0x20 0x01001000 0 0x1000>,  /* gic dist base */
+		      <0x20 0x01002000 0 0x100>,   /* gic cpu base */
+		      <0x20 0x10030000 0 0x100>,   /* axm IPI mask reg base */
+		      <0x20 0x10040000 0 0x20000>; /* axm IPI send reg base */
 	};
 
 	timer {
