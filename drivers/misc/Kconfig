@@ -498,6 +498,14 @@ config MAX8997_MUIC
 	  Maxim MAX8997 PMIC.
 	  The MAX8997 MUIC is a USB port accessory detector and switch.
 
+config LSI_MTC
+	tristate "LSI Master Test Controller driver"
+	depends on ARCH_AXXIA
+	help
+	  The Master Test Controller (MTC) is a test generator that is fully
+	  compliant with IEEE 1149.1 and can run JTAG test sequences on
+	  external devices.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
