@@ -450,6 +450,7 @@ DEFINE_PER_CPU(u8, irq_work_pending);
 
 #endif /* 32 vs 64 bit */
 
+#ifndef CONFIG_PREEMPT_RT_FULL
 void arch_irq_work_raise(void)
 {
 	preempt_disable();
@@ -457,6 +458,7 @@ void arch_irq_work_raise(void)
 	set_dec(1);
 	preempt_enable();
 }
+#endif
 
 #else  /* CONFIG_IRQ_WORK */
 
