@@ -271,7 +271,9 @@ xscale1pmu_handle_irq(int irq_num, void *dev)
 			cpu_pmu->disable(hwc, idx);
 	}
 
+#ifndef CONFIG_PREEMPT_RT_FULL
 	irq_work_run();
+#endif
 
 	/*
 	 * Re-enable the PMU.
@@ -611,7 +613,9 @@ xscale2pmu_handle_irq(int irq_num, void *dev)
 			cpu_pmu->disable(hwc, idx);
 	}
 
+#ifndef CONFIG_PREEMPT_RT_FULL
 	irq_work_run();
+#endif
 
 	/*
 	 * Re-enable the PMU.
