@@ -53,7 +53,6 @@
 #include <linux/io.h>
 
 #include <asm/lsi/acp_ncr.h>
-#include <asm/lsi/acp_clock.h>
 
 #define SZ_4K (4*1024)
 #define UART_NR			2
@@ -68,6 +67,7 @@
 #define MAX_BAUD_RATE 115200
 
 static int dt_baud_rate;
+static unsigned long per_clock;
 
 /*
   ======================================================================
@@ -121,14 +121,9 @@ struct uart_acp_port {
 static int
 get_clock_stuff(struct uart_acp_port *port, int baud_rate)
 {
-	unsigned long per_clock;
 	unsigned long divisor;
 	unsigned long ibrd;
 	unsigned long fbrd;
-
-	/* Get the speed of the peripheral clock. */
-	acp_clock_get(1, &per_clock);
-	per_clock *= 1000;
 
 	/*
 	  Since the IBDR (integer part of the baud rate
@@ -137,10 +132,11 @@ get_clock_stuff(struct uart_acp_port *port, int baud_rate)
 	  desired baud rate.
 	*/
 
-	if (is_asic()) {
+	if (1000000 < per_clock) {
 		divisor = per_clock / 25000000;
 		ibrd = 25000000 / (16 * baud_rate);
 	} else {
+		/* Emulation is much slower... */
 		divisor = per_clock / 3250000;
 		ibrd = 3250000 / (16 * baud_rate);
 	}
@@ -641,8 +637,7 @@ acp_serial_startup(struct uart_port *port)
 	return 0;
 
  clk_dis:
-	/*clk_disable(uap->clk);*/
-/* out:*/
+
 	return retval;
 }
 
@@ -1124,10 +1119,10 @@ acp_serial_add_ports(struct uart_driver *driver)
 		clk = of_get_property(np, "clock-frequency", NULL);
 
 		if (clk && *clk)
-			uap->port.uartclk = *clk;
+			per_clock = *clk;
 		else {
 			printk(KERN_ERR "serial clock frequency not found\n");
-			uap->port.uartclk = 6500000;
+			per_clock = 200000000;
 		}
 
 		speed = of_get_property(np, "current-speed", NULL);
