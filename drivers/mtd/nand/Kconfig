@@ -527,4 +527,11 @@ config MTD_NAND_FSMC
 	  Enables support for NAND Flash chips on the ST Microelectronics
 	  Flexible Static Memory Controller (FSMC)
 
+config MTD_NAND_EP501X
+	tristate "Driver for Eureka EP501/EP501G1/EP501G3 Controllers"
+	depends on MTD_NAND
+	help
+	  Enables NAND flash support for the Eureka EP501, EP501G1
+	  and EP501G3 controllers.
+
 endif # MTD_NAND
