@@ -163,7 +163,7 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 	int retval;
 	struct device_node *np = pdev->dev.of_node;
 	const int *enabled;
-
+	struct resource *res;
 
 	enabled = of_get_property(np, "enabled", NULL);
 	if (!enabled || !*enabled)
@@ -173,10 +173,10 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	/* Map the irq in the PPC476 to get the irq number */
-	irq = irq_create_mapping(NULL, 31);
+	irq = platform_get_irq(pdev, 0);
 
 	if (NO_IRQ == irq) {
-		dev_dbg(&pdev->dev, "error mapping irq number\n");
+		dev_dbg(&pdev->dev, "error getting irq number\n");
 		retval = -EBUSY;
 		goto fail_create_hcd;
 	}
@@ -187,14 +187,21 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 		goto fail_create_hcd;
 	}
 
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(&pdev->dev, "Error: resource addr %s setup!\n",
+			dev_name(&pdev->dev));
+		return -ENODEV;
+	}
+
 	hcd = usb_create_hcd(driver, &pdev->dev, dev_name(&pdev->dev));
 	if (!hcd) {
 		retval = -ENOMEM;
 		goto fail_create_hcd;
 	}
 
-	hcd->rsrc_start = ci13612_PHY_ADDR;
-	hcd->rsrc_len = 0x20000;
+	hcd->rsrc_start = res->start;
+	hcd->rsrc_len = resource_size(res);
 
 	hcd->regs = of_iomap(np, 0);
 	if (!hcd->regs) {
