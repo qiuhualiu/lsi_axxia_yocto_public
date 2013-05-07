@@ -1,0 +1,11 @@
+config IRQCHIP
+	def_bool y
+	depends on OF_IRQ
+
+config RENESAS_INTC_IRQPIN
+	bool
+	select IRQ_DOMAIN
+
+config RENESAS_IRQC
+	bool
+	select IRQ_DOMAIN
