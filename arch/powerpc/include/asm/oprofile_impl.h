@@ -66,12 +66,13 @@ extern struct op_powerpc_model op_model_power4;
 extern struct op_powerpc_model op_model_7450;
 extern struct op_powerpc_model op_model_cell;
 extern struct op_powerpc_model op_model_pa6t;
+extern struct op_powerpc_model op_model_acp_pmu;
 
 
 /* All the classic PPC parts use these */
 static inline unsigned int classic_ctr_read(unsigned int i)
 {
-	switch(i) {
+	switch (i) {
 	case 0:
 		return mfspr(SPRN_PMC1);
 	case 1:
@@ -99,7 +100,7 @@ static inline unsigned int classic_ctr_read(unsigned int i)
 
 static inline void classic_ctr_write(unsigned int i, unsigned int val)
 {
-	switch(i) {
+	switch (i) {
 	case 0:
 		mtspr(SPRN_PMC1, val);
 		break;
@@ -134,7 +135,8 @@ static inline void classic_ctr_write(unsigned int i, unsigned int val)
 }
 
 
-extern void op_powerpc_backtrace(struct pt_regs * const regs, unsigned int depth);
+extern void
+op_powerpc_backtrace(struct pt_regs * const regs, unsigned int depth);
 
 #endif /* __KERNEL__ */
 #endif /* _ASM_POWERPC_OPROFILE_IMPL_H */
