@@ -19,14 +19,6 @@
 #include <asm/perf_event_acp.h>
 #include <asm/reg_acp_pmu.h>
 
-/* PMU IRQ handler */
-static irqreturn_t acp_pmu_isr(int irq, void *dev_id)
-{
-	__get_cpu_var(irq_stat).pmu_irqs++;
-	perf_irq(get_irq_regs());
-	return IRQ_HANDLED;
-}
-
 /*
  * Map of generic hardware event types to hardware events
  * Zero if unsupported
@@ -129,13 +121,6 @@ static struct acp_pmu ppc476_pmu = {
 
 static int init_ppc476_pmu(void)
 {
-	unsigned int irq;
-	int intNum, core;
-	static const char * const irqname[] = { "pmu-core0",
-						"pmu-core1",
-						"pmu-core2",
-						"pmu-core3" };
-
 	if (!cur_cpu_spec->oprofile_cpu_type)
 		return -ENODEV;
 
@@ -143,50 +128,6 @@ static int init_ppc476_pmu(void)
 		num_events = 32;
 	else
 		return -ENODEV;
-
-	/*
-	 * Install the PMU interrupt handlers:
-	 *
-	 * NOTE: On the LSI ACP platform, the PMU interrupts are
-	 * hard-wired as inputs to the MPIC. The irq numbers are
-	 * fixed as follows:
-	 *
-	 *   Core 0 PMU: IRQ 95
-	 *   Core 1 PMU: IRQ 94
-	 *   Core 2 PMU: IRQ 93
-	 *   Core 3 PMU: IRQ 92
-	 *
-	 * The IRQ assignment should probably be done in the DTB,
-	 * like ARM does, but no other PowerPC platform does this.
-	 * So for now, we hard-code the numbers here.
-	 */
-	for_each_possible_cpu(core) {
-		if (core == 0)
-			intNum = 95;
-		else if (core == 1)
-			intNum = 94;
-		else if (core == 2)
-			intNum = 93;
-		else if (core == 3)
-			intNum = 92;
-		else
-			break;
-
-		irq = irq_create_mapping(NULL, intNum);
-		if (irq == NO_IRQ) {
-			pr_err("PMU irq_create_mapping() failed\n");
-			break;
-		}
-		if (irq_set_affinity(irq, get_cpu_mask(core))) {
-			pr_warning("PMU IRQ affinity failed (irq=%d, cpu=%d)\n",
-				   irq, core);
-			continue;
-		}
-		if (request_irq(irq, acp_pmu_isr,
-				IRQF_DISABLED | IRQF_NOBALANCING,
-				irqname[core], NULL))
-			pr_err("PMU reqeust for IRQ%d failed\n", irq);
-	}
 
 	return register_acp_pmu(&ppc476_pmu);
 }
