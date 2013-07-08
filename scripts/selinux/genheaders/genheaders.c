@@ -40,7 +40,8 @@ static char *stoupperx(const char *s)
 
 int main(int argc, char *argv[])
 {
-	int i, j, k;
+	int i;
+	unsigned int j, k;
 	int isids_len;
 	FILE *fout;
 	const char *needle = "SOCKET";

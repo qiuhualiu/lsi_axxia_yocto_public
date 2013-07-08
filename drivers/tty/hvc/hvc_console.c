@@ -768,7 +768,8 @@ static int hvc_tiocmset(struct tty_struct *tty,
 }
 
 #ifdef CONFIG_CONSOLE_POLL
-int hvc_poll_init(struct tty_driver *driver, int line, char *options)
+int hvc_poll_init(struct tty_driver *driver, int line, char *options,
+		void *rx_callback)
 {
 	return 0;
 }

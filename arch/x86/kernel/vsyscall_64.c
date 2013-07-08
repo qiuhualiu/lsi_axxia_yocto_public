@@ -33,6 +33,7 @@
 #include <linux/notifier.h>
 #include <linux/syscalls.h>
 #include <linux/ratelimit.h>
+#include <linux/module.h>
 
 #include <asm/vsyscall.h>
 #include <asm/pgtable.h>

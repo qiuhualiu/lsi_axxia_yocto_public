@@ -4084,7 +4084,6 @@ static int count_total(struct page *page)
 {
 	return page->objects;
 }
-#endif
 
 #ifdef CONFIG_SLUB_DEBUG
 static int validate_slab(struct kmem_cache *s, struct page *page,
@@ -4402,6 +4401,7 @@ static int list_locations(struct kmem_cache *s, char *buf,
 		len += sprintf(buf, "No data\n");
 	return len;
 }
+#endif
 #endif
 
 #ifdef SLUB_RESILIENCY_TEST

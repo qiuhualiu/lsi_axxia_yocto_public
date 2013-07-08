@@ -717,7 +717,7 @@ static void unionfs_put_link(struct dentry *dentry, struct nameidata *nd,
 			     void *cookie)
 {
 	struct dentry *parent;
-	char *buf;
+	const char *buf = nd_get_link(nd);
 
 	unionfs_read_lock(dentry->d_sb, UNIONFS_SMUTEX_CHILD);
 	parent = unionfs_lock_parent(dentry, UNIONFS_DMUTEX_PARENT);
@@ -732,7 +732,6 @@ static void unionfs_put_link(struct dentry *dentry, struct nameidata *nd,
 	/* XXX: can't run this check b/c this fxn can receive a poisoned 'nd' PTR */
 	unionfs_check_nd(nd);
 #endif
-	buf = nd_get_link(nd);
 	if (!IS_ERR(buf))
 		kfree(buf);
 	unionfs_unlock_dentry(dentry);

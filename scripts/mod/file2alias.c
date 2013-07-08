@@ -816,7 +816,7 @@ ADD_TO_DEVTABLE("virtio", struct virtio_device_id, do_virtio_entry);
 static int do_vmbus_entry(const char *filename, struct hv_vmbus_device_id *id,
 			  char *alias)
 {
-	int i;
+	unsigned int i;
 	char guid_name[((sizeof(id->guid) + 1)) * 2];
 
 	for (i = 0; i < (sizeof(id->guid) * 2); i += 2)
