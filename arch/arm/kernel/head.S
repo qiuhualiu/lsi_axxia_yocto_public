@@ -52,7 +52,12 @@
 	.equ	swapper_pg_dir, KERNEL_RAM_VADDR - PG_DIR_SIZE
 
 	.macro	pgtbl, rd, phys
+#ifdef CONFIG_ARCH_AXXIA
+	ldr	\rd, =(TEXT_OFFSET - PG_DIR_SIZE)
+	add	\rd, \rd, \phys
+#else
 	add	\rd, \phys, #TEXT_OFFSET - PG_DIR_SIZE
+#endif
 	.endm
 
 #ifdef CONFIG_XIP_KERNEL
@@ -288,6 +293,9 @@ __create_page_tables:
 	mov	r7, #1 << (54 - 32)		@ XN
 #else
 	orr	r3, r3, #PMD_SECT_XN
+#endif
+#ifdef CONFIG_ARCH_AXXIA
+	orr	r7, r7, #0x20
 #endif
 1:	str	r3, [r0], #4
 #ifdef CONFIG_ARM_LPAE
