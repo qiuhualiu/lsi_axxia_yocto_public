@@ -3941,12 +3941,20 @@ static int appnic_mii_probe(struct net_device *dev)
 	struct phy_device *phydev = NULL;
 	int ret;
 
+	if (pdata->phy_address && (pdata->phy_address < PHY_MAX_ADDR)) {
+		phydev = pdata->mii_bus->phy_map[pdata->phy_address];
+		if (phydev)
+			goto skip_first;
+	}
+
 	/* Find the first phy */
 	phydev = phy_find_first(pdata->mii_bus);
 	if (!phydev) {
 		netdev_err(dev, " no PHY found\n");
 		return -ENODEV;
 	}
+
+skip_first:
 
 	ret = phy_connect_direct(dev, phydev,
 				 &appnic_handle_link_change, 0,
