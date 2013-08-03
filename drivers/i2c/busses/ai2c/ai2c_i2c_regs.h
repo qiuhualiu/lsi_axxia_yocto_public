@@ -36,6 +36,324 @@
  * @ingroup _i2c_
  */
 
+/*****************************************************************************
+* Macros & Constants                                                         *
+*****************************************************************************/
+
+/*
+ * Register Group offsets
+ *
+ * The ACP has 8 groups of these handles at offsets 0x00, 0x20, 0x40,
+ * 0x60, 0x80, 0xA0, 0xC0, and 0xE0.
+ */
+#define AI2C_TIMER_SSP_OFFSET    (0x0000) /*!< Offset to start of
+						SSP timer group */
+#define AI2C_TIMER_I2C_OFFSET    (0x0020) /*!< Offset to start of
+						I2C timer group */
+#define AI2C_TIMER_UART0_CLK_OFFSET    (0x0040) /*!< Offset to start of
+						UART0 Clk timer group */
+#define AI2C_TIMER_UART1_CLK_OFFSET    (0x0060) /*!< Offset to start of
+						UART1 Clk timer group */
+#define AI2C_TIMER_WDOG_RESET_OFFSET   (0x0080) /*!< Offset to start of
+						Watchdog Reset timer group */
+#define AI2C_TIMER_GP5_OFFSET          (0x00A0) /*!< Offset to start of General
+						Purpose Timer #5 group */
+#define AI2C_TIMER_GP6_OFFSET          (0x00C0) /*!< Offset to start of General
+						Purpose Timer #6 group */
+#define AI2C_TIMER_GP7_OFFSET          (0x00E0) /*!< Offset to start of General
+						Purpose Timer #7 group */
+
+/*
+ * Register handle offsets
+ */
+
+#define AI2C_REG_TIMER_TLV   (0x0000) /*!< Byte offset to Timer
+					load value register */
+#define AI2C_REG_TIMER_TV    (0x0004) /*!< Byte offset to Timer
+					value register */
+#define AI2C_REG_TIMER_TC    (0x0008) /*!< Byte offset to Timer
+					control register */
+#define AI2C_REG_TIMER_TIC   (0x000C) /*!< Byte offset to Timer
+					interrupt clear register */
+#define AI2C_REG_TIMER_RIS   (0x0010) /*!< Byte offset to Timer
+					raw interrupt source register */
+#define AI2C_REG_TIMER_IS    (0x0014) /*!< Byte offset to Timer
+					interrupt source */
+#define AI2C_REG_TIMER_BLV   (0x0018) /*!< Byte offset to Timer
+					background load value register */
+
+
+/*****************************************************************************
+* Register Definitions                                                       *
+*****************************************************************************/
+
+/*! @struct  ai2c_reg_timer_tlv
+ *  @brief   Timer load value register
+ *           Let:
+ *              Prescale=<1..4>
+ *              Clk_Period=K MHz
+ *              Output Freq=J MHz
+ *
+ *           Solve,
+ *              Output Freq = (Clk_Period / Timer Prescale) /
+ *                            (Timer Load Value + 1)
+ *           for
+ *              "Timer Load Value"
+ *
+ *           Example:
+ *              Prescale=1, Clk_Period=400 MHz, Output Freq=4 MHz
+ *              4 MHZ = (400 MHz / 1) / (TLV + 1)
+ *              TLV = (400/4) - 1
+ *                  = 99
+ */
+struct ai2c_reg_timer_tlv {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned value:32;        /*!< bits 31:00  timer load value */
+#else
+	unsigned value:32;        /*!< bits 31:00  timer load value */
+#endif
+};
+
+/*! @struct  ai2c_reg_timer_tv
+ *  @brief   Timer value register
+ */
+struct ai2c_reg_timer_tv {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned value:32;         /*!< bits 31:00  timer value */
+#else
+	unsigned value:32;         /*!< bits 31:00  timer value */
+#endif
+};
+
+/*! @struct  ai2c_reg_timer_tc
+ *  @brief   Timer control register
+ */
+struct ai2c_reg_timer_tc {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned reserved_31_08:24;  /* bits 31:08  reserved */
+	unsigned te:1;               /*!< bits  7     timer enable */
+	unsigned rmode:1;            /*!< bits  6     mode */
+	unsigned ie:1;               /*!< bits  5     interrupt enable */
+	unsigned omode:1;            /*!< bits  4     output mode */
+	unsigned pres:2;             /*!< bits  3: 2  pre-scaler */
+	unsigned size:1;             /*!< bits  1     size */
+	unsigned osm:1;              /*!< bits  0     one shot mode */
+#else
+	unsigned osm:1;              /*!< bits  0     one shot mode */
+	unsigned size:1;             /*!< bits  1     size */
+	unsigned pres:2;             /*!< bits  3: 2  pre-scaler */
+	unsigned omode:1;            /*!< bits  4     output mode */
+	unsigned ie:1;               /*!< bits  5     interrupt enable */
+	unsigned rmode:1;            /*!< bits  6     mode */
+	unsigned te:1;               /*!< bits  7     timer enable */
+	unsigned reserved_31_08:24;  /* bits 31:08  reserved */
+#endif
+};
+
+/*! @struct  ai2c_reg_timer_tic
+ *  @brief   Timer interrupt clear register
+ */
+struct ai2c_reg_timer_tic {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned value:31;      /* bits 31:01  reserved */
+	unsigned tic:1;         /*!< bits  0     timer interrupt clear */
+#else
+	unsigned tic:1;         /*!< bits  0     timer interrupt clear */
+	unsigned value:31;      /* bits 31:01  reserved */
+#endif
+};
+
+/*! @struct  ai2c_reg_timer_ris
+ *  @brief   Timer raw interrupt status register
+ */
+struct ai2c_reg_timer_ris {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned reserved:31;   /* bits 31:01  reserved */
+	unsigned ris:1;         /*!< bits  0     raw interrupt status */
+#else
+	unsigned ris:1;         /*!< bits  0     raw interrupt status */
+	unsigned reserved:31;   /* bits 31:01  reserved */
+#endif
+};
+
+/*! @struct  ai2c_reg_timer_is
+ *  @brief   Timer interrupt status register
+ */
+struct ai2c_reg_timer_is {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned reserved:31;  /* bits 31:01  reserved */
+	unsigned is:1;         /*!< bits  0 interrupt status */
+#else
+	unsigned is:1;         /*!< bits  0 interrupt status */
+	unsigned reserved:31;   /* bits 31:01 reserved */
+#endif
+};
+
+/*! @struct  ai2c_reg_timer_blv
+ *  @brief   Timer background load value register
+ */
+struct ai2c_reg_timer_blv {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned value:32;     /*!< bits 31:00  background load value */
+#else
+	unsigned value:32;     /*!< bits 31:00  background load value */
+#endif
+};
+
+
+/******************************************************************************
+ * _AI2C_CFG_NODE_REG_DEFINES_H_
+ *****************************************************************************/
+
+    /* NODE 0x1a , TARGET 0xff*/
+
+#define     AI2C_CFG_NODE_NODE_INFO_0                            (0x00000000)
+#define     AI2C_CFG_NODE_NODE_INFO_1                            (0x00000004)
+#define     AI2C_CFG_NODE_NODE_INFO_2                            (0x00000008)
+#define     AI2C_CFG_NODE_NODE_INFO_3                            (0x0000000c)
+#define     AI2C_CFG_NODE_NODE_CFG                               (0x00000010)
+#define     AI2C_CFG_NODE_WRITE_ERR_ADDR                         (0x00000014)
+#define     AI2C_CFG_NODE_NODE_ERROR                             (0x00000018)
+#define     AI2C_CFG_NODE_NODE_ERROR_DATA_R                      (0x0000001c)
+#define     AI2C_CFG_NODE_NODE_SCRATCH                           (0x00000020)
+
+
+/*! @struct ai2c_cfg_node_node_info_0_r_t
+ *  @brief CFG Node Info Register 0
+ *  @details This register contains the module type and module revision
+ *  for the module containing this CFG Node.
+ */
+struct ai2c_cfg_node_node_info_0_r {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned      module_type:16;
+	unsigned      module_revision:16;
+#else    /* Little Endian */
+	unsigned      module_revision:16;
+	unsigned      module_type:16;
+#endif
+};
+
+/*! @struct ai2c_cfg_node_node_info_1_r
+ *  @brief CFG Node Info Register 1
+ *  @details This read-only register contains the module instance
+ *  and lower 24 bits of the module info field for the module
+ *  containing this CFG Node.
+ */
+struct ai2c_cfg_node_node_info_1_r {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned      module_info:24;
+	unsigned      module_instance:8;
+#else    /* Little Endian */
+	unsigned      module_instance:8;
+	unsigned      module_info:24;
+#endif
+};
+
+/*! @struct ai2c_cfg_node_node_info_2_r
+ *  @brief CFG Node Info Register 2
+ *  @details This read-only register contains bits 55:24 of the module info field for the module containing this CFG Node.
+ */
+struct ai2c_cfg_node_node_info_2_r {
+	unsigned  int   module_info;
+};
+
+/*! @struct ai2c_cfg_node_node_info_3_r
+ *  @brief CFG Node Info Register 3
+ *  @details This read-only register contains bits 87:56 of the module info field for the module containing this CFG Node.
+ */
+struct ai2c_cfg_node_node_info_3_r {
+	unsigned  int               module_info;
+};
+
+/*! @struct ai2c_cfg_node_node_cfg_r
+ *  @brief CFG Node Configuration Register
+ *  @details This register contains fields that control the operation of the CFG node.
+ */
+struct ai2c_cfg_node_node_cfg_r {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned      fpga:1;
+	unsigned      reserved0:26;
+	unsigned      opt_fill:1;
+	unsigned      clk_apb_sel:2;
+	unsigned      parity_enable:1;
+	unsigned      parity_odd:1;
+#else    /* Little Endian */
+	unsigned      parity_odd:1;
+	unsigned      parity_enable:1;
+	unsigned      clk_apb_sel:2;
+	unsigned      opt_fill:1;
+	unsigned      reserved0:26;
+	unsigned      fpga:1;
+#endif
+};
+
+/*! @struct ai2c_cfg_node_write_err_addr_r
+ *  @brief CFG Node Write Error Address Register
+ *  @details This read-only register holds the address associated with the first write error for the last write command.
+ */
+struct ai2c_cfg_node_write_err_addr_r {
+	unsigned  int             error_address;
+};
+
+/*! @struct ai2c_cfg_node_node_error_r
+ *  @brief CFG Node Error Register
+ *  @details This register holds the sticky errors detected by the CFG node.
+ */
+struct ai2c_cfg_node_node_error_r {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned      reserved0:26;
+	unsigned      node_error:1;
+	unsigned      parity_error:1;
+	unsigned      afifo_overflow:1;
+	unsigned      afifo_underflow:1;
+	unsigned      dfifo_overflow:1;
+	unsigned      dfifo_underflow:1;
+#else    /* Little Endian */
+	unsigned      dfifo_underflow:1;
+	unsigned      dfifo_overflow:1;
+	unsigned      afifo_underflow:1;
+	unsigned      afifo_overflow:1;
+	unsigned      parity_error:1;
+	unsigned      node_error:1;
+	unsigned      reserved0:26;
+#endif
+};
+
+/*! @struct ai2c_cfg_node_node_error_data_r
+ *  @brief CFG Node Error Data Register
+ *  @details This register holds the error code associated with the first protocol error detected by the CFG node.
+ */
+struct ai2c_cfg_node_node_error_data_r {
+
+#ifdef AI2C_BIG_ENDIAN
+	unsigned      reserved0:28;
+	unsigned      error_code:4;
+#else    /* Little Endian */
+	unsigned      error_code:4;
+	unsigned      reserved0:28;
+#endif
+};
+
+/*! @struct ai2c_cfg_node_node_scratch_r
+ *  @brief CFG Node Scratch Register
+ *  @details This register is a scratch location for software's use.
+ */
+struct ai2c_cfg_node_node_scratch_r {
+	unsigned int scratch;
+};
+
+
 /******************************************************************************
  * Register handle offsets (X1/X2 aka ACP3400, ACP2500)                       *
  *                                                                            *
@@ -1793,5 +2111,55 @@ struct ai2c_reg_i2c_x7_mst_arp_int_status {
 	unsigned:30;         /*!< bits 31:2  reserved */
 #endif
 };
+
+/*!
+ * Node definitions for all nodes/engines in NCP/X1 (that we need here).
+ * This needs to be kept in-sync with HW.
+ */
+
+#define AI2C_NODE_X1_ECID             0x0A
+
+
+/* ---------------------------------- */
+/* --- AI2C Region ID Support     --- */
+/* ---------------------------------- */
+
+
+#define AI2C_NODE_MASK             (0xFFFF)
+#define AI2C_TARGET_MASK           (0xFFFF)
+
+#define AI2C_NODE_ID(regionId)    (((regionId) >> 16) & AI2C_NODE_MASK)
+#define AI2C_TARGET_ID(regionId)  ((regionId) & AI2C_TARGET_MASK)
+
+
+#define AI2C_REGION_ID(node, target) \
+	((((node) & AI2C_NODE_MASK) << 16) | ((target) & AI2C_TARGET_MASK))
+
+
+/* ---------------------------------- */
+/* --- AI2C Region ID Definitions --- */
+/* ---------------------------------- */
+
+/* Temporary dummy regions */
+#define AI2C_REGION_NULL       (AI2C_REGION_ID(0xffff, 0xffff))
+
+
+#define AI2C_REGION_NCA_CFG    (AI2C_REGION_ID(0x16,  0xff))
+
+
+#define AI2C_REGION_GPIO_0     (AI2C_REGION_ID(0x140,  0)) /* 320.0 */
+#define AI2C_REGION_I2C_0      (AI2C_REGION_ID(0x143,  0)) /* 323.0 */
+#define AI2C_REGION_TIMER      (AI2C_REGION_ID(0x146,  0)) /* 326.0 */
+#define AI2C_REGION_GPREG      (AI2C_REGION_ID(0x149,  0)) /* 329.0 */
+#define AI2C_REGION_I2C_1      (AI2C_REGION_ID(0x14c,  0)) /* 332.0 */
+#define AI2C_REGION_I2C_2      (AI2C_REGION_ID(0x152,  0)) /* 338.0 */
+
+#define AI2C_REGION_SMB        (AI2C_REGION_ID(0x15c,  0)) /* 348.0 */
+#define AI2C_REGION_I2C_3      AI2C_REGION_SMB
+
+#define AI2C_REGION_CLK_CTRL   (AI2C_REGION_ID(0x18d,  0)) /* 397.0 */
+
+#define AI2C_REGION_RESET_CTRL (AI2C_REGION_ID(0x18e,  0)) /* 398.0 */
+
 
 #endif /* _AI2C_I2C_REGS_H_ */
