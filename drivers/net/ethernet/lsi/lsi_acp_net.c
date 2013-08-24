@@ -1,6 +1,10 @@
 #ifdef CONFIG_ARM
 
 /*
+  ARM STARTS HERE
+*/
+
+/*
  * drivers/net/ethernet/lsi/lsi_acp_net.c
  *
  * Copyright (C) 2009 LSI
@@ -1520,6 +1524,7 @@ static void clear_statistics_(appnic_device_t *device)
 
 static void get_hw_statistics_(appnic_device_t *device)
 {
+#if 0
 	unsigned long flags_;
 
 	/* tx_packets */
@@ -1572,6 +1577,7 @@ static void get_hw_statistics_(appnic_device_t *device)
 	device->stats.tx_aborted_errors = 0;
 
 	spin_unlock_irqrestore(&device->lock, flags_);
+#endif
 
 	/*
 	 * That's all.
@@ -1905,6 +1911,7 @@ phy_speed_(int phy)
 		else
 			goto return_10;
 	} else {
+#if 0
 		rc = phy_read_(phy, BC_AUX_ERROR_AND_GEN_STATUS_REG, &aux);
 
 		if (rc)
@@ -1914,6 +1921,14 @@ phy_speed_(int phy)
 			goto return_100;
 		else
 			goto return_10;
+#else
+		rc = phy_read_(0x1e, 0x18, &aux);
+
+		if (0 != (aux & 0x2))
+		  goto return_100;
+		else
+		  goto return_10;
+#endif
 	}
 
 error:
@@ -1959,6 +1974,7 @@ phy_duplex_(int phy)
 		else
 			goto return_half;
 	} else {
+#if 0
 		rc = phy_read_(phy, BC_AUX_ERROR_AND_GEN_STATUS_REG, &aux);
 
 		if (rc)
@@ -1968,6 +1984,14 @@ phy_duplex_(int phy)
 			goto return_full;
 		else
 			goto return_half;
+#else
+		rc = phy_read_(0x1e, 0x18, &aux);
+
+		if (0 != (aux & 0x1))
+		  goto return_full;
+		else
+		  goto return_half;
+#endif
 	}
 
 error:
@@ -2064,7 +2088,21 @@ static int phy_enable_(struct net_device *device)
 		phy_id_low_.raw, apnd->phy_address);
 	}
 
-	phy_renegotiate_(apnd->phy_address);
+	/*phy_renegotiate_(apnd->phy_address);*/
+
+	{
+	  phy_control_t phy_control;
+	  int rc;
+	  unsigned short value;
+
+	  rc = phy_read_(0x1e, PHY_CONTROL, &phy_control.raw);
+	  phy_control.bits.full_duplex = 0x1;
+	  phy_control.bits.force100 = 0x1;
+	  rc |= phy_write_(0, PHY_CONTROL, phy_control.raw);
+
+	  rc |= phy_read_(0x1e, 0x18, &value);
+	  printk("%s:%d - rc=%d value=0x%x\n", __FILE__, __LINE__, rc, value);
+	}
 
 	return 0;
 }
@@ -2155,10 +2193,12 @@ lsinet_rx_packet(struct net_device *device)
 	}
 
 	/*dump_registers(device);*/
+#if 0
 	ok_ = read_mac_(APPNIC_RX_STAT_PACKET_OK);
 	overflow_ = read_mac_(APPNIC_RX_STAT_OVERFLOW);
 	crc_ = read_mac_(APPNIC_RX_STAT_CRC_ERROR);
 	align_ = read_mac_(APPNIC_RX_STAT_ALIGN_ERROR);
+#endif
 
 	/*
 	 * Copy the received packet into the skb.
@@ -3741,6 +3781,10 @@ module_exit(lsinet_exit);
 #else
 
 /*
+  PPC STARTS HERE
+*/
+
+/*
  * drivers/net/ethernet/lsi/lsi_acp_net.c
  *
  * Copyright (C) 2013 LSI
@@ -4868,6 +4912,7 @@ static int appnic_hard_start_xmit(struct sk_buff *skb,
 			descriptor.start_of_packet = 0;
 		}
 
+		asm volatile ("mcr p15,0,%0,c7,c10,4" : : "r" (0));
 		write_mac(pdata->tx_head.raw, APPNIC_DMA_TX_HEAD_POINTER);
 		dev->trans_start = jiffies;
 	} else {
