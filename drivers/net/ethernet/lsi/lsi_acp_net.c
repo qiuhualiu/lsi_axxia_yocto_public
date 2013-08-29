@@ -428,6 +428,10 @@ typedef union {
 #define BC_PHY_ID_LOW_ID			0x61E4
 #define BC_PHY_ID_LOW_MODEL			0x1e
 
+/* BCM5221 registers */
+#define PHY_BCM_TEST_REG 0x1f
+#define PHY_AUXILIARY_MODE3 0x1d
+
 typedef union {
 	unsigned short raw;
 
@@ -1726,9 +1730,14 @@ static int enable_(struct net_device *device)
 	appnic_device_t *apnd = netdev_priv(device);
 
 	rx_configuration_ =
+		APPNIC_RX_CONF_STRIPCRC;
+
+#if 0
+	rx_configuration_ =
 		(APPNIC_RX_CONF_STRIPCRC |
 		 APPNIC_RX_CONF_RXFCE |
 		 APPNIC_RX_CONF_TXFCE);
+#endif
 	tx_configuration_ =
 		(APPNIC_TX_CONF_ENABLE_SWAP_SA |
 		 APPNIC_TX_CONF_APP_CRC_ENABLE |
@@ -2102,6 +2111,22 @@ static int phy_enable_(struct net_device *device)
 
 	  rc |= phy_read_(0x1e, 0x18, &value);
 	  printk("%s:%d - rc=%d value=0x%x\n", __FILE__, __LINE__, rc, value);
+	}
+
+	{
+	  unsigned short value;
+	  int rc;
+
+	  rc = phy_read_(0x1e, PHY_BCM_TEST_REG, &value);
+        /* Access Shadow reg 0x1d */
+        value = value | 0x80;
+	  rc |= phy_write_(0x1e, PHY_BCM_TEST_REG, value);
+
+        /* Set RX FIFO size to 0x7 */
+	  rc |= phy_write_(0x1e, PHY_AUXILIARY_MODE3, 0x7);
+		if (rc != 0) {
+			return rc;
+		}	 
 	}
 
 	return 0;
@@ -2837,7 +2862,6 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 			descriptor.start_of_packet = 0;
 		}
 
-		asm volatile ("mcr p15,0,%0,c7,c10,4" : : "r" (0));
 		write_mac_(adapter->tx_head.raw, APPNIC_DMA_TX_HEAD_POINTER);
 		device->trans_start = jiffies;
 		LSINET_COUNTS_INC(LSINET_COUNTS_HST_SNT);
@@ -4913,6 +4937,7 @@ static int appnic_hard_start_xmit(struct sk_buff *skb,
 			descriptor.start_of_packet = 0;
 		}
 
+		asm volatile ("mcr p15,0,%0,c7,c10,4" : : "r" (0));
 		write_mac(pdata->tx_head.raw, APPNIC_DMA_TX_HEAD_POINTER);
 		dev->trans_start = jiffies;
 	} else {
