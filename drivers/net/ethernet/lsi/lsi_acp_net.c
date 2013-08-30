@@ -2862,6 +2862,7 @@ appnic_hard_start_xmit(struct sk_buff *skb,
 			descriptor.start_of_packet = 0;
 		}
 
+		asm volatile ("mcr p15,0,%0,c7,c10,4" : : "r" (0));
 		write_mac_(adapter->tx_head.raw, APPNIC_DMA_TX_HEAD_POINTER);
 		device->trans_start = jiffies;
 		LSINET_COUNTS_INC(LSINET_COUNTS_HST_SNT);
@@ -4937,7 +4938,6 @@ static int appnic_hard_start_xmit(struct sk_buff *skb,
 			descriptor.start_of_packet = 0;
 		}
 
-		asm volatile ("mcr p15,0,%0,c7,c10,4" : : "r" (0));
 		write_mac(pdata->tx_head.raw, APPNIC_DMA_TX_HEAD_POINTER);
 		dev->trans_start = jiffies;
 	} else {
