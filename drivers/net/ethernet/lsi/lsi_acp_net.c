@@ -1874,7 +1874,15 @@ void disable_nic_(void)
 static int
 phy_read_(int phy, int reg, unsigned short *value)
 {
-	return acp_mdio_read(phy, reg, value);
+	int rc;
+
+	rc = acp_mdio_read(phy, reg, value);
+#if 0
+	printk("phy_read: read 0x%x from reg 0x%x (phy 0x%x, rc %d)\n",
+	       *value, reg, phy, rc);
+#endif
+
+	return rc;
 }
 
 /*
@@ -1885,7 +1893,15 @@ phy_read_(int phy, int reg, unsigned short *value)
 static int
 phy_write_(int phy, int reg, unsigned short value)
 {
-	return acp_mdio_write(phy, reg, value);
+	int rc;
+
+	rc = acp_mdio_write(phy, reg, value);
+#if 0
+	printk("phy_write: wrote 0x%x to reg 0x%x (phy 0x%x, rc %d)\n",
+	       value, reg, phy, rc);
+#endif
+
+	return rc;
 }
 
 /*
@@ -2027,7 +2043,7 @@ phy_renegotiate_(int phy)
 	int autoneg_retries = 4;
 	int autoneg_complete_retries = 20;
 
-	printk(KERN_INFO "Initiating Auto Negotiation");
+	printk(KERN_INFO "Initiating Auto Negotiation (phy 0x%x)", phy);
 	phy_write_(phy, PHY_AUTONEG_ADVERTISE, 0x61);
 #if defined(PHY_DEBUG)
 	/*Debug Code */
@@ -2087,6 +2103,8 @@ static int phy_enable_(struct net_device *device)
 	phy_id_low_t phy_id_low_;
 	unsigned char phyaddr_string_[40];
 
+	printk("%d - apnd->phy_address=0x%x\n", __LINE__, apnd->phy_address);
+
 	if (0 == phy_read_(apnd->phy_address, PHY_ID_HIGH, &phy_id_high_.raw)) {
 		PHY_DEBUG_PRINT("Read PHY_ID_HIGH as 0x%x on mdio addr 0x%x.\n",
 		phy_id_high_.raw, apnd->phy_address);
@@ -2118,20 +2136,15 @@ static int phy_enable_(struct net_device *device)
 	  int rc;
 
 	  rc = phy_read_(0x1e, PHY_BCM_TEST_REG, &value);
-
-	  /* Access Shadow reg 0x1d */
-	  value = value | 0x80;
+        /* Access Shadow reg 0x1d */
+        value = value | 0x80;
 	  rc |= phy_write_(0x1e, PHY_BCM_TEST_REG, value);
 
-	  /* Set RX FIFO size to 0x7 */
+        /* Set RX FIFO size to 0x7 */
 	  rc |= phy_write_(0x1e, PHY_AUXILIARY_MODE3, 0x7);
-
-	  /* Back to normal registers. */
-	  value &= ~0x80;
-	  rc |= phy_write_(0x1e, PHY_BCM_TEST_REG, value);
-
-	  if (rc != 0)
-	    return rc;
+		if (rc != 0) {
+			return rc;
+		}	 
 	}
 
 	return 0;
@@ -2522,6 +2535,8 @@ static irqreturn_t appnic_isr_(int irq, void *device_id)
 
 	TRACE_BEGINNING();
 	LSINET_COUNTS_INC(LSINET_COUNTS_ISR_START);
+
+	/*printk("%d - phy_address=0x%x\n", __LINE__, appnic_device->phy_address);*/
 
 	/* Acquire the lock */
 	spin_lock_irqsave(&dev_->lock, flags);
@@ -3100,6 +3115,11 @@ appnic_init(struct net_device *device)
 	appnic_device_t *adapter = netdev_priv(device);
 
 	TRACE_BEGINNING();
+
+	/*adapter->phy_address = 0x1e;*/
+
+	/* Set the FEMAC to uncached. */
+	/*writel( 0, (GPREG + 0x78));*/
 
 	/*
 	 * Reset the MAC
