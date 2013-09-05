@@ -2117,21 +2117,22 @@ static int phy_enable_(struct net_device *device)
 	  unsigned short value;
 	  int rc;
 
+        /* Access Shadow reg 0x1d */
 	  rc = phy_read_(0x1e, PHY_BCM_TEST_REG, &value);
-
-	  /* Access Shadow reg 0x1d */
-	  value = value | 0x80;
+        value = value | 0x80;
 	  rc |= phy_write_(0x1e, PHY_BCM_TEST_REG, value);
 
-	  /* Set RX FIFO size to 0x7 */
+        /* Set RX FIFO size to 0x7 */
 	  rc |= phy_write_(0x1e, PHY_AUXILIARY_MODE3, 0x7);
 
-	  /* Back to normal registers. */
-	  value &= ~0x80;
-	  rc |= phy_write_(0x1e, PHY_BCM_TEST_REG, value);
+		/* Access Normal Registers */
+		rc = phy_read_(0x1e, PHY_BCM_TEST_REG, &value);
+		value = value & ~0x80;
+		rc |= phy_write_(0x1e, PHY_BCM_TEST_REG, value);
 
-	  if (rc != 0)
-	    return rc;
+		if (rc != 0) {
+			return rc;
+		}	 
 	}
 
 	return 0;
