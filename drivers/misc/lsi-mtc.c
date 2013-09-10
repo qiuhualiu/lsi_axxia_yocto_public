@@ -31,6 +31,7 @@
 #include <linux/string.h>
 #include "linux/lsi_mtc_ioctl.h"
 
+#define DEBUG
 
 /*
    device tree node:
@@ -2853,6 +2854,7 @@ static struct mtc_device *dev;
 	int rc;
 
 	printk(KERN_DEBUG"!!!!MTC: mtc_probe()\n");
+	printk("!!!!MTC: mtc_probe()\n");
        /* Allocate space for device private data */
 	dev = kzalloc(sizeof *dev, GFP_KERNEL);
 	if (!dev) {
@@ -3024,9 +3026,10 @@ static long _mtc_config(struct mtc_device *dev,
 	cfg0.start_stopn = 0;
 	dev->regs->config0 =  *((u32 *) &cfg0);
 
-	/* 2. reset testgen */
+	/* 2. reset testgen, and init mem */
 	exec1.sw_reset = 1;
 	dev->regs->execute = *((u32 *) &exec1);
+	dev->regs->mem_init = 0x202;
 
 	/* 3. config MTC */
 	cfg0 =
