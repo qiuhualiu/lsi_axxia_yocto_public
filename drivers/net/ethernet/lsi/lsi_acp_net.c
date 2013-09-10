@@ -53,6 +53,9 @@
 #include <linux/io.h>
 #include <asm/dma.h>
 
+#undef AMARILLO_WAS
+#define AMARILLO_WAS
+
 /*#include <asm/acp3400-version.h>*/
 
 extern int acp_mdio_read(unsigned long,
@@ -594,6 +597,9 @@ typedef struct {
 	unsigned long mdio_clock;
 	unsigned long phy_address;
 	unsigned long ad_value;
+	unsigned long phy_link_auto;
+	unsigned long phy_link_speed;
+	unsigned long phy_link_duplex;
 	unsigned char mac_addr[6];
 
 #ifdef LSINET_NAPI
@@ -1727,17 +1733,13 @@ static int enable_(struct net_device *device)
 	unsigned long rx_configuration_;
 	unsigned long tx_configuration_ = 0;
 	phy_status_t phy_status_;
+	phy_control_t phy_control_;
 	appnic_device_t *apnd = netdev_priv(device);
+	unsigned short value;
 
-	rx_configuration_ =
-		APPNIC_RX_CONF_STRIPCRC;
+	rx_configuration_ = APPNIC_RX_CONF_STRIPCRC;
+	/*rx_configuration_ |= 0x4;*/
 
-#if 0
-	rx_configuration_ =
-		(APPNIC_RX_CONF_STRIPCRC |
-		 APPNIC_RX_CONF_RXFCE |
-		 APPNIC_RX_CONF_TXFCE);
-#endif
 	tx_configuration_ =
 		(APPNIC_TX_CONF_ENABLE_SWAP_SA |
 		 APPNIC_TX_CONF_APP_CRC_ENABLE |
@@ -1752,6 +1754,7 @@ static int enable_(struct net_device *device)
 	 * status to set speed/duplex and check the link status).
 	 */
 
+	if (0 != apnd->phy_link_auto) {
 	if ((0 == phy_read_(apnd->phy_address, PHY_STATUS, &phy_status_.raw)) &&
 	    (0 == phy_read_(apnd->phy_address, PHY_STATUS, &phy_status_.raw))) {
 
@@ -1798,6 +1801,57 @@ static int enable_(struct net_device *device)
 		}
 	} else {
 		ERROR_PRINT("phy_read_() failed!\n");
+	}
+	} else {
+	  /*
+	    Don't autonegotiate for now...
+	  */
+
+	  phy_read_(apnd->phy_address, 0x1f, &value);
+	  value |= 0x80;
+	  phy_write_(apnd->phy_address, 0x1f, value);
+
+	  phy_write_(apnd->phy_address, 0x1d, 0x7);
+
+	  phy_read_(apnd->phy_address, 0x1f, &value);
+	  value &= ~0x80;
+	  phy_write_(apnd->phy_address, 0x1f, value);
+
+	  phy_read_(apnd->phy_address, PHY_CONTROL, &phy_control_.raw);
+	  phy_control_.bits.autoneg_enable = 0;
+	  phy_control_.bits.force100 = apnd->phy_link_speed;
+	  phy_control_.bits.full_duplex = apnd->phy_link_duplex;
+	  phy_write_(apnd->phy_address, PHY_CONTROL, phy_control_.raw);
+
+	  if (0 == phy_read_(apnd->phy_address, PHY_STATUS, &phy_status_.raw)) {
+	    if (1 == phy_status_.bits.link_status) {
+	      if (1 == phy_speed_(apnd->phy_address)) {
+		rx_configuration_ |= APPNIC_RX_CONF_SPEED;
+		tx_configuration_ |= APPNIC_TX_CONF_SPEED;
+	      }
+
+	      if (1 == phy_duplex_(apnd->phy_address)) {
+		rx_configuration_ |= APPNIC_RX_CONF_DUPLEX;
+		tx_configuration_ |= APPNIC_TX_CONF_DUPLEX;
+	      }
+
+	      rx_configuration_ |=
+		(APPNIC_RX_CONF_ENABLE |
+		 APPNIC_RX_CONF_LINK);
+	      tx_configuration_ |=
+		(APPNIC_TX_CONF_LINK |
+		 APPNIC_TX_CONF_ENABLE);
+	      return_code_ = 0;
+	      carrier_state_ = 1;
+	    } else {
+	      netif_carrier_off(device);
+	    }
+	  }
+
+#ifdef AMARILLO_WAS
+	  rx_configuration_ &= ~0x1000;
+	  tx_configuration_ &= ~0x1000;
+#endif
 	}
 
 	if (rx_configuration_ != read_mac_(APPNIC_RX_CONF)) {
@@ -2103,7 +2157,7 @@ static int phy_enable_(struct net_device *device)
 	phy_id_low_t phy_id_low_;
 	unsigned char phyaddr_string_[40];
 
-	printk("%d - apnd->phy_address=0x%x\n", __LINE__, apnd->phy_address);
+	apnd->phy_address = 0x1e;
 
 	if (0 == phy_read_(apnd->phy_address, PHY_ID_HIGH, &phy_id_high_.raw)) {
 		PHY_DEBUG_PRINT("Read PHY_ID_HIGH as 0x%x on mdio addr 0x%x.\n",
@@ -2128,7 +2182,6 @@ static int phy_enable_(struct net_device *device)
 	  rc |= phy_write_(0, PHY_CONTROL, phy_control.raw);
 
 	  rc |= phy_read_(0x1e, 0x18, &value);
-	  printk("%s:%d - rc=%d value=0x%x\n", __FILE__, __LINE__, rc, value);
 	}
 
 	{
@@ -2142,6 +2195,12 @@ static int phy_enable_(struct net_device *device)
 
         /* Set RX FIFO size to 0x7 */
 	  rc |= phy_write_(0x1e, PHY_AUXILIARY_MODE3, 0x7);
+
+	  rc = phy_read_(0x1e, PHY_BCM_TEST_REG, &value);
+        /* Access Shadow reg 0x1d */
+        value = value & ~0x80;
+	  rc |= phy_write_(0x1e, PHY_BCM_TEST_REG, value);
+
 		if (rc != 0) {
 			return rc;
 		}	 
@@ -3273,9 +3332,6 @@ appnic_init(struct net_device *device)
 		adapter->rx_tail = (appnic_queue_pointer_t *) dma_offset_;
 		adapter->rx_tail_dma = (int) adapter->rx_tail -
 			(int) adapter->dma_alloc_offset;
-		printk("%s:%d - rx_tail=0x%08x rx_tail_dma=0x%08x\n",
-		       __FILE__, __LINE__,
-		       adapter->rx_tail, adapter->rx_tail_dma); /* ZZZ */
 		dma_offset_ += sizeof(appnic_queue_pointer_t);
 		memset((void *) adapter->rx_tail, 0,
 		       sizeof(appnic_queue_pointer_t));
@@ -3650,6 +3706,7 @@ lsinet_init(void)
 	struct net_device *device;
 	struct device_node *np = NULL;
 	const u32 *field;
+	const char *macspeed;
 	appnic_device_t *appnic_device;
 	u64 value64;
 	u64 dt_size;
@@ -3740,6 +3797,32 @@ lsinet_init(void)
 		goto device_tree_failed;
 
 	appnic_device->phy_address = field[0];
+	macspeed = of_get_property(np, "phy-link", NULL);
+
+	if (macspeed) {
+		if (0 == strncmp(macspeed, "auto", strlen("auto"))) {
+			appnic_device->phy_link_auto = 1;
+		} else if (0 == strncmp(macspeed, "100MF", strlen("100MF"))) {
+			appnic_device->phy_link_auto = 0;
+			appnic_device->phy_link_speed = 1;
+			appnic_device->phy_link_duplex = 1;
+		} else if (0 == strncmp(macspeed, "100MH", strlen("100MH"))) {
+			appnic_device->phy_link_auto = 0;
+			appnic_device->phy_link_speed = 1;
+			appnic_device->phy_link_duplex = 0;
+		} else if (0 == strncmp(macspeed, "10MF", strlen("10MF"))) {
+			appnic_device->phy_link_auto = 0;
+			appnic_device->phy_link_speed = 0;
+			appnic_device->phy_link_duplex = 1;
+		} else if (0 == strncmp(macspeed, "10MH", strlen("10MH"))) {
+			appnic_device->phy_link_auto = 0;
+			appnic_device->phy_link_speed = 0;
+			appnic_device->phy_link_duplex = 0;
+		}
+	} else {
+		/* Auto is the default. */
+		appnic_device->phy_link_auto = 1;
+	}
 
 	field = of_get_property(np, "ad-value", NULL);
 
