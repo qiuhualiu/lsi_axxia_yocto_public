@@ -31,6 +31,7 @@
 #include <linux/string.h>
 #include "linux/lsi_mtc_ioctl.h"
 
+#define DEBUG
 
 /*
    device tree node:
@@ -2564,6 +2565,8 @@ mtc_dev_write(struct file *filp,
 	#ifdef DEBUG
 	printk(KERN_DEBUG"Appending buff size1=%d\n", size1);
 	#endif
+
+
 	for (i = 0; i < size1; i++) {
 		#ifdef DEBUG
 		printk(KERN_DEBUG"i=%d mtc_buf[i]=%d pprg=0x%x\n",
@@ -2853,6 +2856,7 @@ static struct mtc_device *dev;
 	int rc;
 
 	printk(KERN_DEBUG"!!!!MTC: mtc_probe()\n");
+	printk("!!!!MTC: mtc_probe()\n");
        /* Allocate space for device private data */
 	dev = kzalloc(sizeof *dev, GFP_KERNEL);
 	if (!dev) {
@@ -2876,8 +2880,8 @@ static struct mtc_device *dev;
 
 #else
 	dev->regs   = regs;
-	dev->prgmem = regs + MTC_PRGMEM_OFFSET/4;
-	dev->tdomem = regs + MTC_TDOMEM_OFFSET/4;
+	dev->prgmem = (u32*)regs + MTC_PRGMEM_OFFSET/4;
+	dev->tdomem = (u32*)regs + MTC_TDOMEM_OFFSET/4;
 #endif
 	/* Attach to IRQ */
 	dev->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
@@ -3024,9 +3028,10 @@ static long _mtc_config(struct mtc_device *dev,
 	cfg0.start_stopn = 0;
 	dev->regs->config0 =  *((u32 *) &cfg0);
 
-	/* 2. reset testgen */
+	/* 2. reset testgen, and init mem */
 	exec1.sw_reset = 1;
 	dev->regs->execute = *((u32 *) &exec1);
+	dev->regs->mem_init = 0x202;
 
 	/* 3. config MTC */
 	cfg0 =
@@ -3059,11 +3064,11 @@ static long _mtc_config(struct mtc_device *dev,
 		cfg1.record_tdo_in_shift_ir_state = 0;
 		cfg1.record_tdo_in_shift_dr_state = 0;
 	} else if (pMTCCfg->recMode == LSI_MTC_TDO_NOREC_SHIFTIR) {
-		cfg1.record_tdo_in_shift_ir_state = 1;
-		cfg1.record_tdo_in_shift_dr_state = 0;
+		cfg1.record_tdo_in_shift_ir_state = 0;
+		cfg1.record_tdo_in_shift_dr_state = 1;
 	} else if (pMTCCfg->recMode == LSI_MTC_TDO_NOREC_SHIFTDR) {
-		cfg1.record_tdo_in_shift_ir_state = 1;
-		cfg1.record_tdo_in_shift_dr_state = 0;
+		cfg1.record_tdo_in_shift_ir_state = 0;
+		cfg1.record_tdo_in_shift_dr_state = 1;
 	} else {
 		/* recMode == ACELL_MTCI_TDO_REC_ALL */
 		cfg1.record_tdo_in_shift_ir_state = 1;
@@ -3081,5 +3086,6 @@ static long _mtc_config(struct mtc_device *dev,
 		dev->regs->config1, dev->regs->execute);
 
 #endif
+	/* test */
 	return 0;
 }
