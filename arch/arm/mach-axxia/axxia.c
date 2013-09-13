@@ -32,6 +32,7 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/init.h>
+#include <linux/delay.h>
 #include <linux/smsc911x.h>
 #include <linux/spi/spi.h>
 #include <linux/clkdev.h>
@@ -172,7 +173,6 @@ spidev_chip_select(u32 control, unsigned n)
 
 static void spi_cs_eeprom0(u32 control) { spidev_chip_select(control, 0); }
 static void spi_cs_eeprom1(u32 control) { spidev_chip_select(control, 1); }
-static void spi_cs_eeprom2(u32 control) { spidev_chip_select(control, 2); }
 
 struct pl022_config_chip spi_eeprom0 = {
 	.iface      = SSP_INTERFACE_MOTOROLA_SPI,
@@ -186,37 +186,23 @@ struct pl022_config_chip spi_eeprom1 = {
 	.cs_control = spi_cs_eeprom1
 };
 
-struct pl022_config_chip spi_eeprom2 = {
-	.iface      = SSP_INTERFACE_MOTOROLA_SPI,
-	.com_mode   = POLLING_TRANSFER,
-	.cs_control = spi_cs_eeprom2
-};
-
 static struct spi_board_info spi_devs[] __initdata = {
 	{
-		.modalias               = "spidev",
+		.modalias               = "s25fl129p1",
 		.controller_data        = &spi_eeprom0,
 		.bus_num                = 0,
 		.chip_select            = 0,
-		.max_speed_hz           = 12000000,
+		.max_speed_hz           = 25000000,
 		.mode                   = SPI_MODE_0,
 	},
 	{
-		.modalias               = "spidev",
+		.modalias               = "s25fl129p1",
 		.controller_data        = &spi_eeprom1,
 		.bus_num                = 0,
 		.chip_select            = 1,
-		.max_speed_hz           = 12000000,
+		.max_speed_hz           = 25000000,
 		.mode                   = SPI_MODE_0,
-	},
-	{
-		.modalias               = "spidev",
-		.controller_data        = &spi_eeprom2,
-		.bus_num                = 0,
-		.chip_select            = 2,
-		.max_speed_hz           = 12000000,
-		.mode                   = SPI_MODE_0,
-	},
+	}
 };
 
 void __init axxia_dt_init(void)
@@ -239,15 +225,18 @@ void __init axxia_dt_init(void)
 	}
 
 	/*axxia_pcie_init();*/
-
-#ifdef CONFIG_I2C
-	axxia_register_i2c_busses();
-#endif
 }
 
 static void axxia_restart(char str, const char *cmd)
 {
-	/* TBD */
+	void __iomem *base;
+
+	base = ioremap(0x2010000000, 0x40000);
+
+	writel(0x000000ab, base + 0x31000); /* Access Key */
+	writel(0x00000040, base + 0x31004); /* Intrnl Boot, 0xffff0000 Target */
+	writel(0x80000000, base + 0x3180c); /* Set ResetReadDone */
+	writel(0x00080802, base + 0x31008); /* Chip Reset */
 }
 
 DT_MACHINE_START(AXXIA_DT, "LSI Axxia")
@@ -260,6 +249,6 @@ DT_MACHINE_START(AXXIA_DT, "LSI Axxia")
 	.handle_irq	= axxia_gic_handle_irq,
 	.restart	= axxia_restart,
 #if defined(CONFIG_ZONE_DMA) && defined(CONFIG_ARM_LPAE)
- 	.dma_zone_size	= (4ULL * SZ_1G),
+	.dma_zone_size	= (4ULL * SZ_1G),
 #endif
 MACHINE_END

@@ -18,8 +18,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307	 USA
  */
 
-#if defined(CONFIG_ARCH_AXXIA) && defined(CONFIG_ARM)
-
 #include <linux/module.h>
 #include <linux/of.h>
 #include <asm/irq.h>
@@ -27,6 +25,8 @@
 #include <linux/io.h>
 #include <linux/of_address.h>
 #include <linux/irqdomain.h>
+#include <linux/skbuff.h>
+#include <linux/platform_device.h>
 
 /*
   ==============================================================================
@@ -63,7 +63,7 @@ static DEFINE_SPINLOCK(mdio_lock);
 
 int
 acp_mdio_read(unsigned long address, unsigned long offset,
-	      unsigned short *value)
+	      unsigned short *value, int clause45)
 {
 	unsigned long command = 0;
 	unsigned long status;
@@ -77,11 +77,53 @@ acp_mdio_read(unsigned long address, unsigned long offset,
 	WRITE(MDIO_STATUS_RD_DATA, status);
 #endif				/* BZ33327_WA */
 
-	/* Write the command. */
-	command |= 0x10000000;	/* op_code: read */
-	command |= (address & 0x1f) << 16;	/* port_addr (target device) */
-	command |= (offset & 0x1f) << 21;/* device_addr (target register) */
-	WRITE(MDIO_CONTROL_RD_DATA, command);
+    if(clause45 == 0) {
+    	/* Write the command. */
+    	command |= 0x10000000;	/* op_code: read */
+    	command |= (address & 0x1f) << 16;	/* port_addr (target device) */
+    	command |= (offset & 0x1f) << 21;/* device_addr (target register) */
+    	WRITE(MDIO_CONTROL_RD_DATA, command);
+    } else {
+        /* 
+         * Step 1: Write the address. 
+         */
+         
+    	/* Write the address */
+        command |= 0x20000000; /* clause_45 = 1 */
+    	command |= 0x00000000;	/* op_code: write */
+        command |= 0x04000000; /* interface_select = 1 */
+        command |= ((offset & 0x001f0000) >> 3); /* device_addr (target device_type) */
+    	command |= (address & 0x1f) << 16; /* port_addr (target device) */
+        command |= (offset & 0xffff); /*  	addr_or_data (target register) */
+    	WRITE(MDIO_CONTROL_RD_DATA, command);
+
+    	/* Wait for the mdio_busy (status) bit to clear. */
+    	do {
+    		status = READ(MDIO_STATUS_RD_DATA);
+    	} while (0 != (status & 0x40000000));
+
+    	/* Wait for the mdio_busy (control) bit to clear. */
+    	do {
+    		command = READ(MDIO_CONTROL_RD_DATA);
+    	} while (0 != (command & 0x80000000));
+
+        /* 
+         * Step 2: Read the value. 
+         */
+
+        /* Set the mdio_busy (status) bit. */
+    	status = READ(MDIO_STATUS_RD_DATA);
+    	status |= 0x40000000;
+    	WRITE(MDIO_STATUS_RD_DATA, status);
+
+        command = 0;
+        command |= 0x20000000; /* clause_45 = 1 */
+        command |= 0x10000000;	/* op_code: read */
+        command |= 0x04000000; /* interface_select = 1 */
+        command |= ((offset & 0x001f0000) >> 3); /* device_addr (target device_type) */
+        command |= (address & 0x1f) << 16; /* port_addr (target device) */
+        WRITE(MDIO_CONTROL_RD_DATA, command);
+    }
 
 #if defined(BZ33327_WA)
 	/* Wait for the mdio_busy (status) bit to clear. */
@@ -98,6 +140,11 @@ acp_mdio_read(unsigned long address, unsigned long offset,
 	*value = (unsigned short)(command & 0xffff);
 	spin_unlock_irqrestore(&mdio_lock, flags);
 
+#if 0
+	printk("%s - Read 0x%x from 0x%x register 0x%x\n",
+	       __FUNCTION__, *value, address, offset);
+#endif
+
 	return 0;
 }
 EXPORT_SYMBOL(acp_mdio_read);
@@ -109,7 +156,7 @@ EXPORT_SYMBOL(acp_mdio_read);
 
 int
 acp_mdio_write(unsigned long address, unsigned long offset,
-	       unsigned short value)
+	       unsigned short value, int clause45)
 {
 	unsigned long command = 0;
 	unsigned long status;
@@ -129,12 +176,55 @@ acp_mdio_write(unsigned long address, unsigned long offset,
 	WRITE(MDIO_STATUS_RD_DATA, status);
 #endif				/* BZ33327_WA */
 
-	/* Write the command. */
-	command = 0x08000000;	/* op_code: write */
-	command |= (address & 0x1f) << 16;	/* port_addr (target device) */
-	command |= (offset & 0x1f) << 21;/* device_addr (target register) */
-	command |= (value & 0xffff);	/* value */
-	WRITE(MDIO_CONTROL_RD_DATA, command);
+    if(clause45 == 0) {
+    	/* Write the command. */
+    	command = 0x08000000;	/* op_code: write */
+    	command |= (address & 0x1f) << 16;	/* port_addr (target device) */
+    	command |= (offset & 0x1f) << 21;/* device_addr (target register) */
+    	command |= (value & 0xffff);	/* value */
+    	WRITE(MDIO_CONTROL_RD_DATA, command);
+    } else {
+        /* 
+         * Step 1: Write the address. 
+         */
+         
+    	/* Write the address */
+        command |= 0x20000000; /* clause_45 = 1 */
+    	command |= 0x08000000;	/* op_code: write */
+        command |= 0x04000000; /* interface_select = 1 */
+        command |= ((offset & 0x001f0000) >> 3); /* device_addr (target device_type) */
+    	command |= (address & 0x1f) << 16; /* port_addr (target device) */
+        command |= (offset & 0xffff); /*  	addr_or_data (target register) */
+    	WRITE(MDIO_CONTROL_RD_DATA, command);
+
+    	/* Wait for the mdio_busy (status) bit to clear. */
+    	do {
+    		status = READ(MDIO_STATUS_RD_DATA);
+    	} while (0 != (status & 0x40000000));
+
+    	/* Wait for the mdio_busy (control) bit to clear. */
+    	do {
+    		command = READ(MDIO_CONTROL_RD_DATA);
+    	} while (0 != (command & 0x80000000));
+
+        /* 
+         * Step 2: Write the value. 
+         */
+
+        /* Set the mdio_busy (status) bit. */
+    	status = READ(MDIO_STATUS_RD_DATA);
+    	status |= 0x40000000;
+    	WRITE(MDIO_STATUS_RD_DATA, status);
+
+        command = 0;
+        command |= 0x20000000; /* clause_45 = 1 */
+        command |= 0x08000000;	/* op_code: write */
+        command |= 0x04000000; /* interface_select = 1 */
+        command |= ((offset & 0x001f0000) >> 3); /* device_addr (target device_type) */
+        command |= (address & 0x1f) << 16; /* port_addr (target device) */
+        command |= (value & 0xffff); /*  	addr_or_data = value */
+        WRITE(MDIO_CONTROL_RD_DATA, command);
+    }
 
 #if defined(BZ33327_WA)
 	/* Wait for the mdio_busy (status) bit to clear. */
@@ -150,6 +240,11 @@ acp_mdio_write(unsigned long address, unsigned long offset,
 
 	spin_unlock_irqrestore(&mdio_lock, flags);
 
+#if 0
+	printk("%s - Wrote 0x%x to 0x%x register 0x%x\n",
+	       __FUNCTION__, value, address, offset);
+#endif
+
 	return 0;
 }
 EXPORT_SYMBOL(acp_mdio_write);
@@ -162,18 +257,108 @@ EXPORT_SYMBOL(acp_mdio_write);
 static int
 acp_mdio_initialize(void)
 {
-#if 0
-	WRITE(MDIO_CLK_OFFSET, 0x10);
-	WRITE(MDIO_CLK_PERIOD, 0x2c);
-#else
+#ifdef CONFIG_ARM
 	WRITE(MDIO_CLK_OFFSET, 0x1c);
 	WRITE(MDIO_CLK_PERIOD, 0xf0);
+#else
+	WRITE(MDIO_CLK_OFFSET, 0x10);
+	WRITE(MDIO_CLK_PERIOD, 0x2c);
 #endif
 
 	return 0;
 }
 
 #endif /* ! CONFIG_ACPISS */
+
+/*
+  ==============================================================================
+  ==============================================================================
+  Platform Device Registration
+  ==============================================================================
+  ==============================================================================
+*/
+
+/*
+  ------------------------------------------------------------------------------
+  acp_platform_device_register
+*/
+
+int
+acp_platform_device_register(struct platform_device *pdev)
+{
+	return platform_device_register(pdev);
+}
+
+EXPORT_SYMBOL(acp_platform_device_register);
+
+/*
+  ------------------------------------------------------------------------------
+  acp_platform_device_unregister
+*/
+
+void
+acp_platform_device_unregister(struct platform_device *pdev)
+{
+	platform_device_unregister(pdev);
+
+	return;
+}
+
+EXPORT_SYMBOL(acp_platform_device_unregister);
+
+/*
+  ============================================================================
+  ============================================================================
+  SKB
+  ============================================================================
+  ============================================================================
+*/
+
+/*
+  ----------------------------------------------------------------------------
+  acp_skb_tstamp_tx
+*/
+
+void
+acp_skb_tstamp_tx(struct sk_buff *orig_skb,
+		  struct skb_shared_hwtstamps *hwtstamps) {
+	skb_tstamp_tx(orig_skb, hwtstamps);
+}
+
+EXPORT_SYMBOL(acp_skb_tstamp_tx);
+
+/*
+  ============================================================================
+  ============================================================================
+  Interrupts
+  ============================================================================
+  ============================================================================
+*/
+
+/*
+ * -------------------------------------------------------------------------
+ * acp_irq_create_mapping
+ */
+unsigned int acp_irq_create_mapping(struct irq_domain *host,
+				    irq_hw_number_t hwirq)
+{
+	unsigned int mapped_irq;
+
+	preempt_disable();
+	mapped_irq = irq_create_mapping(host, hwirq);
+	preempt_enable();
+
+	return mapped_irq;
+}
+EXPORT_SYMBOL(acp_irq_create_mapping);
+
+/*
+  ==============================================================================
+  ==============================================================================
+  Linux Stuff
+  ==============================================================================
+  ==============================================================================
+*/
 
 /*
   ------------------------------------------------------------------------------
@@ -223,5 +408,3 @@ module_init(acp_wrappers_init);
 MODULE_AUTHOR("LSI Corporation");
 MODULE_DESCRIPTION("Timing Test");
 MODULE_LICENSE("GPL");
-
-#endif
