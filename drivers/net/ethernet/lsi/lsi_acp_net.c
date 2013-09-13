@@ -277,7 +277,7 @@ skip_first:
 
 #ifdef AMARILLO_WA
 	/*
-	 * For the Amarillo, without the auto-negotiate ecn.
+	 * For Amarillo, without the auto-negotiate ecn.
 	 */
 	{
 		u16 val;
