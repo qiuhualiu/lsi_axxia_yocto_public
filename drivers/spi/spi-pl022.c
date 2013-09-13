@@ -2529,10 +2529,6 @@ pl022_of_probe(struct platform_device *ofdev)
 	const struct of_device_id *id = of_match_node(pl022_match, of_node);
 	const int *enabled;
 
-	enabled = of_get_property(of_node, "enabled", NULL);
-	if (enabled && !*enabled)
-		return -ENODEV;
-
 	platform_info = kmalloc(sizeof(struct pl022_ssp_controller),
 		GFP_KERNEL);
 	if (!platform_info)
@@ -2619,6 +2615,7 @@ static struct platform_driver pl022_driver = {
 #endif
 static int __init pl022_init(void)
 {
+	printk("--> %s:%d - \n", __FILE__, __LINE__);
 #ifdef CONFIG_ARM_AMBA
 	return amba_driver_register(&pl022_driver);
 #else
