@@ -46,6 +46,7 @@ static __initdata struct of_device_id acpx14xx_of_bus[] = {
 	{ .compatible = "ibm,plb6", },
 	{ .compatible = "ibm,opb", },
 	{ .compatible = "ibm,ebc", },
+	{ .compatible = "axxia,rapidio-delta", },
 	{ .compatible = "acp,rapidio-delta", },
 	{ .compatible = "lsi,rapidio-delta", },
 	{},

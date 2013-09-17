@@ -64,6 +64,11 @@ axxia_init_clocks(void)
 	clk_register_clkdev(clk, NULL, "2010082000.uart");
 	/* PL011 UART3 */
 	clk_register_clkdev(clk, NULL, "2010083000.uart");
+	/* I2C */
+	clk_register_clkdev(clk, NULL, "2010084000.i2c");
+	clk_register_clkdev(clk, NULL, "2010085000.i2c");
+	clk_register_clkdev(clk, NULL, "2010086000.i2c");
+	clk_register_clkdev(clk, NULL, "2010087000.i2c");
 	/* PL022 SSP */
 	clk_register_clkdev(clk, NULL, "ssp");
 
