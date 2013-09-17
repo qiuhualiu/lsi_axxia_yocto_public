@@ -912,24 +912,26 @@ static inline int choose_ob_dme(
 	struct rio_msg_dme **ob_dme,
 	int *buf_sz)
 {
-	int i;
+	int i, j;
 
 	/* Find an OB DME that is enabled and which has empty slots */
-	for(i=0; i < DME_MAX_OB_ENGINES; i++) {
-		int sz = RIO_OUTB_DME_TO_BUF_SIZE(priv, i);
-		struct rio_irq_handler *h = &priv->ob_dme_irq[i];
-		struct rio_msg_dme *dme = h->data;
+	for(j=0; j < 2; j++) {
+		for(i=0; i < priv->numOutbDmes[j]; i++) {
+			int sz = RIO_OUTB_DME_TO_BUF_SIZE(priv, i);
+			struct rio_irq_handler *h = &priv->ob_dme_irq[i];
+			struct rio_msg_dme *dme = h->data;
 
-		if (!test_bit(RIO_IRQ_ENABLED, &h->state))
-			continue;
+			if (!test_bit(RIO_IRQ_ENABLED, &h->state))
+				continue;
 
-		if (len > sz)
-			continue;
+			if (len > sz)
+				continue;
 
-		if (dme->entries > dme->entries_in_use) {
-			(*ob_dme) = dme;
-			(*buf_sz) = sz;
-			return 0;
+			if (dme->entries > dme->entries_in_use) {
+				(*ob_dme) = dme;
+				(*buf_sz) = sz;
+				return priv->numOutbDmes[j] + i;
+			}
 		}
 	}
 
@@ -940,16 +942,18 @@ static void release_mbox(struct kref *kref)
 {
 	struct rio_rx_mbox *mb = container_of(kref, struct rio_rx_mbox, kref);
 	struct rio_priv *priv = mb->mport->priv;
-	int dmeGrp = 0;
-	int i;
+	int letter;
 
-	for (i = 0; i < RIO_MSG_MAX_LETTER; i++)
-		if (mb->me[i]) {
+	for (letter = 0; letter < RIO_MSG_MAX_LETTER; letter++) {
+		int i = mb->me[letter]->dme_no / 32;
+		int j = mb->me[letter]->dme_no % 32;
+		if (mb->me[letter]) {
 			__rio_local_write_config_32(mb->mport,
-				   RAB_IB_DME_CTRL(mb->me[i]->dme_no), 0);
-			priv->inbDmesInUse[dmeGrp] &= ~(1 << mb->me[i]->dme_no);
-			dme_put(mb->me[i]);
+				   RAB_IB_DME_CTRL(mb->me[letter]->dme_no), 0);
+			dme_put(mb->me[letter]);
+			priv->inbDmesInUse[i] &= ~(1 << j);
 		}
+	}
 	kfree(mb->virt_buffer);
 	kfree(mb);
 }
@@ -1263,19 +1267,16 @@ static int open_outb_mbox(struct rio_mport *mport, void *dev_id, int dme_no,
 		return -EINVAL;
 
 	{
-		int	outbType = 0;
-		int	outbNdx = dme_no;
-		if (outbNdx > (priv->numOutbDmesMseg-1)) {
-			outbType = 1;
-			outbNdx -= priv->numOutbDmesMseg;
-		}
-		if (priv->outbDmes[outbType] & (1 << outbNdx)) {
+		int	i = dme_no / 32;
+		int	j = dme_no % 32;
+
+		if (priv->outbDmes[i] & (1 << j)) {
 			return -ENXIO;	/* Already allocated! */
 		}
-		if (priv->outbDmesInUse[outbType] & (1 << outbNdx)) {
+		if (priv->outbDmesInUse[i] & (1 << j)) {
 			return -EBUSY;	/* Already allocated! */
 		}
-		priv->outbDmesInUse[outbType] |= (1 << outbNdx);
+		priv->outbDmesInUse[i] |= (1 << j);
 	}
 
 	if (test_bit(RIO_IRQ_ENABLED, &h->state))
@@ -1407,17 +1408,13 @@ static void release_outb_mbox(struct rio_irq_handler *h)
 	struct rio_priv *priv = mport->priv;
 	struct rio_msg_dme *me = h->data;
 
-	__rio_local_write_config_32(mport, RAB_OB_DME_CTRL(me->dme_no), 0);
-
 	{
-		int	outbType = 0;
-		int	outbNdx = me->dme_no;
-		if (outbNdx > (priv->numOutbDmesMseg-1)) {
-			outbType = 1;
-			outbNdx -= priv->numOutbDmesMseg;
-		}
-		priv->outbDmesInUse[outbType] &= ~(1 << outbNdx);
+		int	i = me->dme_no / 32;
+		int	j = me->dme_no % 32;
+		priv->outbDmesInUse[i] &= ~(1 << j);
 	}
+
+	__rio_local_write_config_32(mport, RAB_OB_DME_CTRL(me->dme_no), 0);
 
 	if (me->entries_in_use) {
 		dev_warn(priv->dev,
@@ -1632,28 +1629,18 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 	if (entries > priv->desc_max_entries)
 		return -EINVAL;
 
-	{
-		int	inbType = 0;	/* MSEG */
-		int	inbNdx = (mbox * RIO_MSG_MAX_LETTER) + 0;
-		int	inbLim = priv->numInbDmesMseg;
+	for (letter=0; letter < RIO_MSG_MAX_LETTER; letter++) {
+		int dme_no = (mbox * 4) + letter;
+		int i = dme_no / 32;
+		int j = dme_no % 32;
 
-		for (i=0; i < RIO_MSG_MAX_LETTER; i++) {
-			int dme_grp = inbType;
-			int dme_no = inbNdx + i;
-
-			if (dme_no > (inbLim-1)) {
-				dme_grp++;
-				dme_no -= inbLim;
-				inbLim = priv->numInbDmesSseg;
-			}
-			if (priv->inbDmes[dme_grp] & (1 << dme_no)) {
-				return -ENXIO;	/* Already allocated! */
-			}
-			if (priv->inbDmesInUse[dme_grp] & (1 << dme_no)) {
-				return -EBUSY;	/* Already allocated! */
-			}
-			priv->inbDmesInUse[dme_grp] |= (1 << dme_no);
+		if (priv->inbDmes[i] & (1 << j)) {
+			return -ENXIO;	/* Already allocated! */
 		}
+		if (priv->inbDmesInUse[i] & (1 << j)) {
+			return -EBUSY;	/* Already allocated! */
+		}
+		priv->inbDmesInUse[i] |= (1 << j);
 	}
 
 	if (test_bit(RIO_IRQ_ENABLED, &h->state))
@@ -1689,23 +1676,33 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 	 * RIO layer we set up IB mailboxes for all letters for each mailbox.
 	 */
 	for (letter = 0; letter < RIO_MSG_MAX_LETTER; ++letter) {
-		int dmeGrp = 0;
 		int dme_no = (mbox * 4) + letter;
-		struct rio_msg_dme *me = alloc_message_engine(mport,
-							      dme_no,
-							      dev_id,
-							      buf_sz,
-							      entries,
-							      0);
+		int i = dme_no / 32;
+		int j = dme_no % 32;
+		struct rio_msg_dme *me = NULL;
 		struct rio_msg_desc *desc;
 		u32 dw0, dw1, dw2, dw3, start;
 		u32 dme_stat, wait = 0;
 		u32 buffer_size = (buf_sz > 256 ? 3 : 0);
 
+		if (priv->inbDmes[i] & (1 << j)) {
+			return -ENXIO;	/* Already allocated! */
+		}
+		if (priv->inbDmesInUse[i] & (1 << j)) {
+			return -EBUSY;	/* Already allocated! */
+		}
+		me = alloc_message_engine(mport,
+					  dme_no,
+					  dev_id,
+					  buf_sz,
+					  entries,
+					  0);
+
 		if (IS_ERR(me)) {
 			rc = PTR_ERR(me);
 			goto err;
 		}
+
 		do {
 			__rio_local_read_config_32(mport,
 						   RAB_IB_DME_STAT(me->dme_no),
@@ -1809,7 +1806,7 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 		__rio_local_write_config_32(mport,
 					 RAB_IB_DME_CTRL(dme_no), dme_ctrl);
 
-		priv->inbDmesInUse[dmeGrp] |= (1 << dme_no);
+		priv->inbDmesInUse[i] |= (1 << j);
 	}
 
 	/**
@@ -2088,7 +2085,7 @@ void axxia_close_outb_mbox(struct rio_mport *mport, int mboxDme)
 	struct rio_priv *priv = mport->priv;
 
 	if ((mboxDme < 0) ||
-	    (mboxDme > (priv->numOutbDmesMseg+priv->numOutbDmesSseg)))
+	    (mboxDme > (priv->numOutbDmes[0]+priv->numOutbDmes[0])))
 		return;
 
 	axxia_api_lock();

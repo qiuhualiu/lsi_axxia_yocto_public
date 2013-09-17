@@ -48,24 +48,27 @@
 		: "=r" (err), "=r" (x)				\
 		: "b" (addr), "i" (-EFAULT), "0" (err))
 
-#define IN_BE8(a, v, ec)	__acp_read_rio_config(v, a, ec, "lbz")
-#define IN_BE16(a, v, ec)	__acp_read_rio_config(v, a, ec, "lhz")
-#define IN_BE32(a, v, ec)	__acp_read_rio_config(v, a, ec, "lwz")
+#define IN_SRIO8(a, v, ec)	__acp_read_rio_config(v, a, ec, "lbz")
+#define IN_SRIO16(a, v, ec)	__acp_read_rio_config(v, a, ec, "lhz")
+#define IN_SRIO32(a, v, ec)	__acp_read_rio_config(v, a, ec, "lwz")
 
-#define OUT_BE8(a, v)   out_8((u8 *) a, v)
-#define OUT_BE16(a, v)  out_be16((u16 *) a, v)
-#define OUT_BE32(a, v)  out_be32((u32 *) a, v)
+#define OUT_SRIO8(a, v)   	out_8((u8 *) a, v)
+#define OUT_SRIO16(a, v)  	out_be16((u16 *) a, v)
+#define OUT_SRIO32(a, v)  	out_be32((u32 *) a, v)
 
 #define CORRECT_GRIO(a)         __le32_to_cpu(a)
 #define CORRECT_RAB(a)          (a)
 
 
-/* ACP RIO debug stuff */
+/* ACP RIO board-specific stuff */
 
 extern int axxia_rio_apio_enable(struct rio_mport *mport, u32 mask, u32 bits);
 extern int axxia_rio_apio_disable(struct rio_mport *mport);
 extern int axxia_rio_rpio_enable(struct rio_mport *mport, u32 mask, u32 bits);
 extern int axxia_rio_rpio_disable(struct rio_mport *mport);
+
+#define	axxia_rapidio_board_init(v)	(0)
+
 
 /*****************************/
 /* ACP RIO operational stuff */

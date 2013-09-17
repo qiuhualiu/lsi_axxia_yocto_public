@@ -51,7 +51,6 @@
 #include "axxia.h"
 #include "pci.h"
 #include "i2c.h"
-#include "rapidio.h"
 
 extern void axxia_ddr_retention_init(void);
 
@@ -275,9 +274,6 @@ void __init axxia_dt_init(void)
 	axxia_pcie_init();
 
 	axxia_ddr_retention_init();
-
-	axxia_rapidio_init();
-
 }
 
 static void axxia_restart(char str, const char *cmd)

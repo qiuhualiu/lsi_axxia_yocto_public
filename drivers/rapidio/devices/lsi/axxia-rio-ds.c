@@ -59,36 +59,6 @@ static inline void __ib_dse_dw_dbg(
 	struct rio_ds_ibds_vsid_m_stats *ptr_ib_stats,
 	u32 dw0);
 
-/**
- * DS_CNTLZW - Count leading zeros word
- * @val: value from which count number of leading zeros
- *
- * Return: number of zeros
- */
-static inline u32 DS_CNTLZW(u32 val)
-{
-	int n = 0;
-	if (val == 0)
-		return 32;
-	if ((val & 0xFFFF0000) == 0)
-		n += 16; val = val << 16;
-		/* 1111 1111 1111 1111 0000 0000 0000 0000
-		// 16 bits from left are zero! so we omit 16 left bits */
-	if ((val & 0xFF000000) == 0)
-		n = n + 8; val = val << 8;
-		/* 8 left bits are 0 */
-	if ((val & 0xF0000000) == 0)
-		n = n + 4; val = val << 4;
-		/* 4 left bits are 0 */
-	if ((val & 0xC0000000) == 0)
-		n = n + 2, val = val << 2;
-		/* 110000....0 2 left bits are zero */
-	if ((val & 0x80000000) == 0)
-		n = n + 1, val = val << 1;
-		/* first left bit is zero */
-	return n;
-}
-
 
 static inline void __ib_virt_m_dbg(
 	struct rio_ds_ibds_vsid_m_stats *ptr_ib_stats,
@@ -251,10 +221,10 @@ int open_ob_data_stream(
 	u16 pdu_len_per_hdr_desc;
 #ifdef ALLOC_BUF_BY_KERNEL
 	void *ptr_virt_data_buf;
-    u32  data_buf_high;
+	u32  data_buf_high;
 	u16 i;
 	u32 h_dw4;
-    unsigned long data_buf_phy;
+	unsigned long data_buf_phy;
 #endif
 	u16 hdr_head_reserved, hdr_index, desc_offset;
 	u32 num_data_buf_needed, total_head_reserved;
@@ -483,7 +453,7 @@ int open_ob_data_stream(
 	ptr_dse_cfg->dest_id = dest_id;
 	ptr_dse_cfg->stream_id = stream_id;
 	ptr_dse_cfg->cos = cos;
-    ptr_dse_cfg->hdr_head_reserved = hdr_head_reserved;
+	ptr_dse_cfg->hdr_head_reserved = hdr_head_reserved;
 	ptr_dse_cfg->num_hdr_desc_reserved += num_hdr_desc_needed;
 
 	/*
@@ -548,10 +518,10 @@ int axxia_add_ob_data_stream(
 	u8      find_ava_dse = RIO_DS_FALSE;
 	u32     dse_ctrl;
 #ifndef ALLOC_BUF_BY_KERNEL
-    u32  data_buf_high;
-    unsigned long data_buf_phy;
+	u32  data_buf_high;
+	unsigned long data_buf_phy;
 #endif
-    u32	    pdu_length;
+	u32	    pdu_length;
 
 	int rc = 0;
 
@@ -582,7 +552,7 @@ int axxia_add_ob_data_stream(
 
 	/* copy the data to the buffer */
 	/* How to handle 8K limitation of the ioctrl( ) TBD */
-    pdu_length = (ptr_hdr_desc->dw1 >> 16) & 0xFFFF;
+	pdu_length = (ptr_hdr_desc->dw1 >> 16) & 0xFFFF;
 #ifdef ALLOC_BUF_BY_KERNEL
 
 	memcpy((void *)(ptr_hdr_desc->virt_data_buf + ptr_hdr_desc->offset),
@@ -608,32 +578,32 @@ int axxia_add_ob_data_stream(
 	ptr_hdr_desc->offset += data_len;
 #else
 
-    /*
-    ** The kernel driver expect that the higher driver allocates the data
-    **  buffer and use the buffer. In the OBDS interrupt service routine,
-    **  the kernel frees the buffer.
-    **
-    **  Thus, there is no extra copy needed here.
-    **  memcpy((void *)(ptr_hdr_desc->virt_data_buf), buffer, data_len);
-    */
-	/* check if the data length is equal to the pdu length in the
-    ** axxia_open_ob_data_stream( )
-    */
-    if (data_len < pdu_length)
+	/*
+	** The kernel driver expect that the higher driver allocates the data
+	**  buffer and use the buffer. In the OBDS interrupt service routine,
+	**  the kernel frees the buffer.
+	**
+	**  Thus, there is no extra copy needed here.
+	**  memcpy((void *)(ptr_hdr_desc->virt_data_buf), buffer, data_len);
+	*/
+	/* Check if the data length is equal to the pdu length in the
+	** axxia_open_ob_data_stream( )
+	*/
+	if (data_len < pdu_length)
 	return -EINVAL;
 
-	/* program the data buffer in the descriptor */
-    data_buf_phy = virt_to_phys(buffer);
+	/* Program the data buffer in the descriptor */
+	data_buf_phy = virt_to_phys(buffer);
 
-    /*
-    ** data_address - 38-bit AXI addressing
-    ** data_address[0:31] - h_dw4 [0:31]
-    ** data_address[32:37] - h_dw2[22:27]
-    */
-    ptr_hdr_desc->dw4 = (u32)((data_buf_phy) & 0xFFFFFFFF);
+	/*
+	** data_address - 38-bit AXI addressing
+	** data_address[0:31] - h_dw4 [0:31]
+	** data_address[32:37] - h_dw2[22:27]
+	*/
+	ptr_hdr_desc->dw4 = (u32)((data_buf_phy) & 0xFFFFFFFF);
 
-    data_buf_high = (((u64)data_buf_phy >> 32) & 0x3F);
-    ptr_hdr_desc->dw2 |= (((data_buf_high) << 22) & 0xFC00000);
+	data_buf_high = (((u64)data_buf_phy >> 32) & 0x3F);
+	ptr_hdr_desc->dw2 |= (((data_buf_high) << 22) & 0xFC00000);
 
 	/* set the en_int and valid bit of the header descriptor */
 	ptr_hdr_desc->dw0 |= 0x1;
@@ -673,9 +643,9 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state)
 	u16 hdr_tail;
 	unsigned long flags;
 
-	/* find the DSE that gets interrupted, DS_CNTLZW found the upper
+	/* Find the DSE that gets interrupted, CNTLZW found the upper
 	** bit first */
-	dse_id = 31 - DS_CNTLZW(state);
+	dse_id = 31 - CNTLZW(state);
 
 	/* find out DSE stats */
 	__rio_local_read_config_32(mport, RAB_OBDSE_STAT(dse_id), &dse_stat);
@@ -846,81 +816,83 @@ EXPORT_SYMBOL(axxia_close_ob_data_stream);
 void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state)
 {
 	struct rio_mport *mport = h->mport;
-    struct rio_priv *priv = mport->priv;
-    struct rio_ds_priv      *ptr_ds_priv = &(priv->ds_priv_data);
-    struct ibds_virt_m_cfg  *ptr_virt_m_cfg;
-    struct rio_ids_data_desc    *ptr_data_desc;
+	struct rio_priv *priv = mport->priv;
+	struct rio_ds_priv      *ptr_ds_priv = &(priv->ds_priv_data);
+	struct ibds_virt_m_cfg  *ptr_virt_m_cfg;
+	struct rio_ids_data_desc    *ptr_data_desc;
 	u32 dse_stat, vsid_m_stats;
-    u8  virt_vsid, dse_id;
-    u16 data_tail;
-    u8  found_dse = RIO_DS_FALSE;
+	u8  virt_vsid, dse_id;
+	u16 data_tail;
+	u8  found_dse = RIO_DS_FALSE;
 	unsigned long flags;
 
-    virt_vsid = 31 - DS_CNTLZW(state);
+	virt_vsid = 31 - CNTLZW(state);
 
-    __rio_local_read_config_32(mport,
+	__rio_local_read_config_32(mport,
 				RAB_IBVIRT_M_STAT(virt_vsid),
 				&vsid_m_stats);
 
-    /* check if the chain transfer complete */
-    ptr_virt_m_cfg = &(ptr_ds_priv->ibds_vsid_m_cfg[virt_vsid]);
+	/* check if the chain transfer complete */
+	ptr_virt_m_cfg = &(ptr_ds_priv->ibds_vsid_m_cfg[virt_vsid]);
 
-    spin_lock_irqsave(&ptr_virt_m_cfg->lock, flags);
+	spin_lock_irqsave(&ptr_virt_m_cfg->lock, flags);
 
-    /* check errors */
-    __ib_virt_m_dbg(&(ptr_ds_priv->ib_vsid_m_stats[virt_vsid]),
+	/* check errors */
+	__ib_virt_m_dbg(&(ptr_ds_priv->ib_vsid_m_stats[virt_vsid]),
 			vsid_m_stats);
 
-    /* find the engine that handles this VSID */
-    for (dse_id = 0; dse_id < RIO_MAX_NUM_IBDS_DSE; dse_id++) {
-	__rio_local_read_config_32(mport,
-				RAB_IBDSE_STAT(dse_id),
-				&dse_stat);
+	/* find the engine that handles this VSID */
+	for (dse_id = 0; dse_id < RIO_MAX_NUM_IBDS_DSE; dse_id++) {
+		__rio_local_read_config_32(mport,
+					RAB_IBDSE_STAT(dse_id),
+					&dse_stat);
 
-	if ((dse_stat & IB_DSE_VSID_IN_USED) == virt_vsid) {
-		found_dse = RIO_DS_TRUE;
-		break;
+		if ((dse_stat & IB_DSE_VSID_IN_USED) == virt_vsid) {
+			found_dse = RIO_DS_TRUE;
+			break;
+		}
 	}
-    }
 
-    /* could not find the DSE that processes the VSID */
-    if (found_dse == RIO_DS_FALSE) {
-	spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, flags);
-	return;
-    }
+	/* could not find the DSE that processes the VSID */
+	if (found_dse == RIO_DS_FALSE) {
+		spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, flags);
+			return;
+	}
 
-    if (vsid_m_stats & IB_VIRT_M_STAT_FETCH_ERR) {
-	/*
-	** If transaction pending bit is not set an timeout is also not set,
-	**	that means that PDU was successfully written into AXI memory
-	**      and nothing needs to be done.
-	** If transaction pending bit is set or timeout is set, engine needs
-	** 	to be reset. After disabling engine, when transaction pending
-	**	gets reset, engine is ready to be enabled again.
-	*/
-	if ((dse_stat & IB_DSE_STAT_TRANS_PENDING)  ||
-		(dse_stat & IB_DSE_STAT_TIMEOUT)) {
+	if (vsid_m_stats & IB_VIRT_M_STAT_FETCH_ERR) {
 		/*
-		** BZ43821 - SW workaround for the IBDS descriptor fetch error
-		** When S/W sees the descriptor fetch error being indicated in
-		**  status bits, introduce a delay and then disable the engine
-		**  and enable the engine again.
-		** With this the next incoming packet for that engine would
-		**    not get corrupted.
+		** If transaction pending bit is not set, a timeout is also
+		** not set, which means that PDU was successfully written
+		** into AXI memory and nothing needs to be done.
+		** If transaction pending bit is set or timeout is set,
+		** engine needs to be reset.  After disabling engine, when
+		** transaction pending gets reset, engine is ready to be
+		** enabled again.
 		*/
-		ndelay(5);
+		if ((dse_stat & IB_DSE_STAT_TRANS_PENDING)  ||
+			(dse_stat & IB_DSE_STAT_TIMEOUT)) {
+			/*
+			** BZ43821 - SW workaround for the IBDS descriptor
+			** fetch error.  When S/W sees the descriptor fetch
+			** error being indicated in status bits, introduce
+			** a delay and then disable the engine and enable
+			** the engine again.  With this change, the next
+			** incoming packet for that engine would not get
+			** corrupted.
+			*/
+			ndelay(5);
 
-		/* disable the engine */
-		__rio_local_write_config_32(mport,
-					RAB_IBDSE_CTRL(dse_id),
-					0);
+			/* Disable the engine */
+			__rio_local_write_config_32(mport,
+						RAB_IBDSE_CTRL(dse_id),
+						0);
 
-		/* should wait till the pending bit is reset? - TBD */
+			/* Should wait till the pending bit is reset? - TBD */
 
-		/* enable the engine again */
-		__rio_local_write_config_32(mport,
-					RAB_IBDSE_CTRL(dse_id),
-					1);
+			/* Enable the engine again */
+			__rio_local_write_config_32(mport,
+						RAB_IBDSE_CTRL(dse_id),
+						1);
 		}
 	}
 
@@ -933,42 +905,42 @@ void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state)
 	**	TBD
 	*/
 
-    /* process the completed transactions */
-    if (vsid_m_stats & 0x1) {
-	if (ptr_virt_m_cfg->data_tail == ptr_virt_m_cfg->data_head) {
-		spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, flags);
-		return;
-	}
-
-	while (ptr_virt_m_cfg->data_tail != ptr_virt_m_cfg->data_head) {
-		data_tail = ptr_virt_m_cfg->data_tail;
-		ptr_data_desc =
-			&(ptr_ds_priv->ptr_ibds_data_desc[data_tail]);
-
-		__ib_dse_dw_dbg(
-			&(ptr_ds_priv->ib_vsid_m_stats[virt_vsid]),
-			ptr_data_desc->dw0);
-
-		if ((ptr_data_desc->dw0 & IB_DSE_DESC_DONE) == 0)
-			break;
-
-		/* set the valid bit to be zero */
-		ptr_data_desc->dw0 &= 0xFFFFFFFE;
-
-		ptr_virt_m_cfg->data_tail++;
-
-		if (ptr_virt_m_cfg->data_tail >
-			(ptr_virt_m_cfg->max_num_data_desc - 1)) {
-			ptr_virt_m_cfg->data_tail = 0;
+	/* process the completed transactions */
+	if (vsid_m_stats & 0x1) {
+		if (ptr_virt_m_cfg->data_tail == ptr_virt_m_cfg->data_head) {
+			spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, flags);
+			return;
 		}
 
-		/* callback function - TBD */
+		while (ptr_virt_m_cfg->data_tail != ptr_virt_m_cfg->data_head) {
+			data_tail = ptr_virt_m_cfg->data_tail;
+			ptr_data_desc =
+				&(ptr_ds_priv->ptr_ibds_data_desc[data_tail]);
+
+			__ib_dse_dw_dbg(
+				&(ptr_ds_priv->ib_vsid_m_stats[virt_vsid]),
+				ptr_data_desc->dw0);
+
+			if ((ptr_data_desc->dw0 & IB_DSE_DESC_DONE) == 0)
+				break;
+
+			/* set the valid bit to be zero */
+			ptr_data_desc->dw0 &= 0xFFFFFFFE;
+
+			ptr_virt_m_cfg->data_tail++;
+
+			if (ptr_virt_m_cfg->data_tail >
+				(ptr_virt_m_cfg->max_num_data_desc - 1)) {
+				ptr_virt_m_cfg->data_tail = 0;
+			}
+
+			/* callback function - TBD */
+		}
 	}
-    }
 
-    spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, flags);
+	spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, flags);
 
-    return;
+	return;
 }
 
 /*****************************************************************************
@@ -1087,11 +1059,11 @@ int axxia_open_ib_data_stream(
 				kfree((void *)ptr_data_desc->virt_data_buf);
 			}
 
-		return -ENOMEM;
-	}
+			return -ENOMEM;
+		}
 #endif
-	ptr_virt_m_cfg->data_head_reserved = data_head_reserved;
-	ptr_virt_m_cfg->num_desc_free++;
+		ptr_virt_m_cfg->data_head_reserved = data_head_reserved;
+		ptr_virt_m_cfg->num_desc_free++;
 
 		total_head_reserved++;
 
@@ -1231,8 +1203,8 @@ int axxia_add_ibds_buffer(
 	u8		      	found_one = RIO_DS_FALSE;
 
 #ifndef ALLOC_BUF_BY_KERNEL
-    unsigned long   data_addr_phy;
-    u32 data_addr_hi;
+	unsigned long   data_addr_phy;
+	u32 data_addr_hi;
 #endif
 
 	if (buf == NULL)
@@ -1261,16 +1233,14 @@ int axxia_add_ibds_buffer(
 	ptr_data_desc->usr_virt_data_buf = (u32)buf;
 
 #ifndef ALLOC_BUF_BY_KERNEL
-    data_addr_phy =
+	data_addr_phy =
 		virt_to_phys((void *)ptr_data_desc->virt_data_buf);
 
-    ptr_data_desc->dw3 = ((u64)data_addr_phy & 0xFFFFFFFF);
-    data_addr_hi = ((u64)data_addr_phy >> 32) & 0x3F;
-    ptr_data_desc->dw2 |= (data_addr_hi << 26) & 0xFC000000;
+	ptr_data_desc->dw3 = ((u64)data_addr_phy & 0xFFFFFFFF);
+	data_addr_hi = ((u64)data_addr_phy >> 32) & 0x3F;
+	ptr_data_desc->dw2 |= (data_addr_hi << 26) & 0xFC000000;
 
-    ptr_data_desc->virt_data_buf = (u32)buf;
-#endif
-
+	ptr_data_desc->virt_data_buf = (u32)buf;
 	if (ptr_virt_m_cfg->user_buf_index_head ==
 		(ptr_virt_m_cfg->max_num_data_desc - 1)) {
 		ptr_virt_m_cfg->user_buf_index_head = 0;
@@ -1383,7 +1353,7 @@ void *axxia_get_ibds_data(
 #ifdef ALLOC_BUF_BY_KERNEL
 		user_buf = (void *)ptr_data_desc->usr_virt_data_buf;
 #else
-	user_buf = (void *)ptr_data_desc->virt_data_buf;
+		user_buf = (void *)ptr_data_desc->virt_data_buf;
 #endif
 		if (user_buf == NULL) {
 			*ptr_pdu_length = 0;

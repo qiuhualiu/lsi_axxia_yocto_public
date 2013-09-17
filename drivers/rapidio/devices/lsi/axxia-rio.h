@@ -482,13 +482,11 @@ struct rio_priv {
 	int desc_max_entries;
 	struct rio_desc *descriptors;
 
-	int numOutbDmesMseg;
-	int numOutbDmesSseg;
+	int numOutbDmes[2];	/* [0]=MSeg, [1]=Sseg */
         int outbDmesInUse[2];
 	int outbDmes[2];	/* set of defined outbound DMEs:
 				 *   [0]=MSeg, [1]=SSeg */
-	int numInbDmesMseg;
-	int numInbDmesSseg;
+	int numInbDmes[2];	/* [0]=MSeg, [1]=Sseg */
         int inbDmesInUse[2];
 	int inbDmes[2];		/* set of defined inbound DMEs */
 

@@ -176,7 +176,7 @@ enum rio_ob_dme_dbg {
 #define	RIO_MBOX_TO_BUF_SIZE(mid)		\
 	((mid <= RIO_MAX_RX_MBOX_4KB) ? RIO_MSG_MAX_MSG_SIZE : RIO_MSG_SEG_SIZE)
 #define	RIO_OUTB_DME_TO_BUF_SIZE(p,did)		\
-	((did < p->numOutbDmesMseg) ? RIO_MSG_MAX_MSG_SIZE : RIO_MSG_SEG_SIZE)
+	((did < p->numOutbDmes[0]) ? RIO_MSG_MAX_MSG_SIZE : RIO_MSG_SEG_SIZE)
 
 
 #define RIO_DESC_USED 0

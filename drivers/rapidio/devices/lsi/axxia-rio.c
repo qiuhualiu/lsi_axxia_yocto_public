@@ -40,6 +40,12 @@
 
 static DEFINE_SPINLOCK(rio_io_lock);
 
+#ifdef SRIO_IODEBUG
+#define	IODP(a, ...)	printk(a)
+#else
+#define	IODP(a, ...)
+#endif
+
 /**
  * NOTE:
  *
@@ -94,7 +100,7 @@ static int __acp_local_config_read_actual(struct rio_priv *priv,
 
 	AXXIA_RIO_SYSMEM_BARRIER();
 
-	if (offset < 0x20000) {
+	if (offset < RAB_REG_BASE) {
 		/*
 		 * RapidIO Standard Registers (0x0000-0xFFFC)
 		 * Endpoint Controller Specific Registers (0x1_0000-0x1_FFFC)
@@ -102,7 +108,7 @@ static int __acp_local_config_read_actual(struct rio_priv *priv,
 		*data = CORRECT_GRIO(inl((long unsigned int)
 						priv->regs_win_paged +
 					 	(offset & 0x7ff)));
-	} else if ((offset >= 0x20000) && (offset < 0x40000)) {
+	} else if ((offset >= RAB_REG_BASE) && (offset < SRIO_SPACE_SIZE)) {
 		/*
 		 * Peripheral Bus Bridge Specific Registers
 		 * (0x2_0000-0x3_FFFC)
@@ -131,6 +137,8 @@ static int __acp_local_config_read_actual(struct rio_priv *priv,
 
 	if (suppress)
 		AXXIA_RIO_ENABLE_MACHINE_CHECK();
+
+	IODP("rio: ACR(%08x, <%08x)\n", offset, *data);
 
 	return 0;
 }
@@ -165,7 +173,7 @@ static int __acp_local_config_write_actual(struct rio_priv *priv,
 
 	AXXIA_RIO_SYSMEM_BARRIER();
 
-	if (offset < 0x20000) {
+	if (offset < RAB_REG_BASE) {
 		/*
 		 * RapidIO Standard Registers (0x0000-0xFFFC)
 		 * Endpoint Controller Specific Registers (0x1_0000-0x1_FFFC)
@@ -173,7 +181,7 @@ static int __acp_local_config_write_actual(struct rio_priv *priv,
 		outl_p(CORRECT_GRIO(data),
 			(long unsigned int)priv->regs_win_paged +
 					   (offset & 0x7ff));
-	} else if ((offset >= 0x20000) && (offset < 0x40000)) {
+	} else if ((offset >= RAB_REG_BASE) && (offset < SRIO_SPACE_SIZE)) {
 		/*
 		 * Peripheral Bus Bridge Specific Registers (0x2_0000-0x3_FFFC)
 		 */
@@ -201,6 +209,8 @@ static int __acp_local_config_write_actual(struct rio_priv *priv,
 
 	if (suppress)
 		AXXIA_RIO_ENABLE_MACHINE_CHECK();
+
+	IODP("rio: ACW(%08x, >%08x)\n", offset, data);
 
 	return 0;
 }
@@ -310,13 +320,13 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 	switch (len) {
 
 	case 1:
-		IN_BE8(addr, rval, rc);
+		IN_SRIO8(addr, rval, rc);
 		break;
 	case 2:
-		IN_BE16(addr, rval, rc);
+		IN_SRIO16(addr, rval, rc);
 		break;
 	case 4:
-		IN_BE32(addr, rval, rc);
+		IN_SRIO32(addr, rval, rc);
 		break;
 	default:
 		rc = -EINVAL;
@@ -328,16 +338,23 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 			"acp_rio_config_read: Machine check exception when "
 			"reading AXXIA SRIO register 0x%0x\n",
 			offset);
-		*val = 0;
+		rval = 0;
 	}
 
 	AXXIA_RIO_ENABLE_MACHINE_CHECK();
+
+	if (offset < RAB_REG_BASE)
+		rval = CORRECT_GRIO(rval);
+	else
+		rval = CORRECT_RAB(rval);
 
 	if (rc) {
 		dev_dbg(priv->dev, "acp_rio_config_read: Error when reading\n");
 		*val = 0;
 	} else
 		*val = rval;
+
+	IODP("rio: RCR(did=%x, hc=%02x, %08x, <%08x)\n", destid, hopcount, offset, rval);
 
 	return rc;
 }
@@ -361,9 +378,11 @@ static int acp_rio_config_write(struct rio_mport *mport, int index, u16 destid,
 	struct rio_priv *priv = mport->priv;
 	struct atmu_outb *aoutb = &priv->outb_atmu[priv->maint_win_id];
 	u8 *data;
-	u32 rbar = 0, ctrl;
+	u32 rbar = 0, ctrl, rval;
 	int rc = 0;
 	int mcsr = 0;
+
+	IODP("rio: RCW(did=%x, hc=%02x, %08x, >%08x)\n", destid, hopcount, offset, val);
 
 	AXXIA_RIO_DISABLE_MACHINE_CHECK();
 
@@ -402,18 +421,23 @@ static int acp_rio_config_write(struct rio_mport *mport, int index, u16 destid,
 				 ctrl,
 				 0);
 
+	if (offset < RAB_REG_BASE)
+		rval = CORRECT_GRIO(val);
+	else
+		rval = CORRECT_RAB(val);
+
 	data = (u8 *) aoutb->win +
 		(offset & (CONFIG_RIO_MAINT_WIN_SIZE - 1));
 
 	switch (len) {
 	case 1:
-		OUT_BE8(data, val);
+		OUT_SRIO8(data, rval);
 		break;
 	case 2:
-		OUT_BE16(data, val);
+		OUT_SRIO16(data, rval);
 		break;
 	case 4:
-		OUT_BE32(data, val);
+		OUT_SRIO32(data, rval);
 		break;
 	default:
 		rc = -EINVAL;
@@ -839,10 +863,16 @@ static int rio_start_port(struct rio_mport *mport)
 {
 	struct rio_priv *priv = mport->priv;
 	u32 ccsr, escsr;
+	u32 hdlcsr, didcar, rabver;	/* HACK */
 
 	/* Probe the master port phy type */
 	__rio_local_read_config_32(mport, RIO_CCSR, &ccsr);
 	__rio_local_read_config_32(mport, RIO_ESCSR, &escsr);
+/*Begin HACK*/
+	__rio_local_read_config_32(mport, RIO_HOST_DID_LOCK_CSR, &hdlcsr);
+	__rio_local_read_config_32(mport, RIO_DEV_ID_CAR, &didcar);
+	__rio_local_read_config_32(mport, RAB_VER, &rabver);
+/*End HACK*/
 
 	if (escsr & RIO_ESCSR_PU) {
 
@@ -876,6 +906,15 @@ static int rio_start_port(struct rio_mport *mport)
 			return 0;
 		}
 	}
+	IODP("rio[%d]: DIDCAR[%x]=%08x RAB_VER[%x]=%08x\n",
+		__LINE__,
+		RIO_DEV_ID_CAR, didcar,
+		RAB_VER, rabver);	/* HACK */
+	IODP("rio[%d]: CCSR[%x]=%08x ESCSR[%x]=%08x HBDIDLCSR[%x]=%08x\n",
+		__LINE__,
+		RIO_CCSR, ccsr,
+		RIO_ESCSR, escsr,
+		RIO_HOST_DID_LOCK_CSR, hdlcsr);	/* HACK */
 	dev_dbg(priv->dev, "Port Is ready\n");
 	return 0;
 }
@@ -1059,12 +1098,10 @@ static int rio_parse_dtb_ds(
  * @law_size: Local Access Window size from DTB
  * @regs: RapidIO registers from DTB
  * @entries: RapidIO num entries mapping from DTB
- * @obNumMsegDmes: Number of outbound multi-seg DMEs available
- * @obNumSsegDmes: Number of outbound single-seg DMEs available
+ * @obNumDmes: Number of outbound DMEs available
  * @outbDmes: RapidIO outbound DMEs array available;
  *                [0] for MSeg, [1] for SSeg
- * @ibNumMsegDmes: Number of inbound multi-seg DMEs available
- * @ibNumSsegDmes: Number of inbound single-seg DMEs available
+ * @ibNumDmes: Number of inbound DMEs available
  * @inbDmes: RapidIO inbound DMEs array available; 2 elements
  * @irq: RapidIO IRQ mapping from DTB
  *
@@ -1078,11 +1115,9 @@ static int rio_parse_dtb(
 	u64 *law_size,
 	struct resource *regs,
 	int *entries,
-	int *obNumMsegDmes,
-	int *obNumSsegDmes,
+	int *obNumDmes,
 	int *outbDmes,
-	int *ibNumMsegDmes,
-	int *ibNumSsegDmes,
+	int *ibNumDmes,
 	int *inbDmes,
 	int *irq,
 	struct rio_ds_dtb_info    *ptr_ds_dtb_info)
@@ -1154,8 +1189,8 @@ static int rio_parse_dtb(
 	outbDmes[0] = outbDmes[1] = 0;
 	cell = of_get_property(dev->dev.of_node, "outb-dmes", &rlen);
 	if (!cell) {
-		*obNumMsegDmes = 2;
-		*obNumSsegDmes = 1;
+		obNumDmes[0] = 2;
+		obNumDmes[1] = 1;
 		outbDmes[0] = 0x00000003;
 		outbDmes[1] = 0x00000001;
 	} else {
@@ -1164,24 +1199,24 @@ static int rio_parse_dtb(
 				dev->dev.of_node->full_name);
 			return -EFAULT;
 		}
-		*obNumMsegDmes = of_read_number(cell, 1);
+		obNumDmes[0] = of_read_number(cell, 1);
 		outbDmes[0] = of_read_number(cell + 1, 1);
-		*obNumSsegDmes = of_read_number(cell + 2, 1);
+		obNumDmes[1] = of_read_number(cell + 2, 1);
 		outbDmes[1] = of_read_number(cell + 3, 1);
-		if (((*obNumMsegDmes)+(*obNumSsegDmes)) > DME_MAX_OB_ENGINES) {
+		if (((obNumDmes[0])+(obNumDmes[1])) > DME_MAX_OB_ENGINES) {
 			dev_err(&dev->dev, "Invalid %s property 'outb-dmes'\n",
 				dev->dev.of_node->full_name);
 			return -EFAULT;
 		}
 	}
 	dev_dbg(&dev->dev, "outb-dmes: MSeg[%d]=%08x SSeg[%d]=%08x\n",
-		*obNumMsegDmes, outbDmes[0], *obNumSsegDmes, outbDmes[1]);
+		obNumDmes[0], outbDmes[0], obNumDmes[1], outbDmes[1]);
 
 	inbDmes[0] = inbDmes[1] = 0;
 	cell = of_get_property(dev->dev.of_node, "inb-dmes", &rlen);
 	if (!cell) {
-		*ibNumMsegDmes = 32;
-		*ibNumSsegDmes = 0;
+		ibNumDmes[0] = 32;
+		ibNumDmes[1] = 0;
 		inbDmes[0] = 0xffffffff;
 		inbDmes[1] = 0x00000000;
 	} else {
@@ -1190,18 +1225,18 @@ static int rio_parse_dtb(
 				dev->dev.of_node->full_name);
 			return -EFAULT;
 		}
-		*ibNumMsegDmes = of_read_number(cell, 1);
+		ibNumDmes[0] = of_read_number(cell, 1);
 		inbDmes[0] = of_read_number(cell + 1, 1);
-		*ibNumSsegDmes = of_read_number(cell + 2, 1);
+		ibNumDmes[1] = of_read_number(cell + 2, 1);
 		inbDmes[1] = of_read_number(cell + 3, 1);
-		if (((*ibNumMsegDmes)+(*ibNumSsegDmes)) > DME_MAX_IB_ENGINES) {
+		if (((ibNumDmes[0])+(ibNumDmes[1])) > DME_MAX_IB_ENGINES) {
 			dev_err(&dev->dev, "Invalid %s property 'inb-dmes'\n",
 				dev->dev.of_node->full_name);
 			return -EFAULT;
 		}
 	}
 	dev_dbg(&dev->dev, "inb-dmes: MSeg[%d]=%08x SSeg[%d]=%08x\n",
-		*ibNumMsegDmes, inbDmes[0], *ibNumSsegDmes, inbDmes[1]);
+		ibNumDmes[0], inbDmes[0], ibNumDmes[1], inbDmes[1]);
 
 	*irq = irq_of_parse_and_map(dev->dev.of_node, 0);
 	dev_dbg(&dev->dev, "irq: %d\n", *irq);
@@ -1321,11 +1356,9 @@ static struct rio_mport *rio_mport_dtb_setup(struct platform_device *dev,
  * @regs: RapidIO registers from DTB
  * @mport: master port
  * @entries: override num descriptor entries
- * @obNumMsegDme: override num outbound MSEG DMEs available
- * @obNumSsegDme: override num outbound SSEG DMEs available
+ * @numObNumDmes: override num outbound DMEs available
  * @outbDmes: RapidIO outbound DMEs array available; [0] for MSeg, [1] for SSeg
- * @ibNumMsegDme: override num inbound MSEG DMEs available
- * @ibNumSsegDme: override num inbound SSEG DMEs available
+ * @numIbNumDmes: override num inbound DMEs available
  * @inbDmes: RapidIO inbound DMEs array available; 2 elements
  * @int: IRQ number
  *
@@ -1341,11 +1374,9 @@ static struct rio_priv *rio_priv_dtb_setup(
 	struct resource *regs,
 	struct rio_mport *mport,
 	int entries,
-	int obNumMsegDmes,
-	int obNumSsegDmes,
+	int *numOutbDmes,
 	int *outbDmes,
-	int ibNumMsegDmes,
-	int ibNumSsegDmes,
+	int *numInbDmes,
 	int *inbDmes,
 	int irq,
 	struct rio_ds_dtb_info   *ptr_ds_dtb_info)
@@ -1378,10 +1409,14 @@ static struct rio_priv *rio_priv_dtb_setup(
 
 	/* defined DMEs */
 	if (outbDmes) {
+		priv->numOutbDmes[0] = numOutbDmes[0];
+		priv->numOutbDmes[1] = numOutbDmes[1];
 		priv->outbDmes[0] = outbDmes[0];
 		priv->outbDmes[1] = outbDmes[1];
 	}
 	if (inbDmes) {
+		priv->numInbDmes[0] = numInbDmes[0];
+		priv->numInbDmes[1] = numInbDmes[1];
 		priv->inbDmes[0] = inbDmes[0];
 		priv->inbDmes[1] = inbDmes[1];
 	}
@@ -1518,15 +1553,18 @@ static int axxia_rio_setup(struct platform_device *dev)
 	u64 law_start, law_size;
 	int entries;
 	int irq;
-	int obNumMsegDme, obNumSsegDme, outbDmes[2];
-	int ibNumMsegDme, ibNumSsegDme, inbDmes[2];
+	int numObDmes[2], outbDmes[2];
+	int numIbDmes[2], inbDmes[2];
 	/* data_streaming */
 	struct rio_ds_dtb_info ds_dtb_info;
 
+	if (axxia_rapidio_board_init())
+		return -EFAULT;
+
 	/* Get address boundaries from DTB */
 	if (rio_parse_dtb(dev, &law_start, &law_size, &regs, &entries,
-			  &obNumMsegDme, &obNumSsegDme, &outbDmes[0],
-			  &ibNumMsegDme, &ibNumSsegDme, &inbDmes[0],
+			  &numObDmes[0], &outbDmes[0],
+			  &numIbDmes[0], &inbDmes[0],
 			  &irq, &ds_dtb_info))
 		return -EFAULT;
 
@@ -1542,8 +1580,8 @@ static int axxia_rio_setup(struct platform_device *dev)
 		goto err_port;
 	}
 	priv = rio_priv_dtb_setup(dev, &regs, mport, entries,
-				  obNumMsegDme, obNumSsegDme, &outbDmes[0],
-				  ibNumMsegDme, ibNumSsegDme, &inbDmes[0],
+				  &numObDmes[0], &outbDmes[0],
+				  &numIbDmes[0], &inbDmes[0],
 				  irq, &ds_dtb_info);
 	if (IS_ERR(priv)) {
 		rc = PTR_ERR(priv);
@@ -1641,3 +1679,4 @@ static __init int axxia_of_rio_rpn_init(void)
 }
 
 subsys_initcall_sync(axxia_of_rio_rpn_init);
+/* device_initcall_sync(axxia_of_rio_rpn_init); */

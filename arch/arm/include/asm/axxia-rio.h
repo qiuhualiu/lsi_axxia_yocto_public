@@ -13,24 +13,27 @@
 #define AXXIA_RIO_ENABLE_MACHINE_CHECK()
 #define AXXIA_RIO_IF_MACHINE_CHECK(mcsr)	mcsr = 0
 
-#define IN_BE8(a, v, ec)	v = inb((long unsigned int)a); ec = 0
-#define IN_BE16(a, v, ec)	v = inw((long unsigned int)a); ec = 0
-#define IN_BE32(a, v, ec)	v = inl((long unsigned int)a); ec = 0
+#define IN_SRIO8(a, v, ec)	v = inb((long unsigned int)a); ec = 0
+#define IN_SRIO16(a, v, ec)	v = inw((long unsigned int)a); ec = 0
+#define IN_SRIO32(a, v, ec)	v = inl((long unsigned int)a); ec = 0
 
-#define OUT_BE8(a, v)	outb_p(v, (long unsigned int) a)
-#define OUT_BE16(a, v)	outw_p(v, (long unsigned int) a)
-#define OUT_BE32(a, v)	outl_p(v, (long unsigned int) a)
+#define OUT_SRIO8(a, v)		outb_p(v, (long unsigned int) a)
+#define OUT_SRIO16(a, v)	outw_p(v, (long unsigned int) a)
+#define OUT_SRIO32(a, v)	outl_p(v, (long unsigned int) a)
 
 #define _SWAP32(x)		((((x) & 0x000000FF) << 24) | (((x) & 0x0000FF00) <<  8) | (((x) & 0x00FF0000) >> 8) | (((x) & 0xFF000000) >> 24))
 #define CORRECT_GRIO(a)		_SWAP32(a)
 #define CORRECT_RAB(a)		(a)
 
-/* ACP RIO debug stuff */
+/* ACP RIO board-specific stuff */
 
 extern int axxia_rio_apio_enable(struct rio_mport *mport, u32 mask, u32 bits);
 extern int axxia_rio_apio_disable(struct rio_mport *mport);
 extern int axxia_rio_rpio_enable(struct rio_mport *mport, u32 mask, u32 bits);
 extern int axxia_rio_rpio_disable(struct rio_mport *mport);
+
+extern int axxia_rapidio_board_init(void);
+
 
 /*****************************/
 /* ACP RIO operational stuff */
