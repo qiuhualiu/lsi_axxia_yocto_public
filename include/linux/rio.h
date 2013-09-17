@@ -20,6 +20,8 @@
 #include <linux/errno.h>
 #include <linux/device.h>
 #include <linux/rio_regs.h>
+#include <linux/radix-tree.h>
+#include <asm/rio.h>
 
 #define RIO_NO_HOPCOUNT		-1
 #define RIO_INVALID_DESTID	0xffff
@@ -37,10 +39,14 @@
 					   entry is invalid (no route
 					   exists for the device ID) */
 
+#define RIO_INVALID_ROUTE_WEIGHT	0xff  /* Indicates that a route weight
+						entry is invalid (no route
+						exists for the device ID) */
+
 #define RIO_MAX_ROUTE_ENTRIES(size)	(size ? (1 << 16) : (1 << 8))
 #define RIO_ANY_DESTID(size)		(size ? 0xffff : 0xff)
 
-#define RIO_MAX_MBOX		4
+#define RIO_MAX_MBOX		8
 #define RIO_MAX_MSG_SIZE	0x1000
 
 /*
@@ -77,6 +83,9 @@
 #define RIO_CTAG_RESRVD	0xfffe0000 /* Reserved */
 #define RIO_CTAG_UDEVID	0x0001ffff /* Unique device identifier */
 
+#define RIO_DEVICE_INSERTION    1
+#define RIO_DEVICE_EXTRACTION   2
+
 extern struct bus_type rio_bus_type;
 extern struct device rio_bus;
 extern struct list_head rio_devices;	/* list of all devices */
@@ -84,6 +93,15 @@ extern struct list_head rio_devices;	/* list of all devices */
 struct rio_mport;
 struct rio_dev;
 union rio_pw_msg;
+
+struct rio_switch_port {
+	struct rio_dev *rdev;
+#ifdef CONFIG_RAPIDIO_DYNAMIC_ROUTES
+	u8 *route_weights_table;
+#endif
+};
+
+#define NEW_STYLE 1
 
 /**
  * struct rio_switch - RIO switch info
@@ -104,7 +122,12 @@ union rio_pw_msg;
 struct rio_switch {
 	struct list_head node;
 	u16 switchid;
+#ifdef OLD_STYLE
 	u8 *route_table;
+#else
+	u32 port_init;
+	int update_lut;
+#endif
 	u32 port_ok;
 	int (*add_entry) (struct rio_mport *mport, u16 destid, u8 hopcount,
 			  u16 table, u16 route_destid, u8 route_port);
@@ -119,7 +142,9 @@ struct rio_switch {
 	int (*em_init) (struct rio_dev *dev);
 	int (*em_handle) (struct rio_dev *dev, u8 swport);
 	int (*sw_sysfs) (struct rio_dev *dev, int create);
-	struct rio_dev *nextdev[0];
+#ifdef OLD_STYLE
+	struct rio_switch_port port[0];
+#endif
 };
 
 /**
@@ -151,10 +176,19 @@ struct rio_switch {
  * @prev: Previous RIO device connected to the current one
  * @rswitch: struct rio_switch (if valid for this device)
  */
+#ifdef NEW_STYLE
+struct rio_dyn {
+	int prev_port;
+	u16 prev_destid;
+	u32 swpinfo;
+};
+#endif
+
 struct rio_dev {
 	struct list_head global_list;	/* node in list of all RIO devices */
 	struct list_head net_list;	/* node in per net list */
-	struct rio_net *net;	/* RIO net this device resides in */
+	struct list_head route_list;	/* node in per net list */
+	struct rio_mport *hport;	/* RIO net this device resides in */
 	u16 did;
 	u16 vid;
 	u32 device_rev;
@@ -176,7 +210,15 @@ struct rio_dev {
 	int (*pwcback) (struct rio_dev *rdev, union rio_pw_msg *msg, int step);
 	u16 destid;
 	u8 hopcount;
+#ifdef NEW_STYLE
+	int use_hw_lock;
+	int local_domain;       /* Device enumerated/Device discovered */
+	int prev_port;
+	u16 prev_destid;
+	u8 return_port;
+#else
 	struct rio_dev *prev;
+#endif
 	struct rio_switch rswitch[0];	/* RIO switch info */
 };
 
@@ -190,9 +232,15 @@ struct rio_dev {
  * @res: Mailbox resource
  * @mcback: Message event callback
  */
-struct rio_msg {
+struct rio_outb_msg {
 	struct resource *res;
-	void (*mcback) (struct rio_mport * mport, void *dev_id, int mbox, int slot);
+	void (*mcback) (struct rio_mport *mport,
+	void *dev_id, int mbox, int rc, void *cookie);
+};
+struct rio_inb_msg {
+	struct resource *res;
+	void (*mcback) (struct rio_mport *mport,
+	void *dev_id, int mbox, int letter);
 };
 
 /**
@@ -205,13 +253,54 @@ struct rio_msg {
 struct rio_dbell {
 	struct list_head node;
 	struct resource *res;
-	void (*dinb) (struct rio_mport *mport, void *dev_id, u16 src, u16 dst, u16 info);
+	void (*dinb) (struct rio_mport *mport, void *dev_id,
+		      u16 src, u16 dst, u16 info);
 	void *dev_id;
 };
 
 enum rio_phy_type {
 	RIO_PHY_PARALLEL,
 	RIO_PHY_SERIAL,
+};
+
+struct rio_map_addr {
+	void __iomem *va;
+	resource_size_t phys;
+};
+
+/**
+ * Struct for RIO memory definition.
+ * @req_outb: The function for requesting outbound memory window.
+ * @map_outb: The function for mapping outbound memory window.
+ * @release_outb: The function for releasing outbound memory window.
+ */
+struct rio_mem_ops {
+	int (*req_outb) (struct rio_mport *, resource_size_t,
+			 const char *, u32, u32 *);
+	int (*map_outb) (struct rio_mport *, u32,
+			 u16, u32, u32, struct rio_map_addr *);
+	void (*release_outb) (struct rio_mport *, u32);
+};
+/**
+ * struct rio_net - RIO network info
+ * @node: Node in global list of RIO networks
+ * @devices: List of devices in this network
+ * @mports: List of master ports accessing this network
+ * @hport: Default port for accessing this network
+ * @id: RIO network ID
+ */
+struct rio_net {
+#ifdef NEW_STYLE
+	struct radix_tree_root dev_tree;
+	atomic_t rio_dev_num;
+	struct radix_tree_root dst_tree;
+	atomic_t rio_dst_num;
+	atomic_t rio_max_dest;
+	spinlock_t tree_lock;
+#else
+	struct list_head devices;	/* list of devices in this net */
+#endif
+	unsigned char id;	/* RIO network ID */
 };
 
 /**
@@ -236,13 +325,19 @@ enum rio_phy_type {
 struct rio_mport {
 	struct list_head dbells;	/* list of doorbell events */
 	struct list_head node;	/* node in global list of ports */
-	struct list_head nnode;	/* node in net list of ports */
+	struct rio_net net;
+
+#if defined(CONFIG_RAPIDIO_STATIC_DESTID) || defined(CONFIG_RAPIDIO_HOTPLUG)
+	struct device dev;
+#endif
 	struct resource iores;
 	struct resource riores[RIO_MAX_MPORT_RESOURCES];
-	struct rio_msg inb_msg[RIO_MAX_MBOX];
-	struct rio_msg outb_msg[RIO_MAX_MBOX];
+	struct rio_inb_msg  inb_msg[RIO_MAX_MBOX];
+	struct rio_outb_msg outb_msg[RIO_MAX_MBOX];
 	int host_deviceid;	/* Host device ID */
+	int enum_host;
 	struct rio_ops *ops;	/* low-level architecture-dependent routines */
+	struct rio_mem_ops *mops; /* Memory functions */
 	unsigned char id;	/* port ID, unique among all ports */
 	unsigned char index;	/* port index, unique among all port
 				   interfaces of the same type */
@@ -256,28 +351,33 @@ struct rio_mport {
 	void *priv;		/* Master port private data */
 };
 
-/**
- * struct rio_net - RIO network info
- * @node: Node in global list of RIO networks
- * @devices: List of devices in this network
- * @mports: List of master ports accessing this network
- * @hport: Default port for accessing this network
- * @id: RIO network ID
- */
-struct rio_net {
-	struct list_head node;	/* node in list of networks */
-	struct list_head devices;	/* list of devices in this net */
-	struct list_head mports;	/* list of ports accessing net */
-	struct rio_mport *hport;	/* primary port for accessing net */
-	unsigned char id;	/* RIO network ID */
-};
 
 /* Definitions used by switch sysfs initialization callback */
 #define RIO_SW_SYSFS_CREATE	1	/* Create switch attributes */
 #define RIO_SW_SYSFS_REMOVE	0	/* Remove switch attributes */
 
 /* Low-level architecture-dependent routines */
+#ifdef CONFIG_RAPIDIO_HOTPLUG
 
+#define RIO_HOT_SWAP_EXTRACT         0x1
+#define RIO_HOT_SWAP_INSERT          0x2
+#define RIO_HOT_SWAP_MPORT           0x4
+#define RIO_HOT_SWAP_LINK_PARTNER    0x8
+
+#define RIO_EXTRACT_LP(f) (((f) & \
+		(RIO_HOT_SWAP_EXTRACT | RIO_HOT_SWAP_LINK_PARTNER)) == \
+		(RIO_HOT_SWAP_EXTRACT | RIO_HOT_SWAP_LINK_PARTNER))
+#define RIO_EXTRACT_MP(f) (((f) & \
+		(RIO_HOT_SWAP_EXTRACT | RIO_HOT_SWAP_MPORT)) == \
+		(RIO_HOT_SWAP_EXTRACT | RIO_HOT_SWAP_MPORT))
+#define RIO_INSERT_LP(f) (((f) & \
+		(RIO_HOT_SWAP_INSERT | RIO_HOT_SWAP_LINK_PARTNER)) == \
+		(RIO_HOT_SWAP_INSERT | RIO_HOT_SWAP_LINK_PARTNER))
+#define RIO_INSERT_MP(f) (((f) & \
+		(RIO_HOT_SWAP_INSERT | RIO_HOT_SWAP_MPORT)) == \
+		(RIO_HOT_SWAP_INSERT | RIO_HOT_SWAP_MPORT))
+
+#endif
 /**
  * struct rio_ops - Low-level RIO configuration space operations
  * @lcread: Callback to perform local (master port) read of config space.
@@ -295,27 +395,46 @@ struct rio_net {
  * @get_inb_message: Callback to get a message from an inbound mailbox queue.
  */
 struct rio_ops {
-	int (*lcread) (struct rio_mport *mport, int index, u32 offset, int len,
-			u32 *data);
-	int (*lcwrite) (struct rio_mport *mport, int index, u32 offset, int len,
-			u32 data);
+	int (*lcread) (struct rio_mport *mport, int index, u32 offset,
+			int len, u32 *data);
+	int (*lcwrite) (struct rio_mport *mport, int index, u32 offset,
+			int len, u32 data);
 	int (*cread) (struct rio_mport *mport, int index, u16 destid,
 			u8 hopcount, u32 offset, int len, u32 *data);
 	int (*cwrite) (struct rio_mport *mport, int index, u16 destid,
 			u8 hopcount, u32 offset, int len, u32 data);
-	int (*dsend) (struct rio_mport *mport, int index, u16 destid, u16 data);
+	int (*dsend) (struct rio_mport *mport, int index,
+			u16 destid, u16 data);
 	int (*pwenable) (struct rio_mport *mport, int enable);
 	int (*open_outb_mbox)(struct rio_mport *mport, void *dev_id,
-			      int mbox, int entries);
+			      int mbox, int entries, int prio);
 	void (*close_outb_mbox)(struct rio_mport *mport, int mbox);
 	int  (*open_inb_mbox)(struct rio_mport *mport, void *dev_id,
 			     int mbox, int entries);
 	void (*close_inb_mbox)(struct rio_mport *mport, int mbox);
 	int  (*add_outb_message)(struct rio_mport *mport, struct rio_dev *rdev,
-				 int mbox, void *buffer, size_t len);
+				int mbox_dest, int letter, int flags,
+				void *buffer, size_t len, void *cookie);
 	int (*add_inb_buffer)(struct rio_mport *mport, int mbox, void *buf);
-	void *(*get_inb_message)(struct rio_mport *mport, int mbox);
+	void *(*get_inb_message)(struct rio_mport *mport, int mbox, int letter,
+				 int *sz, int *slot, u16 *destid);
+#ifdef CONFIG_RAPIDIO_HOTPLUG
+	int (*hotswap)(struct rio_mport *mport, u8 flags);
+	int (*port_notify_cb)(struct rio_mport *mport,
+			      int enable,
+			      void (*cb)(struct rio_mport *mport));
+	int (*port_op_state)(struct rio_mport *mport);
+#endif
 };
+
+#ifdef CONFIG_RAPIDIO_STATIC_DESTID
+
+struct rio_static_route {
+	u16 sw_destid;
+	u8 sw_port;
+};
+
+#endif
 
 #define RIO_RESOURCE_MEM	0x00000100
 #define RIO_RESOURCE_DOORBELL	0x00000200
@@ -341,19 +460,25 @@ struct rio_ops {
  * Provides info on a RIO device driver for insertion/removal and
  * power management purposes.
  */
+struct rio_dynids {
+	spinlock_t lock;            /* protects list, index */
+	struct list_head list;      /* for IDs added at runtime */
+};
+
 struct rio_driver {
 	struct list_head node;
 	char *name;
 	const struct rio_device_id *id_table;
-	int (*probe) (struct rio_dev * dev, const struct rio_device_id * id);
-	void (*remove) (struct rio_dev * dev);
-	int (*suspend) (struct rio_dev * dev, u32 state);
-	int (*resume) (struct rio_dev * dev);
-	int (*enable_wake) (struct rio_dev * dev, u32 state, int enable);
+	int (*probe) (struct rio_dev *dev, const struct rio_device_id *id);
+	void (*remove) (struct rio_dev *dev);
+	int (*suspend) (struct rio_dev *dev, u32 state);
+	int (*resume) (struct rio_dev *dev);
+	int (*enable_wake) (struct rio_dev *dev, u32 state, int enable);
 	struct device_driver driver;
+	struct rio_dynids dynids;
 };
 
-#define	to_rio_driver(drv) container_of(drv,struct rio_driver, driver)
+#define	to_rio_driver(drv) container_of(drv, struct rio_driver, driver)
 
 /**
  * struct rio_device_id - RIO device identifier
@@ -383,6 +508,25 @@ struct rio_switch_ops {
 	u16 vid, did;
 	int (*init_hook) (struct rio_dev *rdev, int do_enum);
 };
+struct rio_dev_fixup {
+	u16 vid, did;
+	void (*fixup_hook) (struct rio_dev *rdev, u16 destid, u8 hopcount);
+};
+enum rio_fixup_pass {
+	rio_fixup_early,
+	rio_fixup_enable,
+};
+
+
+#define DECLARE_RIO_DEV_FIXUP_SECTION(section, name, vid, did, fixup_hook) \
+	static const struct rio_dev_fixup __rio_dev_fixup_##name __used \
+	__section(section) = { vid, did, fixup_hook };
+#define DECLARE_RIO_DEV_FIXUP_EARLY(vid, did, fixup_hook)		\
+	DECLARE_RIO_DEV_FIXUP_SECTION(.rio_dev_fixup_early,		\
+	vid##did##fixup_hook, vid, did, fixup_hook)
+#define DECLARE_RIO_DEV_FIXUP_ENABLE(vid, did, fixup_hook)		\
+	DECLARE_RIO_DEV_FIXUP_SECTION(.rio_dev_fixup_enable,		\
+	vid##did##fixup_hook, vid, did, fixup_hook)
 
 union rio_pw_msg {
 	struct {
@@ -394,6 +538,13 @@ union rio_pw_msg {
 	} em;
 	u32 raw[RIO_PW_MSG_SIZE/sizeof(u32)];
 };
+void rio_fixup_dev(enum rio_fixup_pass pass,
+		   struct rio_dev *rdev,
+		   u16 destid,
+		   u8 hopcount);
+
+
+
 
 /* Architecture and hardware-specific functions */
 extern int rio_register_mport(struct rio_mport *);
@@ -401,5 +552,5 @@ extern int rio_open_inb_mbox(struct rio_mport *, void *, int, int);
 extern void rio_close_inb_mbox(struct rio_mport *, int);
 extern int rio_open_outb_mbox(struct rio_mport *, void *, int, int);
 extern void rio_close_outb_mbox(struct rio_mport *, int);
-
+extern int rio_init_device(struct rio_dev *rdev);
 #endif				/* LINUX_RIO_H */
