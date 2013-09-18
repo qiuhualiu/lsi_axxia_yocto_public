@@ -79,7 +79,7 @@ acp_mdio_read(unsigned long address, unsigned long offset,
 
     if(clause45 == 0) {
     	/* Write the command. */
-    	command |= 0x10000000;	/* op_code: read */
+    	command = 0x10000000;	/* op_code: read */
     	command |= (address & 0x1f) << 16;	/* port_addr (target device) */
     	command |= (offset & 0x1f) << 21;/* device_addr (target register) */
     	WRITE(MDIO_CONTROL_RD_DATA, command);
@@ -89,10 +89,10 @@ acp_mdio_read(unsigned long address, unsigned long offset,
          */
          
     	/* Write the address */
-        command |= 0x20000000; /* clause_45 = 1 */
-    	command |= 0x00000000;	/* op_code: write */
+        command = 0x20000000; /* clause_45 = 1 */
+    	command |= 0x00000000;	/* op_code: 0 */
         command |= 0x04000000; /* interface_select = 1 */
-        command |= ((offset & 0x001f0000) >> 3); /* device_addr (target device_type) */
+        command |= ((offset & 0x1f000000) >> 3); /* device_addr (target device_type) */
     	command |= (address & 0x1f) << 16; /* port_addr (target device) */
         command |= (offset & 0xffff); /*  	addr_or_data (target register) */
     	WRITE(MDIO_CONTROL_RD_DATA, command);
@@ -116,11 +116,10 @@ acp_mdio_read(unsigned long address, unsigned long offset,
     	status |= 0x40000000;
     	WRITE(MDIO_STATUS_RD_DATA, status);
 
-        command = 0;
-        command |= 0x20000000; /* clause_45 = 1 */
+        command = 0x20000000; /* clause_45 = 1 */
         command |= 0x10000000;	/* op_code: read */
         command |= 0x04000000; /* interface_select = 1 */
-        command |= ((offset & 0x001f0000) >> 3); /* device_addr (target device_type) */
+        command |= ((offset & 0x1f000000) >> 3); /* device_addr (target device_type) */
         command |= (address & 0x1f) << 16; /* port_addr (target device) */
         WRITE(MDIO_CONTROL_RD_DATA, command);
     }
@@ -139,6 +138,12 @@ acp_mdio_read(unsigned long address, unsigned long offset,
 
 	*value = (unsigned short)(command & 0xffff);
 	spin_unlock_irqrestore(&mdio_lock, flags);
+
+#if 0
+    if(address != 0) {
+        printk("mdio read 0x%x:0x%x:%d=0x%x\n", address, offset, clause45, *value);
+    }
+#endif
 
 	return 0;
 }
@@ -184,10 +189,10 @@ acp_mdio_write(unsigned long address, unsigned long offset,
          */
          
     	/* Write the address */
-        command |= 0x20000000; /* clause_45 = 1 */
-    	command |= 0x08000000;	/* op_code: write */
+        command = 0x20000000; /* clause_45 = 1 */
+    	command |= 0x00000000;	/* op_code: 0 */
         command |= 0x04000000; /* interface_select = 1 */
-        command |= ((offset & 0x001f0000) >> 3); /* device_addr (target device_type) */
+        command |= ((offset & 0x1f000000) >> 3); /* device_addr (target device_type) */
     	command |= (address & 0x1f) << 16; /* port_addr (target device) */
         command |= (offset & 0xffff); /*  	addr_or_data (target register) */
     	WRITE(MDIO_CONTROL_RD_DATA, command);
@@ -211,11 +216,10 @@ acp_mdio_write(unsigned long address, unsigned long offset,
     	status |= 0x40000000;
     	WRITE(MDIO_STATUS_RD_DATA, status);
 
-        command = 0;
-        command |= 0x20000000; /* clause_45 = 1 */
+        command = 0x20000000; /* clause_45 = 1 */
         command |= 0x08000000;	/* op_code: write */
         command |= 0x04000000; /* interface_select = 1 */
-        command |= ((offset & 0x001f0000) >> 3); /* device_addr (target device_type) */
+        command |= ((offset & 0x1f000000) >> 3); /* device_addr (target device_type) */
         command |= (address & 0x1f) << 16; /* port_addr (target device) */
         command |= (value & 0xffff); /*  	addr_or_data = value */
         WRITE(MDIO_CONTROL_RD_DATA, command);
@@ -234,6 +238,12 @@ acp_mdio_write(unsigned long address, unsigned long offset,
 	} while (0 != (command & 0x80000000));
 
 	spin_unlock_irqrestore(&mdio_lock, flags);
+
+#if 0
+    if(address != 0) {
+        printk("mdio write 0x%x:0x%x:%d=0x%x\n", address, offset, clause45, value);
+    }
+#endif
 
 	return 0;
 }
