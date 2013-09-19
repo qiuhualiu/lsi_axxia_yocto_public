@@ -259,7 +259,7 @@
                 0x20 0x20120000 0x0 0x00008000 >;
                 /* Outbound ranges */
                 /* < <3-cell PCI addr> <2-cell CPU (PLB) addr> <2-cell size> >*/
-                ranges = <0x03000000 0x00000000 0xa0000000
+                ranges = <0x03000000 0x00000000 0x80000000
                           0x30 0x00000000
                           0x00 0x20000000>;
                 /* Inbound ranges */
@@ -299,7 +299,7 @@
                        0x20 0x20130000 0x0 0x00008000 >;
                 /* Outbound ranges */
                 /* < <3-cell PCI addr> <2-cell CPU (PLB) addr> <2-cell size> > */
-                ranges = <0x03000000 0x00000000 0xa0000000
+                ranges = <0x03000000 0x00000000 0xc0000000
                           0x30 0x80000000
                           0x00 0x20000000>;
                 /* Inbound ranges */
@@ -372,22 +372,22 @@
 		};
 	};
 
-	I2C0: i2c@0x02010084000 {
+	i2c@0x02010084000 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "lsi,api2c";
 		device_type = "i2c";
-		port = <0>;
+		bus = <0>;
 		reg = <0x20 0x10084000 0x00 0x1000>;
 		interrupts = <0 19 4>;
 	};
 
-	I2C1: i2c@0x02010085000 {
+	i2c@0x02010085000 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "lsi,api2c";
 		device_type = "i2c";
-		port = <1>;
+		bus = <1>;
 		reg = <0x20 0x10085000 0x00 0x1000>;
 		interrupts = <0 20 4>;
 
@@ -398,23 +398,22 @@
 		};
 	};
 
-	I2C2: i2c@0x02010086000 {
+	i2c@0x02010086000 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "lsi,api2c";
 		device_type = "i2c";
-		port = <2>;
+		bus = <2>;
 		reg = <0x20 0x10086000 0x00 0x1000>;
 		interrupts = <0 21 4>;
 	};
 
-	SMB: i2c@0x02010087000 {
+	i2c@0x02010087000 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "lsi,api2c";
 		device_type = "i2c";
-		port = <3>;
-		bus_name = "smb";
+		bus = <3>;
 		reg = <0x20 0x10087000 0x00 0x1000>;
 		interrupts = <0 22 4>;
 	};

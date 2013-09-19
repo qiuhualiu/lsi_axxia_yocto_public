@@ -209,8 +209,8 @@ axxia_pciex_get_config_base(struct axxia_pciex_port *port,
 		return port->regs;
 
 	relbus = bus->number - (port->root_bus_nr + 1);
-	dev    = (PCI_SLOT(devfn) & 0xf8) >> 3;
-	fn     = (PCI_FUNC(devfn) & 0x7);
+	dev    = PCI_SLOT(devfn);
+	fn     = PCI_FUNC(devfn);
 
 	if (dev > 31)
 		return NULL;
@@ -622,7 +622,7 @@ static int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 
 	/* make sure the ACP device is configured as PCI Root Complex */
 	if ((pci_status & 0x18) != 0x18) {
-		pr_err("PCIE%d: Device is not Root Complex\n", portno);
+		pr_err("PCIE%d: Device is not Root Complex\n", port->index);
 		goto fail;
 	}
 
