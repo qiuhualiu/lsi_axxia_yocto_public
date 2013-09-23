@@ -1,5 +1,5 @@
 /*
- * drivers/lsi/acp/nand.c
+ * drivers/mtd/nand/lsi_acp_nand.c
  *
  * NAND Controller Driver for LSI's ACP
  *
@@ -3475,7 +3475,9 @@ lsi_nand_init(void)
 
 	np = of_find_node_by_type(np, "nand");
 
-	while (np && !of_device_is_compatible(np, "acp-nand"))
+	while (np &&
+	       !of_device_is_compatible(np, "lsi,acp-nand") &&
+	       !of_device_is_compatible(np, "acp-nand"))
 		np = of_find_node_by_type(np, "nand");
 
 	if (np) {

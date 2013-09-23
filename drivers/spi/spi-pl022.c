@@ -58,7 +58,7 @@
  * val shifted sb steps to the left.
  */
 #define SSP_WRITE_BITS(reg, val, mask, sb) \
- ((reg) = (((reg) & ~(mask)) | (((val)<<(sb)) & (mask))))
+	((reg) = (((reg) & ~(mask)) | (((val)<<(sb)) & (mask))))
 
 /*
  * This macro is also used to define some default values.
@@ -66,7 +66,7 @@
  * the result with mask.
  */
 #define GEN_MASK_BITS(val, mask, sb) \
- (((val)<<(sb)) & (mask))
+	(((val)<<(sb)) & (mask))
 
 #define DRIVE_TX		0
 #define DO_NOT_DRIVE_TX		1
@@ -594,7 +594,7 @@ static void restore_state(struct pl022 *pl022)
 	GEN_MASK_BITS(SSP_TX_MSB, SSP_CR1_MASK_TENDN_ST, 5) | \
 	GEN_MASK_BITS(SSP_MWIRE_WAIT_ZERO, SSP_CR1_MASK_MWAIT_ST, 6) |\
 	GEN_MASK_BITS(SSP_RX_1_OR_MORE_ELEM, SSP_CR1_MASK_RXIFLSEL_ST, 7) | \
-	GEN_MASK_BITS(SSP_TX_1_OR_MORE_EMPTY_LOC, SSP_CR1_MASK_TXIFLSEL_ST, 10) \
+	GEN_MASK_BITS(SSP_TX_1_OR_MORE_EMPTY_LOC, SSP_CR1_MASK_TXIFLSEL_ST, 10)\
 )
 
 /*
@@ -1380,7 +1380,8 @@ static void pump_transfers(unsigned long data)
 
 err_config_dma:
 	/* enable all interrupts except RX */
-	writew(ENABLE_ALL_INTERRUPTS & ~SSP_IMSC_MASK_RXIM, SSP_IMSC(pl022->virtbase));
+	writew(ENABLE_ALL_INTERRUPTS & ~SSP_IMSC_MASK_RXIM,
+	       SSP_IMSC(pl022->virtbase));
 }
 
 static void do_interrupt_dma_transfer(struct pl022 *pl022)
@@ -1658,7 +1659,8 @@ static int verify_controller_parameters(struct pl022 *pl022,
 				return -EINVAL;
 			}
 		} else {
-			if (chip_info->duplex != SSP_MICROWIRE_CHANNEL_FULL_DUPLEX)
+			if (chip_info->duplex !=
+			    SSP_MICROWIRE_CHANNEL_FULL_DUPLEX)
 				dev_err(&pl022->dev->dev,
 					"Microwire half duplex mode requested,"
 					" but this is only available in the"
@@ -1736,7 +1738,7 @@ static int calculate_effective_freq(struct pl022 *pl022, int freq, struct
 		scr = SCR_MIN;
 	}
 
-	WARN(!best_freq, "pl022: Matching cpsdvsr and scr not found for %d Hz rate \n",
+	WARN(!best_freq, "pl022: Matching cpsdvsr and scr not found for %d Hz rate\n",
 			freq);
 
 	clk_freq->cpsdvsr = (u8) (best_cpsdvsr & 0xFF);
@@ -2597,6 +2599,10 @@ pl022_of_remove(struct platform_device *ofdev)
 
 static struct of_device_id pl022_match[] = {
 	{
+		.compatible = "arm,acp-ssp",
+		.data = (void *)&vendor_arm,
+	},
+	{
 		.compatible = "acp-ssp",
 		.data = (void *)&vendor_arm,
 	},
@@ -2615,7 +2621,7 @@ static struct platform_driver pl022_driver = {
 #endif
 static int __init pl022_init(void)
 {
-	printk("--> %s:%d - \n", __FILE__, __LINE__);
+	pr_info("--> %s:%d -\n", __FILE__, __LINE__);
 #ifdef CONFIG_ARM_AMBA
 	return amba_driver_register(&pl022_driver);
 #else

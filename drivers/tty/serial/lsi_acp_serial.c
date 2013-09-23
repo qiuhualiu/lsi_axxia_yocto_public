@@ -1041,7 +1041,9 @@ acp_serial_add_ports(struct uart_driver *driver)
 
 	np = of_find_node_by_type(np, "serial");
 
-	while (np && !of_device_is_compatible(np, "acp-uart0"))
+	while (np &&
+	       !of_device_is_compatible(np, "acp-uart0") &&
+	       !of_device_is_compatible(np, "lsi,acp-uart0"))
 		np = of_find_node_by_type(np, "serial");
 
 	if (np)
@@ -1066,7 +1068,9 @@ acp_serial_add_ports(struct uart_driver *driver)
 			np = NULL;
 			np = of_find_node_by_type(np, "serial");
 
-			while (np && !of_device_is_compatible(np, "acp-uart1"))
+			while (np &&
+			       !of_device_is_compatible(np, "acp-uart1") &&
+			       !of_device_is_compatible(np, "lsi,acp-uart1"))
 				np = of_find_node_by_type(np, "serial");
 
 			if (np)

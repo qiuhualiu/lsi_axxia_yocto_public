@@ -96,7 +96,7 @@
 
 #define LSI_DRV_NAME           "acp-femac"
 #define LSI_MDIO_NAME          "acp-femac-mdio"
-#define LSI_DRV_VERSION        "2013-09-10"
+#define LSI_DRV_VERSION        "2013-09-20"
 
 MODULE_AUTHOR("John Jacques");
 MODULE_DESCRIPTION("LSI ACP-FEMAC Ethernet driver");
@@ -2111,7 +2111,9 @@ static int __devexit appnic_drv_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id appnic_dt_ids[] = {
-	{ .compatible = "acp-femac", }
+	{ .compatible = "lsi,acp-femac", },
+	{ .compatible = "acp-femac", },
+	{},
 };
 MODULE_DEVICE_TABLE(of, appnic_dt_ids);
 

@@ -245,7 +245,7 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 	}
 #else
 
-        irq = irq_of_parse_and_map(np, 0);
+	irq = irq_of_parse_and_map(np, 0);
 	if (NO_IRQ == irq) {
 		dev_dbg(&pdev->dev, "error getting irq number\n");
 		retval = -EBUSY;
@@ -329,6 +329,10 @@ static int ci13612_ehci_remove(struct platform_device *pdev)
 MODULE_ALIAS("platform:ci13612-ehci");
 
 static struct of_device_id ci13612_match[] = {
+	{
+		.type	= "usb",
+		.compatible = "lsi,acp-usb",
+	},
 	{
 		.type	= "usb",
 		.compatible = "acp-usb",
