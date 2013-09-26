@@ -1,5 +1,5 @@
 /*
- * arch/arm/boot/dts/axm5500-sim.dts
+ * arch/arm/boot/dts/axm55xxemu.dts
  *
  * Copyright (C) 2012 LSI
  *
@@ -153,7 +153,7 @@
 	};
 
         axxia_femac0: femac@0x2010120000 {
-                compatible = "acp-femac";
+                compatible = "lsi,acp-femac";
 		device_type = "network";
 		reg = <0x20 0x10120000 0 0x1000>,
    		      <0x20 0x10121000 0 0x1000>,

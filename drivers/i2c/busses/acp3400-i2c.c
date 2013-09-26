@@ -493,6 +493,9 @@ static int acp34xx_i2c_remove(struct platform_device *dev)
 
 static struct of_device_id acp_i2c_match[] = {
 	{
+		.compatible = "lsi,acp-i2c",
+	},
+	{
 		.compatible = "acp-i2c",
 	},
 	{

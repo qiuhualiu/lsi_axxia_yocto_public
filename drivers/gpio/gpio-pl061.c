@@ -459,6 +459,9 @@ static int __devinit pl061_of_probe(struct platform_device *ofdev)
 
 static struct of_device_id pl061_match[] = {
 	{
+		.compatible = "arm,amba_pl061",
+	},
+	{
 		.compatible = "amba_pl061",
 	},
 	{ /* end of list */ },

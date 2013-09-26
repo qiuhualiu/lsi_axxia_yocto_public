@@ -52,8 +52,6 @@
 #include <linux/of.h>
 #include <linux/io.h>
 
-#include <asm/lsi/acp_ncr.h>
-
 #define SZ_4K (4*1024)
 #define UART_NR			2
 #define SERIAL_AMBA_MAJOR	204
@@ -1041,7 +1039,9 @@ acp_serial_add_ports(struct uart_driver *driver)
 
 	np = of_find_node_by_type(np, "serial");
 
-	while (np && !of_device_is_compatible(np, "acp-uart0"))
+	while (np &&
+	       !of_device_is_compatible(np, "acp-uart0") &&
+	       !of_device_is_compatible(np, "lsi,acp-uart0"))
 		np = of_find_node_by_type(np, "serial");
 
 	if (np)
@@ -1066,7 +1066,9 @@ acp_serial_add_ports(struct uart_driver *driver)
 			np = NULL;
 			np = of_find_node_by_type(np, "serial");
 
-			while (np && !of_device_is_compatible(np, "acp-uart1"))
+			while (np &&
+			       !of_device_is_compatible(np, "acp-uart1") &&
+			       !of_device_is_compatible(np, "lsi,acp-uart1"))
 				np = of_find_node_by_type(np, "serial");
 
 			if (np)
