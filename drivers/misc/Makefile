@@ -52,3 +52,4 @@ obj-$(CONFIG_MAX8997_MUIC)	+= max8997-muic.o
 obj-$(CONFIG_HWLAT_DETECTOR)	+= hwlat_detector.o
 obj-$(CONFIG_LSI_NCR)           += lsi-ncr.o
 obj-$(CONFIG_LSI_MTC)		+= lsi-mtc.o
+obj-$(CONFIG_LSI_SMMON)         += lsi-smmon.o
