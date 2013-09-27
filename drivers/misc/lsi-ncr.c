@@ -92,13 +92,12 @@ typedef union {
   ncr_register_read
 */
 
-static __inline__ unsigned long
+unsigned long
 ncr_register_read(unsigned *address)
 {
 	unsigned long value;
 
 	value = ioread32be(address);
-	printk("%s: value=0x%x address=0x%p\n", __FUNCTION__, value, address);
 
 	return value;
 }
@@ -108,10 +107,9 @@ ncr_register_read(unsigned *address)
   ncr_register_write
 */
 
-static __inline__ void
+void
 ncr_register_write(const unsigned value, unsigned *address)
 {
-	printk("%s: value=0x%x address=0x%p\n", __FUNCTION__, value, address);
 	iowrite32be(value, address);
 
 	return;
@@ -124,10 +122,14 @@ ncr_register_write(const unsigned value, unsigned *address)
   ncr_register_read
 */
 
-static __inline__ unsigned long
+unsigned long
 ncr_register_read(unsigned *address)
 {
-	return in_be32((unsigned *)address);
+	unsigned long value;
+
+	value = in_be32((unsigned *)address);
+
+	return value;
 }
 
 /*
@@ -135,10 +137,12 @@ ncr_register_read(unsigned *address)
   ncr_register_write
 */
 
-static __inline__ void
+void
 ncr_register_write(const unsigned value, unsigned *address)
 {
 	out_be32(address, value);
+
+	return;
 }
 
 #endif
@@ -389,27 +393,7 @@ ncr_write(unsigned long region, unsigned long address, int number,
 int
 ncr_init(void)
 {
-#if 1
-	{
-		unsigned long value;
-
-#ifdef CONFIG_ARCH_AXXIA
-		if (0 != ncr_read(NCP_REGION_ID(0x22, 0), 0x694, 4, &value))
-			printk(KERN_CRIT
-			       "%s: ncr_read() failed!\n", __FUNCTION__);
-		else
-			printk(KERN_CRIT
-			       "%s: value is 0x%x\n", __FUNCTION__, value);
-#else
-		if (0 != ncr_read(NCP_REGION_ID(0x22, 0), 0x50, 4, &value))
-			printk(KERN_CRIT
-			       "%s: ncr_read() failed!\n", __FUNCTION__);
-		else
-			printk(KERN_CRIT
-			       "%s: value is 0x%x\n", __FUNCTION__, value);
-#endif
-	}
-#endif
+	nca_address = ioremap(NCA_PHYS_ADDRESS, 0x20000);
 
 	return 0;
 }
@@ -425,7 +409,8 @@ void __exit
 ncr_exit(void)
 {
 	/* Unmap the NCA. */
-	iounmap(nca_address);
+	if (NULL != nca_address)
+		iounmap(nca_address);
 
 	return;
 }
