@@ -21,6 +21,9 @@
  */
 
 #include <linux/module.h>
+
+#ifndef CONFIG_ARCH_AXXIA_SIM
+
 #include <linux/cpu.h>
 #include <linux/reboot.h>
 #include <linux/syscore_ops.h>
@@ -266,11 +269,21 @@ static const struct file_operations axxia_ddr_retention_proc_ops = {
 
 void axxia_ddr_retention_init(void)
 {
+#ifndef CONFIG_ARCH_AXXIA_SIM
     if (!proc_create("driver/axxia_ddr_retention_reset", S_IWUSR, NULL, 
             &axxia_ddr_retention_proc_ops))
         printk("Failed to register DDR retention proc interface\n");
+#endif
 }
 
-
-
 EXPORT_SYMBOL(initiate_retention_reset);
+
+#else
+
+void
+axxia_ddr_retention_init(void)
+{
+	return;
+}
+
+#endif
