@@ -11,6 +11,8 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
 #include <linux/proc_fs.h>
@@ -20,6 +22,10 @@
 #ifndef CONFIG_ARCH_AXXIA
 #error "Only AXM55xx is Supported At Present!"
 #endif
+
+static int log=1;
+module_param(log, int, 0755);
+MODULE_PARM_DESC(log, "Log each error on the console.");
 
 /*
   AXM55xx Interrupt Status Bits
@@ -117,7 +123,7 @@ smmon_isr(int interrupt, void *device)
 	spin_lock(&counts_lock);
 
 	if (0 != (0x00000002 & status) || 0 != (0x00000004 & status))
-		printk(KERN_CRIT
+		printk(KERN_ERR
 		       "smmon(%d): Illegal Access!\n", sm);
 	
 	if (0 != (0x00000002 & status))
@@ -126,7 +132,9 @@ smmon_isr(int interrupt, void *device)
 	if (0 != (0x00000004 & status))
 		++counts.multiple_illegal_access[sm];
 
-	if (0 != (0x00000008 & status) || 0 != (0x00000010 & status))
+	if ((0 != (0x00000008 & status) ||
+	     0 != (0x00000010 & status)) &&
+	    0 != log)
 		printk(KERN_NOTICE
 		       "smmon(%d): Correctable ECC Error!\n", sm);
 	    
@@ -136,8 +144,9 @@ smmon_isr(int interrupt, void *device)
 	if (0 != (0x00000010 & status))
 		++counts.multiple_correctable_ecc[sm];
 
-	if (0 != (0x00000020 & status) ||
-	    0 != (0x00000040 & status))
+	if ((0 != (0x00000020 & status) ||
+	     0 != (0x00000040 & status)) &&
+	    0 != log)
 		printk(KERN_CRIT
 		       "smmon(%d): Uncorrectable ECC Error!\n", sm);
 
@@ -149,20 +158,26 @@ smmon_isr(int interrupt, void *device)
 
 	if (0 != (0x00000080 & status)) {
 		++counts.port_error[sm];
-		printk(KERN_CRIT
-		       "smmon(%d): Port Error!\n", sm);
+
+		if (0 != log)
+			printk(KERN_CRIT
+			       "smmon(%d): Port Error!\n", sm);
 	}
 
 	if (0 != (0x00000800 & status)) {
 		++counts.wrap_error[sm];
-		printk(KERN_CRIT
-		       "smmon(%d): Wrap Error!\n", sm);
+
+		if (0 != log)
+			printk(KERN_CRIT
+			       "smmon(%d): Wrap Error!\n", sm);
 	}
 
 	if (0 != (0x00080000 & status)) {
 		++counts.parity_error[sm];
-		printk(KERN_CRIT
-		       "smmon(%d): Parity Error!\n", sm);
+
+		if (0 != log)
+			printk(KERN_CRIT
+			       "smmon(%d): Parity Error!\n", sm);
 	}
 
 	spin_unlock(&counts_lock);
@@ -187,6 +202,7 @@ smmon_read_proc(char *page, char **start, off_t offset, int count,
 	spin_lock_irqsave(&counts_lock, flags);
 
 	length = sprintf(page,
+			 "------------ Counts for SM0/SM1 ----------\n"
 			 "                   Illegal Access: %lu/%lu\n"
 			 "        Multiple Illegal Accesses: %lu/%lu\n"
 			 "            Correctable ECC Error: %lu/%lu\n"
@@ -240,10 +256,9 @@ smmon_init(void)
 {
 	int rc;
 
+	printk("smmon: log=%d\n", log);
 	create_proc_read_entry("smmon", 0, NULL, smmon_read_proc, NULL);
-
 	memset(&counts, 0, sizeof(struct smmon_counts));
-
 	rc = request_irq(32 + 161, smmon_isr, IRQF_ONESHOT,
 			 "smmon_0", NULL);
 	rc |= request_irq(32 + 160, smmon_isr, IRQF_ONESHOT,
