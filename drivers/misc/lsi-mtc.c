@@ -31,7 +31,6 @@
 #include <linux/string.h>
 #include "linux/lsi_mtc_ioctl.h"
 
-#define DEBUG
 
 /*
    device tree node:
@@ -2854,10 +2853,10 @@ mtc_probe(struct platform_device *pdev)
 static struct mtc_device *dev;
 	void __iomem *regs;
 	int rc;
+	u32 *pRegs;
 
 	printk(KERN_DEBUG"!!!!MTC: mtc_probe()\n");
-	printk("!!!!MTC: mtc_probe()\n");
-       /* Allocate space for device private data */
+	/* Allocate space for device private data */
 	dev = kzalloc(sizeof *dev, GFP_KERNEL);
 	if (!dev) {
 		rc = -ENOMEM;
@@ -2873,6 +2872,7 @@ static struct mtc_device *dev;
 		rc = -EINVAL;
 		goto err;
 	}
+	pRegs = (u32 *) regs;
 #ifdef __MTC_SIMULATION
        dev->regs = &_mtc_regs;
        dev->prgmem = _mtc_prgmem;
@@ -2880,8 +2880,8 @@ static struct mtc_device *dev;
 
 #else
 	dev->regs   = regs;
-	dev->prgmem = (u32*)regs + MTC_PRGMEM_OFFSET/4;
-	dev->tdomem = (u32*)regs + MTC_TDOMEM_OFFSET/4;
+	dev->prgmem =  pRegs + MTC_PRGMEM_OFFSET/4;
+	dev->tdomem =  pRegs + MTC_TDOMEM_OFFSET/4;
 #endif
 	/* Attach to IRQ */
 	dev->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
