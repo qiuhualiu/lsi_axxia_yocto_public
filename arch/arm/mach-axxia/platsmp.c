@@ -41,6 +41,7 @@ extern void axxia_secondary_startup(void);
 static void
 flush_l3(void)
 {
+#if 0
 
 	unsigned long hnf_offsets[] = {
 		 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27
@@ -107,7 +108,7 @@ flush_l3(void)
 	}
 
 	iounmap(dickens);
-
+#endif
 	return;
 }
 
