@@ -39,6 +39,10 @@
 #include "axxia-rio-irq.h"
 #include "axxia-rio-ds.h"
 
+#define HW_55XX 1
+
+/* #define ALLOC_BUF_BY_KERNEL 1 */
+
 static inline void __ib_virt_m_dbg(
 	struct rio_ds_ibds_vsid_m_stats *ptr_ib_stats,
 	u32 virt_m_stat);
@@ -56,7 +60,7 @@ static inline void __ib_dse_dw_dbg(
 	u32 dw0);
 
 /**
- * CNTLZW - Count leading zeros word
+ * DS_CNTLZW - Count leading zeros word
  * @val: value from which count number of leading zeros
  *
  * Return: number of zeros
@@ -239,18 +243,24 @@ int open_ob_data_stream(
 	struct rio_irq_handler *h;
 	u8  dse_id;
 	u8  find_ava_dse = RIO_DS_FALSE;
-	u16 num_hdr_desc_needed, i;
-	u32 h_dw0, h_dw1, h_dw2, h_dw3, h_dw4;
+	u16 num_hdr_desc_needed;
+	u32 h_dw0, h_dw1, h_dw2, h_dw3;
 	unsigned long dse_chain_start_addr_phy;
 			/* physical address of dse_chain start */
-	unsigned long next_desc_ptr_phy, data_buf_phy;
+	unsigned long next_desc_ptr_phy;
 	u16 pdu_len_per_hdr_desc;
+#ifdef ALLOC_BUF_BY_KERNEL
 	void *ptr_virt_data_buf;
+    u32  data_buf_high;
+	u16 i;
+	u32 h_dw4;
+    unsigned long data_buf_phy;
+#endif
 	u16 hdr_head_reserved, hdr_index, desc_offset;
 	u32 num_data_buf_needed, total_head_reserved;
 	u32 des_chain_start_addr_phy_low, des_chain_start_addr_phy_hi;
 	u32 dse_ctrl;
-	u32 data_buf_high, next_desc_high;
+	u32 next_desc_high;
 
 	int rc = 0;
 
@@ -337,7 +347,9 @@ int open_ob_data_stream(
 	*  (header descriptor) case.
 	*/
 	total_head_reserved = 0;
+
 	for (hdr_index = 0; hdr_index < num_hdr_desc_needed; hdr_index++) {
+#ifdef ALLOC_BUF_BY_KERNEL
 		/* allocate buffers */
 		ptr_virt_data_buf = kzalloc(pdu_length, GFP_KERNEL);
 
@@ -360,6 +372,7 @@ int open_ob_data_stream(
 			ptr_dse_cfg->hdr_head_reserved = hdr_head_reserved;
 			ptr_dse_cfg->num_hdr_desc_free++;
 		}
+#endif
 
 		total_head_reserved++;
 
@@ -418,6 +431,7 @@ int open_ob_data_stream(
 			next_desc_ptr_phy = 0;
 		}
 
+#ifdef ALLOC_BUF_BY_KERNEL
 		data_buf_phy = virt_to_phys((void *)ptr_virt_data_buf);
 
 		/*
@@ -429,6 +443,7 @@ int open_ob_data_stream(
 
 		data_buf_high = (((u64)data_buf_phy >> 32) & 0x3F);
 		h_dw2 |= (((data_buf_high) << 22) & 0xFC00000);
+#endif
 
 		/*
 		** The next_desc_addr - 38-bit AXI addressing
@@ -445,17 +460,17 @@ int open_ob_data_stream(
 		ptr_hdr_desc->dw1 = h_dw1;
 		ptr_hdr_desc->dw2 = h_dw2;
 		ptr_hdr_desc->dw3 = h_dw3;
-		ptr_hdr_desc->dw4 = h_dw4;
 
-#ifdef USE_IOCTRL
+#ifdef ALLOC_BUF_BY_KERNEL
+		ptr_hdr_desc->dw4 = h_dw4;
 		ptr_hdr_desc->remaining_data_len = pdu_length;
 		ptr_hdr_desc->offset = 0;
-#endif
-
 		/* record the data_addr for future usage */
 		ptr_hdr_desc->virt_data_buf = (u32)ptr_virt_data_buf;
+#endif
 
-		ptr_dse_cfg->hdr_head_reserved++;
+		hdr_head_reserved++;
+
 		if (ptr_dse_cfg->hdr_head_reserved ==
 			ptr_dse_cfg->max_num_hdr_desc){
 			ptr_dse_cfg->hdr_head_reserved = 0;
@@ -468,6 +483,7 @@ int open_ob_data_stream(
 	ptr_dse_cfg->dest_id = dest_id;
 	ptr_dse_cfg->stream_id = stream_id;
 	ptr_dse_cfg->cos = cos;
+    ptr_dse_cfg->hdr_head_reserved = hdr_head_reserved;
 	ptr_dse_cfg->num_hdr_desc_reserved += num_hdr_desc_needed;
 
 	/*
@@ -531,10 +547,12 @@ int axxia_add_ob_data_stream(
 	u16     dse_id;
 	u8      find_ava_dse = RIO_DS_FALSE;
 	u32     dse_ctrl;
-
-#ifdef USE_IOCTRL
-	u32	    pdu_length;
+#ifndef ALLOC_BUF_BY_KERNEL
+    u32  data_buf_high;
+    unsigned long data_buf_phy;
 #endif
+    u32	    pdu_length;
+
 	int rc = 0;
 
 	/* sanity check - TBD */
@@ -562,10 +580,10 @@ int axxia_add_ob_data_stream(
 	/* multi-descriptors case TBD */
 	ptr_hdr_desc = &(ptr_ds_priv->ptr_obds_hdr_desc[ptr_dse_cfg->hdr_head]);
 
-
 	/* copy the data to the buffer */
 	/* How to handle 8K limitation of the ioctrl( ) TBD */
-#ifdef USE_IOCTRL
+    pdu_length = (ptr_hdr_desc->dw1 >> 16) & 0xFFFF;
+#ifdef ALLOC_BUF_BY_KERNEL
 
 	memcpy((void *)(ptr_hdr_desc->virt_data_buf + ptr_hdr_desc->offset),
 		buffer, data_len);
@@ -585,13 +603,37 @@ int axxia_add_ob_data_stream(
 		ptr_dse_cfg->hdr_head++;
 
 		ptr_dse_cfg->num_hdr_desc_reserved--;
-
-		pdu_length = (ptr_hdr_desc->dw1 >> 16) & 0xFFFF;
 	}
 	ptr_hdr_desc->remaining_data_len -= data_len;
 	ptr_hdr_desc->offset += data_len;
 #else
-	memcpy((void *)(ptr_hdr_desc->virt_data_buf), buffer, data_len);
+
+    /*
+    ** The kernel driver expect that the higher driver allocates the data
+    **  buffer and use the buffer. In the OBDS interrupt service routine,
+    **  the kernel frees the buffer.
+    **
+    **  Thus, there is no extra copy needed here.
+    **  memcpy((void *)(ptr_hdr_desc->virt_data_buf), buffer, data_len);
+    */
+	/* check if the data length is equal to the pdu length in the
+    ** axxia_open_ob_data_stream( )
+    */
+    if (data_len < pdu_length)
+	return -EINVAL;
+
+	/* program the data buffer in the descriptor */
+    data_buf_phy = virt_to_phys(buffer);
+
+    /*
+    ** data_address - 38-bit AXI addressing
+    ** data_address[0:31] - h_dw4 [0:31]
+    ** data_address[32:37] - h_dw2[22:27]
+    */
+    ptr_hdr_desc->dw4 = (u32)((data_buf_phy) & 0xFFFFFFFF);
+
+    data_buf_high = (((u64)data_buf_phy >> 32) & 0x3F);
+    ptr_hdr_desc->dw2 |= (((data_buf_high) << 22) & 0xFC00000);
 
 	/* set the en_int and valid bit of the header descriptor */
 	ptr_hdr_desc->dw0 |= 0x1;
@@ -814,7 +856,7 @@ void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state)
     u8  found_dse = RIO_DS_FALSE;
 	unsigned long flags;
 
-    virt_vsid = 31 - CNTLZW(state);
+    virt_vsid = 31 - DS_CNTLZW(state);
 
     __rio_local_read_config_32(mport,
 				RAB_IBVIRT_M_STAT(virt_vsid),
@@ -965,13 +1007,20 @@ int axxia_open_ib_data_stream(
 	u32     alias_reg;
 	u32     vsid;
 	u16     virt_vsid, num_data_desc_needed, data_head_reserved,
-		total_head_reserved, i;
-	unsigned long     	desc_chain_start_addr_phy, next_desc_addr_phy,
-				data_addr_phy;
-	u32     next_desc_addr_hi, data_addr_hi, vsid_addr_reg;
+		total_head_reserved;
+	unsigned long     	desc_chain_start_addr_phy, next_desc_addr_phy;
+
+	u32     next_desc_addr_hi, vsid_addr_reg;
 	u16     data_index, desc_offset;
-	void    *ptr_virt_data_buf;
+
 	int rc = 0;
+
+#ifdef ALLOC_BUF_BY_KERNEL
+	unsigned long   data_addr_phy;
+	u32 data_addr_hi;
+	u16 i;
+	void    *ptr_virt_data_buf;
+#endif
 
 	axxia_api_lock();
 
@@ -1018,6 +1067,8 @@ int axxia_open_ib_data_stream(
 	total_head_reserved = 0;
 
 	for (data_index = 0; data_index < num_data_desc_needed; data_index++) {
+
+#ifdef ALLOC_BUF_BY_KERNEL
 		ptr_virt_data_buf = kzalloc(desc_size, GFP_KERNEL);
 		if (ptr_virt_data_buf == NULL) {
 			/* free previous allocated buffers */
@@ -1036,9 +1087,11 @@ int axxia_open_ib_data_stream(
 				kfree((void *)ptr_data_desc->virt_data_buf);
 			}
 
-			ptr_virt_m_cfg->data_head_reserved = data_head_reserved;
-			ptr_virt_m_cfg->num_desc_free++;
-		}
+		return -ENOMEM;
+	}
+#endif
+	ptr_virt_m_cfg->data_head_reserved = data_head_reserved;
+	ptr_virt_m_cfg->num_desc_free++;
 
 		total_head_reserved++;
 
@@ -1082,7 +1135,7 @@ int axxia_open_ib_data_stream(
 		**  next_desc_addr[36:5] - dw4[31:0]
 		*/
 		next_desc_addr_phy =
-		(virt_to_phys)((void *)
+		virt_to_phys((void *)
 				&ptr_ds_priv->ptr_ibds_data_desc[desc_offset]);
 		next_desc_addr_hi = ((u64)next_desc_addr_phy >> 37) & 0x1;
 
@@ -1090,6 +1143,7 @@ int axxia_open_ib_data_stream(
 		((u64)next_desc_addr_phy << 5) & 0xFFFFFFFF;
 		ptr_data_desc->dw2 |= (next_desc_addr_hi << 24) & 0x1000000;
 
+#ifdef ALLOC_BUF_BY_KERNEL
 		/*
 		** data_addr - 38-bit AXI addressing
 		**  data_addr[31:0] - dw3[31:0]
@@ -1098,12 +1152,12 @@ int axxia_open_ib_data_stream(
 		ptr_data_desc->virt_data_buf = (u32)ptr_virt_data_buf;
 
 		data_addr_phy =
-		(virt_to_phys)((void *)ptr_data_desc->virt_data_buf);
+		virt_to_phys((void *)ptr_data_desc->virt_data_buf);
 
 		ptr_data_desc->dw3 = ((u64)data_addr_phy & 0xFFFFFFFF);
 		data_addr_hi = ((u64)data_addr_phy >> 32) & 0x3F;
 		ptr_data_desc->dw2 |= (data_addr_hi << 26) & 0xFC000000;
-
+#endif
 		data_head_reserved++;
 
 		ptr_virt_m_cfg->data_head_reserved++;
@@ -1176,6 +1230,11 @@ int axxia_add_ibds_buffer(
 	u32		     	m_id;
 	u8		      	found_one = RIO_DS_FALSE;
 
+#ifndef ALLOC_BUF_BY_KERNEL
+    unsigned long   data_addr_phy;
+    u32 data_addr_hi;
+#endif
+
 	if (buf == NULL)
 		return -EINVAL;
 
@@ -1200,6 +1259,17 @@ int axxia_add_ibds_buffer(
 	&(ptr_ds_priv->ptr_ibds_data_desc[ptr_virt_m_cfg->user_buf_index_head]);
 
 	ptr_data_desc->usr_virt_data_buf = (u32)buf;
+
+#ifndef ALLOC_BUF_BY_KERNEL
+    data_addr_phy =
+		virt_to_phys((void *)ptr_data_desc->virt_data_buf);
+
+    ptr_data_desc->dw3 = ((u64)data_addr_phy & 0xFFFFFFFF);
+    data_addr_hi = ((u64)data_addr_phy >> 32) & 0x3F;
+    ptr_data_desc->dw2 |= (data_addr_hi << 26) & 0xFC000000;
+
+    ptr_data_desc->virt_data_buf = (u32)buf;
+#endif
 
 	if (ptr_virt_m_cfg->user_buf_index_head ==
 		(ptr_virt_m_cfg->max_num_data_desc - 1)) {
@@ -1310,18 +1380,23 @@ void *axxia_get_ibds_data(
 			ptr_data[i] = i;
 #endif
 
+#ifdef ALLOC_BUF_BY_KERNEL
 		user_buf = (void *)ptr_data_desc->usr_virt_data_buf;
-
+#else
+	user_buf = (void *)ptr_data_desc->virt_data_buf;
+#endif
 		if (user_buf == NULL) {
 			*ptr_pdu_length = 0;
 			return NULL;
 		} else {
+#ifdef ALLOC_BUF_BY_KERNEL
 			memcpy((void *)(user_buf),
 				(void *)(ptr_data_desc->virt_data_buf),
 				ptr_ds_priv->max_pdu_len);
 
 			/* free the buffer */
 			kfree((void *)ptr_data_desc->virt_data_buf);
+#endif
 
 			*ptr_pdu_length = ptr_virt_m_cfg->pdu_len;
 
