@@ -26,13 +26,17 @@
 
 #include "lsi-ncr.h"
 
-static void __iomem *nca_address = NULL;
-
 #ifdef CONFIG_ARCH_AXXIA
-#define NCA_PHYS_ADDRESS 0x002020100000ULL
+#define NCA_PHYS_ADDRESS         0x002020100000ULL
+#define APB2SER_PHY_PHYS_ADDRESS 0x002010000000ULL
 #else
-#define NCA_PHYS_ADDRESS 0x002000520000ULL
+#define NCA_PHYS_ADDRESS         0x002000520000ULL
 #endif
+
+static void __iomem *nca_address = NULL;
+#ifdef APB2SER_PHY_PHYS_ADDRESS
+static void __iomem *apb2ser0_address = NULL;
+#endif /* APB2SER_PHY_PHYS_ADDRESS */
 
 #define WFC_TIMEOUT (400000)
 
@@ -211,66 +215,91 @@ ncr_read(unsigned long region, unsigned long address, int number,
 
 	if (NULL == nca_address)
 		nca_address = ioremap(NCA_PHYS_ADDRESS, 0x20000);
+
+#ifdef APB2SER_PHY_PHYS_ADDRESS
+	if (NULL == apb2ser0_address)
+		apb2ser0_address = ioremap(APB2SER_PHY_PHYS_ADDRESS, 0x10000);
+#endif /* APB2SER_PHY_PHYS_ADDRESS */
 	
 	if (0 != ncr_lock(LOCK_DOMAIN))
 		return -1;
 
-	/*
-	  Set up the read command.
-	*/
+	if (NCP_NODE_ID(region) != 0x0153) {
+		/*
+	  	  Set up the read command.
+		*/
 
-	cdr2.raw = 0;
-	cdr2.bits.target_node_id = NCP_NODE_ID(region);
-	cdr2.bits.target_id_address_upper = NCP_TARGET_ID(region);
-	ncr_register_write(cdr2.raw, (unsigned *) (nca_address + 0xf8));
+		cdr2.raw = 0;
+		cdr2.bits.target_node_id = NCP_NODE_ID(region);
+		cdr2.bits.target_id_address_upper = NCP_TARGET_ID(region);
+		ncr_register_write(cdr2.raw, (unsigned *) (nca_address + 0xf8));
 
-	cdr1.raw = 0;
-	cdr1.bits.target_address = (address >> 2);
-	ncr_register_write(cdr1.raw, (unsigned *) (nca_address + 0xf4));
+		cdr1.raw = 0;
+		cdr1.bits.target_address = (address >> 2);
+		ncr_register_write(cdr1.raw, (unsigned *) (nca_address + 0xf4));
 
-	cdr0.raw = 0;
-	cdr0.bits.start_done = 1;
+		cdr0.raw = 0;
+		cdr0.bits.start_done = 1;
 
-	if (0xff == cdr2.bits.target_id_address_upper)
-		cdr0.bits.local_bit = 1;
+		if (0xff == cdr2.bits.target_id_address_upper)
+			cdr0.bits.local_bit = 1;
 
-	cdr0.bits.cmd_type = 4;
-	/* TODO: Verify number... */
-	cdr0.bits.dbs = (number - 1);
-	ncr_register_write(cdr0.raw, (unsigned *) (nca_address + 0xf0));
-	mb();
+		cdr0.bits.cmd_type = 4;
+		/* TODO: Verify number... */
+		cdr0.bits.dbs = (number - 1);
+		ncr_register_write(cdr0.raw, (unsigned *) (nca_address + 0xf0));
+		mb();
 
-	/*
-	  Wait for completion.
-	*/
+		/*
+	  	  Wait for completion.
+		*/
 
-	do {
-		--wfc_timeout;
-	} while ((0x80000000UL ==
-		  ncr_register_read((unsigned *)(nca_address + 0xf0))) &&
-		 0 < wfc_timeout);
+		do {
+			--wfc_timeout;
+		} while ((0x80000000UL ==
+		  	ncr_register_read((unsigned *)(nca_address + 0xf0))) &&
+		 	0 < wfc_timeout);
 
-	if (0 == wfc_timeout) {
+		if (0 == wfc_timeout) {
+			ncr_unlock(LOCK_DOMAIN);
+			return -1;
+		}
+
+		/*
+	  	  Copy data words to the buffer.
+		*/
+
+		address = (unsigned long)(nca_address + 0x1000);
+		while (4 <= number) {
+			*((unsigned long *) buffer) =
+				ncr_register_read((unsigned *) address);
+			address += 4;
+			number -= 4;
+		}
+
+		if (0 < number) {
+			unsigned long temp =
+				ncr_register_read((unsigned *) address);
+			memcpy((void *) buffer, &temp, number);
+		}
+	} else {
+#ifdef APB2SER_PHY_PHYS_ADDRESS
+		void __iomem *targ_address = apb2ser0_address +
+					     (address & (~0x3));
+		/*
+	  	  Copy data words to the buffer.
+		*/
+
+		while (4 <= number) {
+			*((unsigned long *) buffer) =
+				*((unsigned long *) targ_address);
+			targ_address += 4;
+			number -= 4;
+		}
+#else
 		ncr_unlock(LOCK_DOMAIN);
 		return -1;
-	}
-
-	/*
-	  Copy data words to the buffer.
-	*/
-
-	address = (unsigned long)(nca_address + 0x1000);
-	while (4 <= number) {
-		*((unsigned long *) buffer) =
-			ncr_register_read((unsigned *) address);
-		address += 4;
-		number -= 4;
-	}
-
-	if (0 < number) {
-		unsigned long temp =
-			ncr_register_read((unsigned *) address);
-		memcpy((void *) buffer, &temp, number);
+#endif /* APB2SER_PHY_PHYS_ADDRESS */
 	}
 
 	ncr_unlock(LOCK_DOMAIN);
@@ -297,87 +326,113 @@ ncr_write(unsigned long region, unsigned long address, int number,
 	if (NULL == nca_address)
 		nca_address = ioremap(NCA_PHYS_ADDRESS, 0x20000);
 
+#ifdef APB2SER_PHY_PHYS_ADDRESS
+	if (NULL == apb2ser0_address)
+		apb2ser0_address = ioremap(APB2SER_PHY_PHYS_ADDRESS, 0x10000);
+#endif /* APB2SER_PHY_PHYS_ADDRESS */
+
 	if (0 != ncr_lock(LOCK_DOMAIN))
 		return -1;
 
-	/*
-	  Set up the write.
-	*/
+	if (NCP_NODE_ID(region) != 0x0153) {
+		/*
+		  Set up the write.
+		*/
 
-	cdr2.raw = 0;
-	cdr2.bits.target_node_id = NCP_NODE_ID(region);
-	cdr2.bits.target_id_address_upper = NCP_TARGET_ID(region);
-	ncr_register_write(cdr2.raw, (unsigned *) (nca_address + 0xf8));
+		cdr2.raw = 0;
+		cdr2.bits.target_node_id = NCP_NODE_ID(region);
+		cdr2.bits.target_id_address_upper = NCP_TARGET_ID(region);
+		ncr_register_write(cdr2.raw, (unsigned *) (nca_address + 0xf8));
 
-	cdr1.raw = 0;
-	cdr1.bits.target_address = (address >> 2);
-	ncr_register_write(cdr1.raw, (unsigned *) (nca_address + 0xf4));
+		cdr1.raw = 0;
+		cdr1.bits.target_address = (address >> 2);
+		ncr_register_write(cdr1.raw, (unsigned *) (nca_address + 0xf4));
 
-	/*
-	  Copy from buffer to the data words.
-	*/
+		/*
+		  Copy from buffer to the data words.
+		*/
 
-	data_word_base = (unsigned long)(nca_address + 0x1000);
+		data_word_base = (unsigned long)(nca_address + 0x1000);
 
-	while (4 <= number) {
-		ncr_register_write(*((unsigned long *) buffer),
-				   (unsigned *) data_word_base);
-		data_word_base += 4;
-		buffer += 4;
-		number -= 4;
-	}
+		while (4 <= number) {
+			ncr_register_write(*((unsigned long *) buffer),
+				   	(unsigned *) data_word_base);
+			data_word_base += 4;
+			buffer += 4;
+			number -= 4;
+		}
 
-	if (0 < number) {
-		unsigned long temp = 0;
+		if (0 < number) {
+			unsigned long temp = 0;
 
-		memcpy((void *) &temp, (void *) buffer, number);
-		ncr_register_write(temp, (unsigned *) data_word_base);
-		data_word_base += number;
-		buffer += number;
-		number = 0;
-	}
+			memcpy((void *) &temp, (void *) buffer, number);
+			ncr_register_write(temp, (unsigned *) data_word_base);
+			data_word_base += number;
+			buffer += number;
+			number = 0;
+		}
 
-	cdr0.raw = 0;
-	cdr0.bits.start_done = 1;
+		cdr0.raw = 0;
+		cdr0.bits.start_done = 1;
 
-	if (0xff == cdr2.bits.target_id_address_upper) {
-		cdr0.bits.local_bit = 1;
-	}
+		if (0xff == cdr2.bits.target_id_address_upper) {
+			cdr0.bits.local_bit = 1;
+		}
 
-	cdr0.bits.cmd_type = 5;
-	/* TODO: Verify number... */
-	cdr0.bits.dbs = dbs;
-	ncr_register_write(cdr0.raw, (unsigned *) (nca_address + 0xf0));
-	mb();
+		cdr0.bits.cmd_type = 5;
+		/* TODO: Verify number... */
+		cdr0.bits.dbs = dbs;
+		ncr_register_write(cdr0.raw, (unsigned *) (nca_address + 0xf0));
+		mb();
 
-	/*
-	  Wait for completion.
-	*/
+		/*
+	  	  Wait for completion.
+		*/
 
-	do {
-		--wfc_timeout;
-	} while ((0x80000000UL ==
-		  ncr_register_read((unsigned *)(nca_address + 0xf0))) &&
-		 0 < wfc_timeout);
+		do {
+			--wfc_timeout;
+		} while ((0x80000000UL ==
+		  	ncr_register_read((unsigned *)(nca_address + 0xf0))) &&
+		 	0 < wfc_timeout);
 
-	if (0 == wfc_timeout) {
+		if (0 == wfc_timeout) {
+			ncr_unlock(LOCK_DOMAIN);
+			return -1;
+		}
+
+		/*
+	  	  Check status.
+		*/
+
+		if(0x3 !=
+	    		((ncr_register_read((unsigned *) (nca_address + 0xf0)) &
+						0x00c00000) >> 22)) {
+			unsigned long status;
+
+			status = ncr_register_read((unsigned *)(nca_address +
+								0xe4));
+			ncr_unlock(LOCK_DOMAIN);
+
+			return status;
+		}
+	} else {
+#ifdef APB2SER_PHY_PHYS_ADDRESS
+		void __iomem *targ_address = apb2ser0_address +
+					     (address & (~0x3));
+		/*
+		  Copy from buffer to the data words.
+		*/
+
+		while (4 <= number) {
+			*((unsigned long *) targ_address) =
+				*((unsigned long *) buffer);
+			targ_address += 4;
+			number -= 4;
+		}
+#else
 		ncr_unlock(LOCK_DOMAIN);
 		return -1;
-	}
-
-	/*
-	  Check status.
-	*/
-
-	if( 0x3 !=
-	    ( ( ncr_register_read( ( unsigned * ) ( nca_address + 0xf0 ) ) &
-		0x00c00000 ) >> 22 ) ) {
-		unsigned long status;
-
-		status = ncr_register_read((unsigned *)(nca_address + 0xe4));
-		ncr_unlock(LOCK_DOMAIN);
-
-		return status;
+#endif /* APB2SER_PHY_PHYS_ADDRESS */
 	}
 
 	ncr_unlock(LOCK_DOMAIN);
@@ -395,6 +450,10 @@ ncr_init(void)
 {
 	nca_address = ioremap(NCA_PHYS_ADDRESS, 0x20000);
 
+#ifdef APB2SER_PHY_PHYS_ADDRESS
+	apb2ser0_address = ioremap(APB2SER_PHY_PHYS_ADDRESS, 0x10000);
+#endif /* APB2SER_PHY_PHYS_ADDRESS */
+
 	return 0;
 }
 
@@ -411,6 +470,12 @@ ncr_exit(void)
 	/* Unmap the NCA. */
 	if (NULL != nca_address)
 		iounmap(nca_address);
+
+#ifdef APB2SER_PHY_PHYS_ADDRESS
+	/* Unmap the APB2SER0 PHY. */
+	if (NULL != apb2ser0_address)
+		iounmap(apb2ser0_address);
+#endif /* APB2SER_PHY_PHYS_ADDRESS */
 
 	return;
 }
