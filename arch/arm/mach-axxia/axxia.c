@@ -3,7 +3,7 @@
  *
  * Support for the LSI Axxia boards based on ARM cores.
  *
- * Copyright (C) 2012-2013 LSI
+ * Copyright (C) 2012 LSI
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ static const char *axxia_dt_match[] __initconst = {
 	"lsi,axm5516",		/* AXM5516 */
 	NULL
 };
+
 
 static void __iomem *ssp_base;
 
@@ -119,6 +120,7 @@ void __init axxia_dt_timer_init(void)
 			       irq_of_parse_and_map(node, 1),
 			       "axxia-timer1");
 }
+
 
 static struct sys_timer axxia_dt_timer = {
 	.init = axxia_dt_timer_init,
@@ -253,11 +255,9 @@ void __init axxia_dt_init(void)
 		pr_warn("axxia: Failed to map L3-cache control regs\n");
 	}
 #endif
-	l2x0_of_init(0x00400000, 0xfe0fffff);
 
 	of_platform_populate(NULL, of_default_bus_match_table,
 			     axxia_auxdata_lookup, NULL);
-
 	pm_power_off = NULL; /* TBD */
 
 	spi_register_board_info(spi_devs, ARRAY_SIZE(spi_devs));
