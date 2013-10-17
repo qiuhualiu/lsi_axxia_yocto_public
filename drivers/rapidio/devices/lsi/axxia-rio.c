@@ -1561,7 +1561,6 @@ static int axxia_rio_setup(struct platform_device *dev)
 	rc = axxia_rio_start_port(mport);
 	if (rc < 0)
 		goto err_maint;
-	return -ENXIO;
 
 	/* Hookup IRQ handlers
 	 */
