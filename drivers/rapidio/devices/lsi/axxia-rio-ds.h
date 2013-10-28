@@ -48,6 +48,7 @@
 #define RIO_DS_FALSE                        0
 
 #define IOCTL_BUF_SIZE                      4096
+#define MAX_NUM_PROC_IBDS_DESC				10
 
 /*
 ** Data Streaming registers
@@ -97,6 +98,7 @@
 #define OB_DSE_STAT_UPDATE_ERR		    (1 << 4)
 #define OB_DSE_STAT_DESC_ERR                (1 << 3)
 #define OB_DSE_STAT_FETCH_ERR               (1 << 2)
+#define OB_DSE_STAT_SLEEPING			(1<<8)
 
 #define OB_DSE_DESC_ERROR_MASK          0x400
 #define OB_HDR_DESC_AXI_ERR             (1 << 10)
@@ -179,27 +181,26 @@ struct rio_obds_dse_cfg {
     u16        dest_id;
     u16        stream_id;
     spinlock_t lock;
+	u8		   irqEnabled;
     char       name[16];
 
     /* header descriptor */
     u16        num_hdr_desc_free;
     u16        max_num_hdr_desc;
-    u16        hdr_desc_offset;
-    u16        hdr_head;
-    u16        hdr_head_reserved;
-    u16        hdr_tail;
-    u16        num_hdr_desc_reserved;
-    u16        num_data_desc_per_hdr_desc;
-    u16        numDataBufsCopied;
 
     /* data descriptor */
     u16        num_data_desc_free;
     u16        max_num_data_desc;
-    u16        data_desc_offset;
-    u16        data_head;
-    u16        data_head_reserved;
-    u16        data_tail;
-    u16        num_data_desc_reserved;
+	u16		hdr_read_ptr;
+	u16		hdr_write_ptr;
+	u8		first_hdr_desc;
+
+	u16		data_read_ptr;
+	u16		data_write_ptr;
+	u8		first_data_desc;
+
+	struct rio_ds_hdr_desc		*ptr_obds_hdr_desc;
+	struct rio_ods_data_desc	*ptr_obds_data_desc;
 
 };
 
@@ -217,16 +218,13 @@ struct ibds_virt_m_cfg {
 
     u16        num_desc_free;
     u16        max_num_data_desc;
-    u16        data_desc_offset;
-    u16        data_head;
-    u16        data_tail;
-    u16        user_buf_index_head;
-    u16        user_buf_index_tai;
-    u16        is_desc_chain_tran_completed;
-    u16        remaining_data_len;
-    u16        pdu_len;
-    u16        data_head_reserved;
-    void       *ptr_data_buf_start_addr;
+    u16        data_read_ptr;
+    u16        data_write_ptr;
+
+	struct rio_ids_data_desc    *ptr_ibds_data_desc;
+	u8			desc_dbuf_size;
+	u32			buf_add_ptr;
+	u32			num_hw_written_bufs;
 
 };
 
@@ -265,20 +263,16 @@ struct rio_ds_ibds_vsid_m_stats {
 struct rio_ds_priv {
     /* IBDS */
     u32				max_pdu_len;
-    u16                         num_ibds_dses;
-    u16                         num_ibds_virtual_m;
-    u16                         num_ibds_data_desc;
-    struct rio_ids_data_desc    *ptr_ibds_data_desc;
+    u16                         num_ibds_dses;/* TBR */
+    u16                         num_ibds_virtual_m;/* TBR */
+    u16                         num_ibds_data_desc;/* TBR */
     struct ibds_virt_m_cfg	ibds_vsid_m_cfg[RIO_MAX_NUM_IBDS_VSID_M];
 
     /* OBDS */
-    u16                         num_obds_dses;
-    u16                         num_obds_hdr_desc;
-    u16                         num_obds_data_desc;
+    u16                         num_obds_dses; /* TBR */
+    u16                         num_obds_hdr_desc; /* TBR */
+    u16                         num_obds_data_desc; /* TBR */
     struct rio_obds_dse_cfg     obds_dse_cfg[RIO_MAX_NUM_OBDS_DSE];
-
-    struct rio_ds_hdr_desc      *ptr_obds_hdr_desc;
-    struct rio_ods_data_desc    *ptr_obds_data_desc;
 
     struct rio_irq_handler      ob_dse_irq[RIO_MAX_NUM_OBDS_DSE];
     struct rio_irq_handler      ib_dse_vsid_irq[RIO_MAX_NUM_IBDS_VSID_M];
@@ -290,31 +284,29 @@ struct rio_ds_priv {
 
 /* open an OBDS data stream */
 extern int axxia_open_ob_data_stream(
-    struct rio_mport    *mport,
-    void                *dev_id,
-    int                 dest_id,
-    int                 stream_id,
-    int                 cos,
-    int                 num_pdus,
-    int                 pdu_length);
+	struct rio_mport    *mport,
+	void				*dev_id,
+	int					dse_id,
+	int					num_header_entries,
+	int					num_data_entries);
 
-extern int open_ob_data_stream(
-    struct rio_mport    *mport,
-    void                *dev_id,
-    int                 dest_id,
-    int                 stream_id,
-    int                 cos,
-    int                 num_pdus,
-    int                 pdu_length);
+int open_ob_data_stream(
+	struct rio_mport    *mport,
+	void		    	*dev_id,
+	int					dse_id,
+	int					num_header_entries,
+	int					num_data_entries);
 
 /* add user's data */
 extern int axxia_add_ob_data_stream(
-    struct rio_mport        *mport,
-    int                     dest_id,
-    int                     stream_id,
-    int                     cos,
-    void                    *buffer,
-    int                     data_len);
+	struct rio_mport	*mport,
+	int		     	dest_id,
+	int		     	stream_id,
+	int		     	cos,
+	int				priority,
+	int				is_hdr_desc,
+	void		    	*buffer,
+	int		     	data_len);
 
 /* handle outbound data streaming DSE interrupt */
 void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state);
@@ -323,23 +315,32 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state);
 void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state);
 
 /* open IBDS data stream */
-int axxia_open_ib_data_stream(
-    struct rio_mport    *mport,
-    void                *dev_id,
-    int		        source_id,
-    int 	        cos,
-    int		        num_pdus,
-    int                 desc_size);
+extern int axxia_open_ib_data_stream(
+	struct rio_mport    	*mport,
+	void			*dev_id,
+	int			source_id,
+	int 		    	cos,
+	int			desc_dbuf_size,
+	int			num_entries);
+
+int open_ib_data_stream(
+	struct rio_mport    	*mport,
+	void			*dev_id,
+	int			source_id,
+	int 		    	cos,
+	int			desc_dbuf_size,
+	int			num_entries);
 
 /* add IBDS data buffer */
-int axxia_add_ibds_buffer(
-    struct rio_mport    *mport,
-    int                 source_id,
-    int                 cos,
-    void                *buf);
+extern int axxia_add_ibds_buffer(
+	struct rio_mport   *mport,
+	int		   source_id,
+	int		   cos,
+	void		  *buf,
+	int			buf_size);
 
 /* get IBDS data */
-void *axxia_get_ibds_data(
+extern void *axxia_get_ibds_data(
     struct rio_mport    *mport,
     int                 source_id,
     int                 cos,
@@ -353,26 +354,15 @@ int axxio_virt_vsid_convert(
     u16     *ptr_virt_vsid);
 
 /* close IBDS data streaming */
-int axxia_close_ib_data_stream(
+extern int axxia_close_ib_data_stream(
     struct rio_mport    *mport,
     int                 source_id,
     int                 cos);
 
 /* close OBDS data streaming */
-int axxia_close_ob_data_stream(
-    struct rio_mport    *mport,
-    int                 dest_id,
-    int                 stream_id,
-    int                 cos);
-
-
-/* allocate data streaming buffers */
-int axxia_mem_alloc(
-    struct rio_ds_priv      *ptr_ds_priv,
-    struct rio_ds_dtb_info  *ptr_ds_dtb_info);
-
-/* free data streaming buffers */
-int axxia_ds_free(struct rio_ds_priv      *ptr_ds_priv);
+extern int axxia_close_ob_data_stream(
+	struct rio_mport    	*mport,
+	int		 	dse_id);
 
 /* configure the data streaming data structures */
 int axxia_cfg_ds(
