@@ -863,16 +863,10 @@ static int rio_start_port(struct rio_mport *mport)
 {
 	struct rio_priv *priv = mport->priv;
 	u32 ccsr, escsr;
-	u32 hdlcsr, didcar, rabver;	/* HACK */
 
 	/* Probe the master port phy type */
 	__rio_local_read_config_32(mport, RIO_CCSR, &ccsr);
 	__rio_local_read_config_32(mport, RIO_ESCSR, &escsr);
-/*Begin HACK*/
-	__rio_local_read_config_32(mport, RIO_HOST_DID_LOCK_CSR, &hdlcsr);
-	__rio_local_read_config_32(mport, RIO_DEV_ID_CAR, &didcar);
-	__rio_local_read_config_32(mport, RAB_VER, &rabver);
-/*End HACK*/
 
 	if (escsr & RIO_ESCSR_PU) {
 
@@ -906,15 +900,28 @@ static int rio_start_port(struct rio_mport *mport)
 			return 0;
 		}
 	}
-	IODP("rio[%d]: DIDCAR[%x]=%08x RAB_VER[%x]=%08x\n",
-		__LINE__,
-		RIO_DEV_ID_CAR, didcar,
-		RAB_VER, rabver);	/* HACK */
-	IODP("rio[%d]: CCSR[%x]=%08x ESCSR[%x]=%08x HBDIDLCSR[%x]=%08x\n",
-		__LINE__,
-		RIO_CCSR, ccsr,
-		RIO_ESCSR, escsr,
-		RIO_HOST_DID_LOCK_CSR, hdlcsr);	/* HACK */
+
+#ifdef SRIO_IODEBUG
+	{
+		u32 hdlcsr, didcar, rabver;
+
+		__rio_local_read_config_32(mport,RIO_HOST_DID_LOCK_CSR,&hdlcsr);
+		__rio_local_read_config_32(mport, RIO_DEV_ID_CAR, &didcar);
+		__rio_local_read_config_32(mport, RAB_VER, &rabver);
+
+		IODP("rio[%d]: DIDCAR[%x]=%08x RAB_VER[%x]=%08x\n",
+			__LINE__,
+			RIO_DEV_ID_CAR, didcar,
+			RAB_VER, rabver);
+		IODP("rio[%d]: CCSR[%x]=%08x ESCSR[%x]=%08x "
+		     "HBDIDLCSR[%x]=%08x\n",
+			__LINE__,
+			RIO_CCSR, ccsr,
+			RIO_ESCSR, escsr,
+			RIO_HOST_DID_LOCK_CSR, hdlcsr);
+	}
+#endif /* defined(SRIO_IODEBUG) */
+
 	dev_dbg(priv->dev, "Port Is ready\n");
 	return 0;
 }
@@ -1679,4 +1686,3 @@ static __init int axxia_of_rio_rpn_init(void)
 }
 
 subsys_initcall_sync(axxia_of_rio_rpn_init);
-/* device_initcall_sync(axxia_of_rio_rpn_init); */

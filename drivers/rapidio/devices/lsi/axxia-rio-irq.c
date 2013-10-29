@@ -954,6 +954,7 @@ static void release_mbox(struct kref *kref)
 			priv->inbDmesInUse[i] &= ~(1 << j);
 		}
 	}
+
 	kfree(mb->virt_buffer);
 	kfree(mb);
 }

@@ -383,4 +383,4 @@ void release_ob_ds(struct rio_irq_handler *h);
 
 void release_ib_ds(struct rio_irq_handler *h);
 
-#endif
+#endif /* _AXXIA_RIO_DS_H_ */

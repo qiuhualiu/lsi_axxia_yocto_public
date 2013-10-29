@@ -155,8 +155,8 @@ static inline void __ib_dse_dw_dbg(
  * Returns %0 on success
  ****************************************************************************/
 int axxia_open_ob_data_stream(
-	struct rio_mport    *mport,
-	void		*dev_id,
+	struct rio_mport    	*mport,
+	void			*dev_id,
 	int		 	dest_id,
 	int		 	stream_id,
 	int		 	cos,
@@ -590,7 +590,7 @@ int axxia_add_ob_data_stream(
 	** axxia_open_ob_data_stream( )
 	*/
 	if (data_len < pdu_length)
-	return -EINVAL;
+		return -EINVAL;
 
 	/* Program the data buffer in the descriptor */
 	data_buf_phy = virt_to_phys(buffer);
@@ -895,7 +895,6 @@ void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state)
 						1);
 		}
 	}
-
 
 	/* In case of timeout error, if not alreaday disabled, descriptor
 	**	prefetch logic should be disabled and associated descriptor
@@ -1241,6 +1240,8 @@ int axxia_add_ibds_buffer(
 	ptr_data_desc->dw2 |= (data_addr_hi << 26) & 0xFC000000;
 
 	ptr_data_desc->virt_data_buf = (u32)buf;
+#endif
+
 	if (ptr_virt_m_cfg->user_buf_index_head ==
 		(ptr_virt_m_cfg->max_num_data_desc - 1)) {
 		ptr_virt_m_cfg->user_buf_index_head = 0;
