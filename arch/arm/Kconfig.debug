@@ -89,6 +89,10 @@ choice
 		bool "Kernel low-level debugging on 9263 and 9g45"
 		depends on HAVE_AT91_DBGU1
 
+	config AXXIA_DEBUG_LL_UART0
+		bool "Kernel low-level debugging via UART0"
+		depends on ARCH_AXXIA
+
 	config DEBUG_CLPS711X_UART1
 		bool "Kernel low-level debugging messages via UART1"
 		depends on ARCH_CLPS711X
