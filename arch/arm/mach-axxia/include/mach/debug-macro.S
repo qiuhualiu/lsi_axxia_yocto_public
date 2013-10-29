@@ -15,23 +15,15 @@
  * 
 */
 
+#include <mach/hardware.h>
+
 #if !defined(CONFIG_ARM_LPAE)
 #error "Axxia Peripherals Are Only Accessible Using the LPAE!"
 #endif
 
-#define UART0_PHYSICAL_ADDRESS 0x0000002010080000ULL
-#define UART1_PHYSICAL_ADDRESS 0x0000002010081000ULL
-#define UART2_PHYSICAL_ADDRESS 0x0000002010082000ULL
-#define UART3_PHYSICAL_ADDRESS 0x0000002010083000ULL
-
-#define UART0_VIRTUAL_ADDRESS 0xf0080000
-#define UART1_VIRTUAL_ADDRESS 0xf0081000
-#define UART2_VIRTUAL_ADDRESS 0xf0082000
-#define UART3_VIRTUAL_ADDRESS 0xf0083000
-	
 	.macro	addruart, rp, rv, tmp
-	ldr	\rp, =0x10080000
-	ldr	\rv, =0xf0080000
+	ldr	\rp, =(AXXIA_DEBUG_UART_PHYS & 0xffffffff)
+	ldr	\rv, =AXXIA_DEBUG_UART_VIRT
 	.endm
 
 #include <asm/hardware/debug-pl01x.S>
