@@ -36,7 +36,7 @@
 #define RIO_DS_DATA_BUF_8K                  (1<<13)
 #define RIO_DS_DATA_BUF_16K                 (1<<14)
 #define RIO_DS_DATA_BUF_32K                 (1<<15)
-#define RIO_DS_DATA_BUF_64K                 (1<<16)
+#define RIO_DS_DATA_BUF_64K                 (0) /* HW uses 0 for 64K */
 
 #define RIO_MAX_NUM_OBDS_DSE                16
 #define RIO_MAX_NUM_IBDS_DSE				16
@@ -70,6 +70,8 @@
 #define RAB_IBDS_VSID_ADDR_HI(n)     (RAB_REG_BASE + (0x2b28 + (0x8*(n)))+0x4)
 
 #define RAB_IBDS_VSID_ALIAS          (RAB_REG_BASE + 0x2a1c)
+#define GRIO_DSI_CAR				 (RAB_REG_BASE + 0x3c)
+#define GRIO_DSLL_CCSR				 (RAB_REG_BASE + 0x48)
 
 #define RIO_DS_DESC_ALIGNMENT        (1 << 5)
 
@@ -262,7 +264,10 @@ struct rio_ds_ibds_vsid_m_stats {
 */
 struct rio_ds_priv {
     /* IBDS */
-    u32				max_pdu_len;
+    u16				max_pdu_len;
+	u16				mtu;
+	u16				seg_support;
+	u32				ibds_avsid_mapping;
     u16                         num_ibds_dses;/* TBR */
     u16                         num_ibds_virtual_m;/* TBR */
     u16                         num_ibds_data_desc;/* TBR */
@@ -313,6 +318,14 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state);
 
 /* handle inbound VSID interrupt */
 void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state);
+
+/* data streaming global configuration */
+extern int axxia_data_stream_global_cfg(
+	struct rio_mport    *mport,
+	int			max_pdu_length,
+	int			seg_support,
+	int			mtu,
+	int			ibds_avsid_mapping);
 
 /* open IBDS data stream */
 extern int axxia_open_ib_data_stream(
