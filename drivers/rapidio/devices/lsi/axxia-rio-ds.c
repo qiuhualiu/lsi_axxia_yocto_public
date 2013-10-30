@@ -169,6 +169,105 @@ static inline void __ib_dse_dw_dbg(
 }
 
 /*****************************************************************************
+ * axxia_data_stream_global_cfg -
+ *
+ *  This function sets global configuration of data streaming related
+ *	registers.
+ *
+ * @mport:	pointer to the master port
+ * @max_pdu_length:   Maximum PDU in size supported by the destination
+ *			endpoint. It is a 16-bit field, 0 indicates 64KB.
+ * @seg_support:      Number of segmentation context supported by
+ *			the destination endpoint. It is a 16-bit field.
+ * @mtu:	Maximum Transmission Unit - controls the data payload size for
+ *			segments of an encapsulated PDU.
+ * @ibds_avsid_mapping:	this field definesmapping from incoming VSID
+ *			(Combination of Source ID and COS) to internal
+ *			(aliased) VSID.
+ *
+ * Returns %0 on success
+ ****************************************************************************/
+int axxia_data_stream_global_cfg(
+	struct rio_mport    *mport,
+	int			max_pdu_length,
+	int			seg_support,
+	int			mtu,
+	int			ibds_avsid_mapping)
+{
+	struct rio_priv *priv = mport->priv;
+	struct rio_ds_priv  *ptr_ds_priv = &(priv->ds_priv_data);
+	struct ibds_virt_m_cfg  *ptr_virt_m_cfg;
+	struct rio_obds_dse_cfg *ptr_dse_cfg;
+	int		reg_val;
+	u16		max_pdu_len, mtu_value;
+	int	i;
+
+	/* sanity check */
+	if ((max_pdu_length > (1<<16))	||
+		(mtu < 32)					||
+		(mtu > 256)) {
+		return -EINVAL;
+	}
+
+	/* The global configuration can only be done if there is no OBDSE or
+	**	IBDS ALIAS M is used.
+	*/
+	for (i = 0; i < RIO_MAX_NUM_IBDS_VSID_M; i++) {
+		ptr_virt_m_cfg = &(ptr_ds_priv->ibds_vsid_m_cfg[i]);
+		if (ptr_virt_m_cfg->in_use == RIO_DS_TRUE)
+			return -EINVAL;
+	}
+
+	for (i = 0; i < RIO_MAX_NUM_OBDS_DSE; i++) {
+		ptr_dse_cfg = &(ptr_ds_priv->obds_dse_cfg[i]);
+		if (ptr_dse_cfg->in_use == RIO_DS_TRUE)
+			return -EINVAL;
+	}
+
+	/* Data Streaming Information Capability Register */
+	/* max_pdu_len is a 16-bit field in HW, thus 0 indicates 64KB */
+	reg_val = 0;
+	reg_val |= ((seg_support << 16) & 0xFFFF0000);
+	if (max_pdu_length == (1<<16))
+		max_pdu_len = 0;
+	else
+		max_pdu_len =  max_pdu_length;
+
+	reg_val |= (max_pdu_len & 0xFFFF);
+	__rio_local_write_config_32(mport,
+							GRIO_DSI_CAR,
+							reg_val);
+
+	/*
+	** Data Streaming Logical Layer Control Command and Status Register
+	**	MTU bits [31:24] 8 - 32 bytes, 9 - 36 bytes etc.
+	*/
+	reg_val = 0;
+	mtu_value = mtu / 4;
+	reg_val |= ((mtu_value << 24) & 0xFF000000);
+	__rio_local_write_config_32(mport,
+						GRIO_DSLL_CCSR,
+						reg_val);
+
+	/* IBDS alias mapping register */
+	reg_val = 0;
+	reg_val |= (ibds_avsid_mapping & 0xFFFFFFF);
+	__rio_local_write_config_32(mport,
+						RAB_IBDS_VSID_ALIAS,
+						reg_val);
+
+	/* save information in the system */
+	ptr_ds_priv->max_pdu_len = max_pdu_len;
+	ptr_ds_priv->seg_support = seg_support;
+	ptr_ds_priv->mtu = mtu;
+	ptr_ds_priv->ibds_avsid_mapping = ibds_avsid_mapping;
+
+
+	return 0;
+}
+EXPORT_SYMBOL(axxia_data_stream_global_cfg);
+
+/*****************************************************************************
  * axxia_open_ob_data_stream -
  *
  *  This function sets up the descriptor chain to an available OBDS engine.
@@ -754,9 +853,9 @@ EXPORT_SYMBOL(axxia_open_ib_data_stream);
  *  RAB_IBDS_VSID_ALIAS register.
  *
  * @mport:	pointer to the master port
- * @sourceId:   source ID of the data stream
+ * @dev_id: Device specific pointer to pass on event
+ * @source_id:   source ID of the data stream
  * @cos:	class of service of the stream
- * @numPDUs:	number of PDUs in the stream
  * @desc_dbuf_size:   PDU size this descriptor can handle.
  *		If the PDU size exceeds
  *		descriptor size (but less than maximum PDU size), appropriate
@@ -764,6 +863,7 @@ EXPORT_SYMBOL(axxia_open_ib_data_stream);
  *		PDU data beyond descriptor size is not written in the AXI
  *		memory to ensure that there is no corruption of data under
  *		this error case.
+ * @num_entries: number of entries in this descriptor chain
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -932,9 +1032,10 @@ int open_ib_data_stream(
  *  This function adds buffer to the AXXIA inbound data stream queue.
  *
  * @mport:	pointer to the master port
- * @sourceId:	source ID of the data stream
+ * @source_id:	source ID of the data stream
  * @cos:	class of service of the stream
- * @buffer:	pointer to where the data is copied to
+ * @buf:	pointer to where the data is copied to
+ * @buf_size: buffer size of the added buffer
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -1414,6 +1515,13 @@ int axxia_cfg_ds(
 
 	/* HW configuration - TBD */
 
+	/*
+	** check if the ASIC supports data streaming feature.
+	** This has to be called in the axxia-rio.c after
+	**	calling function rio_priv_dtb_setup( )
+	**
+	**	check RAB_VER register
+	*/
 	return 0;
 }
 
