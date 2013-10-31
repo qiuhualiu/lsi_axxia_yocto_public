@@ -7,6 +7,8 @@
 
 /* Constants, Macros, etc. */
 
+#define AXXIA_RIO_SMALL_SYSTEM
+
 #define AXXIA_RIO_SYSMEM_BARRIER()
 
 #define AXXIA_RIO_DISABLE_MACHINE_CHECK()

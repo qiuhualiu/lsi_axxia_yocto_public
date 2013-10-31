@@ -1222,7 +1222,7 @@ static int rio_parse_dtb(
 	inbDmes[0] = inbDmes[1] = 0;
 	cell = of_get_property(dev->dev.of_node, "inb-dmes", &rlen);
 	if (!cell) {
-		ibNumDmes[0] = 32;
+		ibNumDmes[0] = DME_MAX_IB_ENGINES;
 		ibNumDmes[1] = 0;
 		inbDmes[0] = 0xffffffff;
 		inbDmes[1] = 0x00000000;
@@ -1248,7 +1248,7 @@ static int rio_parse_dtb(
 	*irq = irq_of_parse_and_map(dev->dev.of_node, 0);
 	dev_dbg(&dev->dev, "irq: %d\n", *irq);
 
-	/* data_streaming */
+	/* Data_streaming */
 	rc = rio_parse_dtb_ds(dev, ptr_ds_dtb_info);
 	if (rc != 0)
 		return rc;
@@ -1367,7 +1367,7 @@ static struct rio_mport *rio_mport_dtb_setup(struct platform_device *dev,
  * @outbDmes: RapidIO outbound DMEs array available; [0] for MSeg, [1] for SSeg
  * @numIbNumDmes: override num inbound DMEs available
  * @inbDmes: RapidIO inbound DMEs array available; 2 elements
- * @int: IRQ number
+ * @irq: IRQ number
  *
  * Init master port private data structure
  *
@@ -1394,27 +1394,49 @@ static struct rio_priv *rio_priv_dtb_setup(
 	if (!priv)
 		return ERR_PTR(-ENOMEM);
 
-	memset(&priv->acpres[ACP_HW_DESC_RESOURCE], 0, sizeof(struct resource));
-	priv->acpres[ACP_HW_DESC_RESOURCE].start = 0;
-	priv->acpres[ACP_HW_DESC_RESOURCE].end = 1024;
-	priv->acpres[ACP_HW_DESC_RESOURCE].flags = ACP_RESOURCE_HW_DESC;
-
 	/* mport port driver handle */
 	mport->priv = priv;
 
-	/* max descriptors */
+	/* Max descriptors */
 	if (entries) {
 		priv->desc_max_entries = entries;
 		priv->descriptors = kzalloc(sizeof(struct rio_desc) * entries,
 						GFP_KERNEL);
-		if (!priv->descriptors)
-			return ERR_PTR(-ENOMEM);
+		if (!priv->descriptors) {
+			rc = -ENOMEM;
+			goto err_desc;
+		}
 	} else {
 		priv->desc_max_entries = RIO_MSG_MAX_ENTRIES;
 		priv->descriptors = NULL;
 	}
 
-	/* defined DMEs */
+	/* Support for alloc_message_engine() */
+	{
+		struct resource *dres = &priv->acpres[ACP_HW_DESC_RESOURCE];
+
+		memset(dres, 0, sizeof(struct resource));
+			/* 'virtual' mapping of descriptors */
+		dres->start = mport->iores.start -
+				priv->desc_max_entries - 1024;
+		dres->end = dres->start + priv->desc_max_entries - 1;
+		dres->flags = ACP_RESOURCE_HW_DESC;
+		dres->name = "rio_desc_win";
+		dres->parent = NULL;
+		dres->child = NULL;
+		dres->sibling = NULL;
+
+		if (request_resource(&iomem_resource, dres) < 0) {
+			dev_err(&dev->dev,
+				"RIO: Error requesting descriptor region "
+				"0x%016llx-0x%016llx\n",
+				(u64)dres->start, (u64)dres->end);
+			rc = -ENOMEM;
+			goto err_fixed;
+		}
+	}
+
+	/* Defined DMEs */
 	if (outbDmes) {
 		priv->numOutbDmes[0] = numOutbDmes[0];
 		priv->numOutbDmes[1] = numOutbDmes[1];
@@ -1428,34 +1450,34 @@ static struct rio_priv *rio_priv_dtb_setup(
 		priv->inbDmes[1] = inbDmes[1];
 	}
     
-	/* data_streaming */
+	/* Data_streaming */
 	if (ptr_ds_dtb_info->ds_enabled == 1) {
 		rc = axxia_cfg_ds(mport, ptr_ds_dtb_info); 
-		if (rc != 0) {
-			return ERR_PTR(-ENOMEM);
-		}
+		if (rc != 0)
+			goto err_fixed;
 	}
 
 	/* Interrupt handling */
 	priv->irq_line = irq;
 	axxia_rio_port_irq_init(mport);
 
-	/* dev ptr for debug printouts */
+	/* Dev ptr for debug printouts */
 	priv->dev = &dev->dev;
 
-	/* init ATMU data structures */
+	/* Init ATMU data structures */
 	for (i = 0; i < RIO_OUTB_ATMU_WINDOWS; i++) {
 		priv->outb_atmu[i].in_use = 0;
 		priv->outb_atmu[i].riores = NULL;
 	}
 
-	/* setup local access */
-	priv->regs_win_fixed = ioremap(regs->start, 0x800); /* define maybe? */
+	/* Setup local access */
+	priv->regs_win_fixed = ioremap(regs->start, SRIO_CONF_SPACE_SIZE);
 	if (!priv->regs_win_fixed) {
 		rc = -ENOMEM;
 		goto err_fixed;
 	}
-	priv->regs_win_paged = ioremap(regs->start + 0x800, 0x800);
+	priv->regs_win_paged = ioremap(regs->start + SRIO_CONF_SPACE_SIZE,
+					SRIO_CONF_SPACE_SIZE);
 	if (!priv->regs_win_paged) {
 		rc = -ENOMEM;
 		goto err_paged;
@@ -1466,6 +1488,7 @@ err_paged:
 	iounmap(priv->regs_win_fixed);
 err_fixed:
 	kfree(priv->descriptors);
+err_desc:
 	kfree(priv);
 	return ERR_PTR(rc);
 }
@@ -1559,7 +1582,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 	struct resource regs;
 	u64 law_start, law_size;
 	int entries;
-	int irq;
+	int irq = 0;
 	int numObDmes[2], outbDmes[2];
 	int numIbDmes[2], inbDmes[2];
 	/* data_streaming */
@@ -1613,9 +1636,12 @@ static int axxia_rio_setup(struct platform_device *dev)
 		goto err_irq;
 
 #ifdef CONFIG_AXXIA_RIO_STAT
+	/* Hookup SYSFS support
+	 */
 	dev_set_drvdata(&dev->dev, mport);
 	axxia_rio_init_sysfs(dev);
 #endif
+
 	/* Register port with core driver
 	 */
 	if (rio_register_mport(mport)) {

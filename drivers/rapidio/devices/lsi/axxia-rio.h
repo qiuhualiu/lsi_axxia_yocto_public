@@ -50,6 +50,8 @@
 /*****************************************/
 /* *********** ACP/AXXIA REG *********** */
 /*****************************************/
+#define SRIO_CONF_SPACE_SIZE    0x800
+
 #define SRIO_SPACE_SIZE         0x40000      /* Total size GRIO + RAB Spaces */
 
 /* End Point Controller Specific Registers (0x1_0000-0x1_FFFC) */

@@ -44,6 +44,7 @@ MODULE_LICENSE("GPL");
 #define RIONET_DOORBELL_LEAVE	0x1001
 
 #define RIONET_MAILBOX		0
+#define RIONET_MAILBOX_LETTER	0
 
 #define RIONET_TX_RING_SIZE	CONFIG_RIONET_TX_SIZE
 #define RIONET_RX_RING_SIZE	CONFIG_RIONET_RX_SIZE
@@ -109,7 +110,8 @@ static int rionet_rx_clean(struct net_device *ndev)
 			continue;
 
 		data = rio_get_inb_message(rnet->mport, RIONET_MAILBOX,
-					   0, &sz, &slot, &destid);
+					   RIONET_MAILBOX_LETTER,
+					   &sz, &slot, &destid);
 		if (!data)
 			break;
 
@@ -154,13 +156,12 @@ static int rionet_queue_tx_msg(struct sk_buff *skb, struct net_device *ndev,
 			       struct rio_dev *rdev)
 {
 	struct rionet_private *rnet = netdev_priv(ndev);
-	int                    mbox_dest = 0;
 	int                    letter = 0;
 	int                    flags = 0;
 	void                  *cookie = NULL;
 
-	rio_add_outb_message(rnet->mport, rdev, mbox_dest, letter, flags,
-			     skb->data, skb->len, cookie);
+	rio_add_outb_message(rnet->mport, rdev, rnet->mport->index, letter,
+			     flags, skb->data, skb->len, cookie);
 	rnet->tx_skb[rnet->tx_slot] = skb;
 
 	ndev->stats.tx_packets++;

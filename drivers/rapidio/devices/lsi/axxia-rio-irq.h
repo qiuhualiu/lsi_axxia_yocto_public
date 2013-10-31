@@ -159,27 +159,38 @@ enum rio_ob_dme_dbg {
 #define RIO_MSG_SEG_SIZE                   0x0100 /* 256B */
 #define RIO_MSG_MAX_ENTRIES                1024   /* Default Max descriptor
 						     table entries */
-
-#define DME_MAX_IB_ENGINES          32          /* ?? */
-#define     RIO_MAX_IB_DME_MSEG		32
-#define     RIO_MAX_IB_DME_SSEG	        0
-#define DME_MAX_OB_ENGINES          4           /* 3? */
-#define     RIO_MAX_OB_DME_MSEG		1
-#define     RIO_MAX_OB_DME_SSEG	        1
-#define RIO_MAX_TX_MBOX             64          /* 8? */
-#define     RIO_MAX_TX_MBOX_4KB		3
-#define     RIO_MAX_TX_MBOX_256B	63
-#define RIO_MAX_RX_MBOX             64          /* 8? */
-#define     RIO_MAX_RX_MBOX_4KB		3
-#define     RIO_MAX_RX_MBOX_256B	63
-#define RIO_MSG_MAX_LETTER          4
 #define	RIO_MBOX_TO_BUF_SIZE(mid)		\
 	((mid <= RIO_MAX_RX_MBOX_4KB) ? RIO_MSG_MAX_MSG_SIZE : RIO_MSG_SEG_SIZE)
 #define	RIO_OUTB_DME_TO_BUF_SIZE(p,did)		\
 	((did < p->numOutbDmes[0]) ? RIO_MSG_MAX_MSG_SIZE : RIO_MSG_SEG_SIZE)
 
+#define DME_MAX_IB_ENGINES          32
+#define     RIO_MAX_IB_DME_MSEG		32
+#define     RIO_MAX_IB_DME_SSEG	        0
+#define DME_MAX_OB_ENGINES          3
+#define     RIO_MAX_OB_DME_MSEG		2
+#define     RIO_MAX_OB_DME_SSEG	        1
 
-#define RIO_DESC_USED 0
+#ifdef	AXXIA_RIO_SMALL_SYSTEM
+	#define RIO_MAX_TX_MBOX             8
+	#define     RIO_MAX_TX_MBOX_4KB		3
+	#define     RIO_MAX_TX_MBOX_256B	7
+	#define RIO_MAX_RX_MBOX             8
+	#define     RIO_MAX_RX_MBOX_4KB		3
+	#define     RIO_MAX_RX_MBOX_256B	7
+#else
+	#define RIO_MAX_TX_MBOX             64
+	#define     RIO_MAX_TX_MBOX_4KB		3
+	#define     RIO_MAX_TX_MBOX_256B	63
+	#define RIO_MAX_RX_MBOX             64
+	#define     RIO_MAX_RX_MBOX_4KB		3
+	#define     RIO_MAX_RX_MBOX_256B	63
+#endif
+
+#define RIO_MSG_MAX_LETTER          4
+
+
+#define RIO_DESC_USED 0		/* Bit index for rio_msg_desc.state */
 
 struct rio_msg_desc {
 	unsigned long state;
