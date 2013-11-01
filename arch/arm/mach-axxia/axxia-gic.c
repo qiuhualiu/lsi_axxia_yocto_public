@@ -129,6 +129,70 @@ static inline unsigned int gic_irq(struct irq_data *d)
 	return d->hwirq;
 }
 
+typedef void axxia_call_func_t(void *info);
+struct axxia_gic_rpc {
+	int cpu;
+	axxia_call_func_t* func;
+	void* info;
+};
+
+/* FIXME: This probably shouldn't be per-cpu data.
+ * FIXME: We could have a per-cpu flag indicating weather or not
+ *	  we have a pending request in order to make the polling faster, this
+ *	  might be important since we are running with interrupt disabled.
+ */
+static DEFINE_PER_CPU_SHARED_ALIGNED(struct axxia_gic_rpc, axxia_gic_rpc);
+
+void axxia_gic_handle_gic_rpc(void) {
+	u32 this_cpu = cpu_logical_map(smp_processor_id());
+	int cpu;
+	dmb();			/* Not sure this is necessary */
+	for_each_possible_cpu(cpu)
+	{
+		struct axxia_gic_rpc *slot = &per_cpu(axxia_gic_rpc, cpu);
+		if(slot->func && slot->cpu == this_cpu) {
+			slot->func(slot->info);
+			slot->func = NULL;
+			dmb();			/* FIXME: is this needed ? */
+		}
+	}
+}
+
+#if 0
+/* FIXME: Unused for now, but if we wan't to avoid changing smp.c we should use
+ *        an interrupt separate from the IPI:s visible to smp.c. Maybe we could
+ *	  multiplex all IPI:s on one hardware interrupt and use one for gic rpc.
+ */
+static void axxia_gic_handle_gic_rpc_ipi(int ipinr) {
+	irq_enter();
+	msa_start_irq(ipinr);
+	axxia_gic_handle_gic_rpc();
+	msa_irq_exit(ipinr, user_mode(regs));
+}
+#endif
+
+static void axxia_gic_run_gic_rpc(int cpu, axxia_call_func_t* func, void* info)
+{
+	u32 this_cpu = cpu_logical_map(smp_processor_id());
+	struct axxia_gic_rpc *slot = &per_cpu(axxia_gic_rpc, this_cpu);
+	int timeout;
+	BUG_ON(!irqs_disabled());
+	slot->cpu = cpu;
+	slot->info = info;
+	dsb();
+	slot->func = func;
+	dmb();
+	/* FIXME: Use IPI_RESCHEDULE until we have our own IPI. 
+	 */
+	axxia_gic_raise_softirq(cpumask_of(cpu), 3);
+	timeout = 1000000;
+	while(slot->func && --timeout > 0) {
+		axxia_gic_handle_gic_rpc();
+		cpu_relax();
+	}
+	BUG_ON(timeout == 0);
+}
+
 /*
  * Routines to acknowledge, disable and enable interrupts.
  */
@@ -171,21 +235,10 @@ static void gic_mask_irq(struct irq_data *d)
 	 * the IRQ masking directly. Otherwise, use the IPI mechanism
 	 * to remotely do the masking.
 	 */
-	if ((cpu_logical_map(irq_cpuid[irqid]) / 4) == (pcpu / 4)) {
+	if ((cpu_logical_map(irq_cpuid[irqid]) / 4) == (pcpu / 4))
 		_gic_mask_irq(d);
-	} else {
-		/*
-		 * We are running here with local interrupts
-		 * disabled. Temporarily re-enable them to
-		 * avoid possible deadlock when calling
-		 * smp_call_function_single().
-		 */
-		local_irq_enable();
-		smp_call_function_single(irq_cpuid[irqid],
-					 _gic_mask_irq,
-					 d, 1);
-		local_irq_disable();
-	}
+	else
+		axxia_gic_run_gic_rpc(irq_cpuid[irqid], _gic_mask_irq, d);
 }
 
 static void _gic_unmask_irq(void *arg)
@@ -223,21 +276,10 @@ static void gic_unmask_irq(struct irq_data *d)
 	 * the IRQ masking directly. Otherwise, use the IPI mechanism
 	 * to remotely do the masking.
 	 */
-	if ((cpu_logical_map(irq_cpuid[irqid]) / 4) == (pcpu / 4)) {
+	if ((cpu_logical_map(irq_cpuid[irqid]) / 4) == (pcpu / 4))
 		_gic_unmask_irq(d);
-	} else {
-		/*
-		 * We are running here with local interrupts
-		 * disabled. Temporarily re-enable them to
-		 * avoid possible deadlock when calling
-		 * smp_call_function_single().
-		 */
-		local_irq_enable();
-		smp_call_function_single(irq_cpuid[irqid],
-					 _gic_unmask_irq,
-					 d, 1);
-		local_irq_disable();
-	}
+	else
+		axxia_gic_run_gic_rpc(irq_cpuid[irqid], _gic_unmask_irq, d);
 }
 
 static void gic_eoi_irq(struct irq_data *d)
@@ -304,6 +346,7 @@ static void gic_set_type_wrapper(void *data)
 		(struct gic_set_type_wrapper_struct *)data;
 
 	pArgs->status = _gic_set_type(pArgs->d, pArgs->type);
+	dmb();
 }
 #endif
 
@@ -314,6 +357,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	unsigned int gicirq = gic_irq(d);
 	u32 pcpu = cpu_logical_map(smp_processor_id());
 	struct gic_set_type_wrapper_struct data;
+	int ret;
 
 	/* Interrupt configuration for SGIs can't be changed. */
 	if (gicirq < 16)
@@ -331,6 +375,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	 * Duplicate IRQ type settings across all clusters. Run
 	 * directly for this cluster, use IPI for all others.
 	 */
+	ret = _gic_set_type(d, type);
 	data.d = d;
 	data.type = type;
 	for (i = 0; i < nr_cluster_ids; i++) {
@@ -340,23 +385,14 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 		/* Have the first cpu in each cluster execute this. */
 		cpu = i * 4;
 		if (cpu_online(cpu)) {
-			/*
-			 * We are running here with local interrupts
-			 * disabled. Temporarily re-enable them to
-			 * avoid possible deadlock when calling
-			 * smp_call_function_single().
-			 */
-			local_irq_enable();
-			smp_call_function_single(cpu, gic_set_type_wrapper,
-						 &data, 1);
-			local_irq_disable();
+			axxia_gic_run_gic_rpc(cpu, gic_set_type_wrapper, &data);
 			if (data.status != 0)
 				pr_err("Failed to set IRQ type for cpu%d\n",
 				       cpu);
 		}
 	}
 #endif
-	return _gic_set_type(d, type);
+	return ret;
 }
 
 static int gic_retrigger(struct irq_data *d)
@@ -443,14 +479,10 @@ static int gic_set_affinity(struct irq_data *d,
 	data.mask_val = mask_val;
 	data.disable = false;
 
-	if ((cpu_logical_map(cpu) / 4) == (pcpu / 4)) {
+	if ((cpu_logical_map(cpu) / 4) == (pcpu / 4))
 		_gic_set_affinity(&data);
-	} else {
-		/* Temporarily re-enable local interrupts. */
-		local_irq_enable();
-		smp_call_function_single(cpu, _gic_set_affinity, &data, 1);
-		local_irq_disable();
-	}
+	else
+		axxia_gic_run_gic_rpc(cpu, _gic_set_affinity, &data);
 
 	/*
 	 * If the new physical cpu assignment is on a cluster that's
@@ -465,15 +497,10 @@ static int gic_set_affinity(struct irq_data *d,
 		 * directly. Otherwise, use IPI mechanism.
 		 */
 		data.disable = true;
-		if ((cpu_logical_map(irq_cpuid[irqid]) / 4) == (pcpu / 4)) {
+		if ((cpu_logical_map(irq_cpuid[irqid]) / 4) == (pcpu / 4))
 			_gic_set_affinity(&data);
-		} else {
-			/* Temporarily re-enable local interrupts. */
-			local_irq_enable();
-			smp_call_function_single(irq_cpuid[irqid],
-						 _gic_set_affinity, &data, 1);
-			local_irq_disable();
-		}
+		else
+			axxia_gic_run_gic_rpc(irq_cpuid[irqid], _gic_set_affinity, &data);
 	}
 
 	/* Update Axxia IRQ affinity table with the new logical CPU number. */
@@ -912,13 +939,8 @@ static int gic_notifier(struct notifier_block *self, unsigned long cmd,	void *v)
 
 		/* Have the first cpu in each cluster execute this. */
 		cpu = i * 4;
-		if (cpu_online(cpu)) {
-			local_irq_enable();
-			smp_call_function_single(cpu,
-						 gic_notifier_wrapper,
-						 &data, 0);
-			local_irq_disable();
-		}
+		if (cpu_online(cpu))
+			axxia_gic_run_gic_rpc(cpu, gic_notifier_wrapper, &data);
 	}
 
 	/* Execute on this cluster. */

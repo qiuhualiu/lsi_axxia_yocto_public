@@ -599,6 +599,15 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 	if (ipinr >= IPI_TIMER && ipinr < IPI_TIMER + NR_IPI)
 		__inc_irq_stat(cpu, ipi_irqs[ipinr - IPI_TIMER]);
 
+	{
+		/* FIXME: Always call axxia_gic_handle_gic_rpc() until
+		 * we get IPI multiplexing to work We should really have
+		 * an IPI_GIC_RPC
+		 */
+		extern void axxia_gic_handle_gic_rpc(void);
+		axxia_gic_handle_gic_rpc();
+	}
+
 	switch (ipinr) {
 	case IPI_TIMER:
 		irq_enter();
@@ -611,13 +620,22 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 		break;
 
 	case IPI_CALL_FUNC:
-		irq_enter();
+		irq_enter();	
+		/* FIXME: Since axxia-gic.c has a bug ewhere IPI_CALL_FUNC
+		 * and IPI_CALL_FUNC_SINGLE might isn't correctly detected,
+		 * call both here. This works because these functions will
+		 * not do anything if it's respective queue is empty.
+		 */
 		generic_smp_call_function_interrupt();
+		generic_smp_call_function_single_interrupt();
 		irq_exit();
 		break;
 
 	case IPI_CALL_FUNC_SINGLE:
 		irq_enter();
+		/* FIXME: See IPI_CALL_FUNC above
+		 */
+		generic_smp_call_function_interrupt();
 		generic_smp_call_function_single_interrupt();
 		irq_exit();
 		break;
