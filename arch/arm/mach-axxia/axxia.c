@@ -253,6 +253,7 @@ l3_set_pstate(void __iomem *l3ctrl, unsigned int req, unsigned int act)
 void __init axxia_dt_init(void)
 {
 	void __iomem *l3ctrl;
+	void __iomem *apb2ser3_base;
 	int rc;
        
 	/* Enable L3-cache */
@@ -267,6 +268,13 @@ void __init axxia_dt_init(void)
 		pr_warn("axxia: Failed to map L3-cache control regs\n");
 	}
 #endif
+
+	/* Enable wfe/sev across clusters. */
+	apb2ser3_base = ioremap(0x2010030000ULL, SZ_64K);
+	if (apb2ser3_base)
+		writel(0x0000ffff, apb2ser3_base + 0x14);
+	else
+		pr_warn("axxia: Failed to enable multi-cluster wfe/sev!\n");
 
 	of_platform_populate(NULL, of_default_bus_match_table,
 			     axxia_auxdata_lookup, NULL);
