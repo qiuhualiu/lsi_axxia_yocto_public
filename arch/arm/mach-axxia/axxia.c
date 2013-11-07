@@ -253,8 +253,9 @@ l3_set_pstate(void __iomem *l3ctrl, unsigned int req, unsigned int act)
 void __init axxia_dt_init(void)
 {
 	void __iomem *l3ctrl;
+	void __iomem *apb2ser3_base;
 	int rc;
-       
+
 	/* Enable L3-cache */
 #ifndef CONFIG_ARCH_AXXIA_SIM
 	l3ctrl = ioremap(0x2000000000ULL, SZ_4M);
@@ -266,6 +267,21 @@ void __init axxia_dt_init(void)
 	} else {
 		pr_warn("axxia: Failed to map L3-cache control regs\n");
 	}
+#endif
+
+#if 0 /* FIXME - this works well enough to get the machine to boot,
+       * but still seeing stall failures in LTP testing. If we remove
+       * the use of wfe/sev in arch/arm/include/asm/spinlock.h instead,
+       * the machine boots -and- we don't see LTP failure. So for now,
+       * disable this and go with the other solution.
+       */
+
+	/* Enable wfe/sev across clusters. */
+	apb2ser3_base = ioremap(0x2010030000ULL, SZ_64K);
+	if (apb2ser3_base)
+		writel(0x0000ffff, apb2ser3_base + 0x14);
+	else
+		pr_warn("axxia: Failed to enable multi-cluster wfe/sev!\n");
 #endif
 
 	of_platform_populate(NULL, of_default_bus_match_table,
