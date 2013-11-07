@@ -64,8 +64,8 @@ static DEFINE_SPINLOCK(rio_io_lock);
  *   "SRIO_CONF" registers in AXXIA (e.g. page selection register)
  *   are also Little Endian.
  *
- * To avoid an extra spin-lock layer in __acp_local_config_read
- * and __acp_local_config_write, perform all internal driver accesses
+ * To avoid an extra spin-lock layer in __axxia_local_config_read
+ * and __axxia_local_config_write, perform all internal driver accesses
  * to local config registers through the generic rio driver API.
  *
  * Accesses through the generic driver: __rio_local_write_config_32(),
@@ -75,7 +75,7 @@ static DEFINE_SPINLOCK(rio_io_lock);
  */
 
 /**
- * __acp_local_config_read - Generate a AXXIA local config space read
+ * __axxia_local_config_read - Generate a AXXIA local config space read
  * @priv: Master port private data
  * @offset: Offset into configuration space
  * @data: Value to be read into
@@ -83,7 +83,7 @@ static DEFINE_SPINLOCK(rio_io_lock);
  * Generates a AXXIA local configuration space read.
  * Returns %0 on success or %-EINVAL on failure.
  */
-static int __acp_local_config_read_actual(struct rio_priv *priv,
+static int __axxia_local_config_read_actual(struct rio_priv *priv,
 					  u32 offset,
 					  u32 *data,
 					  int suppress)
@@ -143,11 +143,11 @@ static int __acp_local_config_read_actual(struct rio_priv *priv,
 	return 0;
 }
 
-#define __acp_local_config_read(priv, offset, data)			\
-	__acp_local_config_read_actual(priv, offset, data, 1)
+#define __axxia_local_config_read(priv, offset, data)			\
+	__axxia_local_config_read_actual(priv, offset, data, 1)
 
 /**
- * acp_local_config_write - Generate a AXXIA local config space write
+ * axxia_local_config_write - Generate a AXXIA local config space write
  * @priv: Master port private data
  * @offset: Offset into configuration space
  * @len: Length (in bytes) of the maintenance transaction
@@ -156,7 +156,7 @@ static int __acp_local_config_read_actual(struct rio_priv *priv,
  * Generates a AXXIA local configuration space write.
  * Returns %0 on success or %-EINVAL on failure.
  */
-static int __acp_local_config_write_actual(struct rio_priv *priv,
+static int __axxia_local_config_write_actual(struct rio_priv *priv,
 					   u32 offset,
 					   u32 data,
 					   int suppress)
@@ -215,11 +215,11 @@ static int __acp_local_config_write_actual(struct rio_priv *priv,
 	return 0;
 }
 
-#define __acp_local_config_write(priv, offset, data)			\
-	__acp_local_config_write_actual(priv, offset, data, 1)
+#define __axxia_local_config_write(priv, offset, data)			\
+	__axxia_local_config_write_actual(priv, offset, data, 1)
 
 /**
- * acp_local_config_read - Generate a AXXIA local config space read
+ * axxia_local_config_read - Generate a AXXIA local config space read
  * @mport: RapidIO master port info
  * @index: ID of RapdiIO interface
  * @offset: Offset into configuration space
@@ -229,16 +229,16 @@ static int __acp_local_config_write_actual(struct rio_priv *priv,
  * Generates a AXXIA local configuration space read.
  * Returns %0 on success or %-EINVAL on failure.
  */
-static int acp_local_config_read(struct rio_mport *mport,
+static int axxia_local_config_read(struct rio_mport *mport,
 				 int index, u32 offset, int len, u32 *data)
 {
 	struct rio_priv *priv = mport->priv;
 
-	return __acp_local_config_read(priv, offset, data);
+	return __axxia_local_config_read(priv, offset, data);
 }
 
 /**
- * acp_local_config_write - Generate a AXXIA local config space write
+ * axxia_local_config_write - Generate a AXXIA local config space write
  * @mport: RapidIO master port info
  * @index: ID of RapdiIO interface
  * @offset: Offset into configuration space
@@ -248,16 +248,16 @@ static int acp_local_config_read(struct rio_mport *mport,
  * Generates a AXXIA local configuration space write.
  * Returns %0 on success or %-EINVAL on failure.
  */
-static int acp_local_config_write(struct rio_mport *mport,
+static int axxia_local_config_write(struct rio_mport *mport,
 				  int index, u32 offset, int len, u32 data)
 {
 	struct rio_priv *priv = mport->priv;
 
-	return __acp_local_config_write(priv, offset, data);
+	return __axxia_local_config_write(priv, offset, data);
 }
 
 /**
- * acp_rio_config_read - Generate a AXXIA read maintenance transaction
+ * axxia_rio_config_read - Generate a AXXIA read maintenance transaction
  * @mport: RapidIO master port info
  * @index: ID of RapdiIO interface
  * @destid: Destination ID of transaction
@@ -270,7 +270,7 @@ static int acp_local_config_write(struct rio_mport *mport,
  * Returns %0 on success or %-EINVAL on failure.
  */
 
-static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
+static int axxia_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 			       u8 hopcount, u32 offset, int len, u32 *val)
 {
 	struct rio_priv *priv = mport->priv;
@@ -288,7 +288,7 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 	if (offset > (0x1000000 - len) || !IS_ALIGNED(offset, len))
 		return -EINVAL;
 
-	__acp_local_config_read_actual(priv,
+	__axxia_local_config_read_actual(priv,
 				       RAB_APIO_AMAP_CTRL(priv->maint_win_id),
 				       &ctrl,
 				       0);
@@ -302,14 +302,14 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 
 	rbar &= ~HOP_COUNT(0xff);     /* Hop Count clear */
 	rbar |= HOP_COUNT(hopcount);  /* Hop Count set */
-	__acp_local_config_write_actual(priv,
+	__axxia_local_config_write_actual(priv,
 				 RAB_APIO_AMAP_RBAR(priv->maint_win_id),
 				 rbar,
 				 0);
 
 	ctrl &= ~TARGID(0xffff); /* Target id clear */
 	ctrl |= TARGID(destid);  /* Target id set */
-	__acp_local_config_write_actual(priv,
+	__axxia_local_config_write_actual(priv,
 				 RAB_APIO_AMAP_CTRL(priv->maint_win_id),
 				 ctrl,
 				 0);
@@ -335,7 +335,7 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 	AXXIA_RIO_IF_MACHINE_CHECK(mcsr);
 	if (mcsr) {
 		dev_dbg(priv->dev,
-			"acp_rio_config_read: Machine check exception when "
+			"axxia_rio_config_read: Machine check exception when "
 			"reading AXXIA SRIO register 0x%0x\n",
 			offset);
 		rval = 0;
@@ -349,7 +349,7 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 		rval = CORRECT_RAB(rval);
 
 	if (rc) {
-		dev_dbg(priv->dev, "acp_rio_config_read: Error when reading\n");
+		dev_dbg(priv->dev, "axxia_rio_config_read: Error when reading\n");
 		*val = 0;
 	} else
 		*val = rval;
@@ -360,7 +360,7 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 }
 
 /**
- * acp_rio_config_write - Generate a AXXIA write maintenance transaction
+ * axxia_rio_config_write - Generate a AXXIA write maintenance transaction
  * @mport: RapidIO master port info
  * @index: ID of RapdiIO interface
  * @destid: Destination ID of transaction
@@ -372,7 +372,7 @@ static int acp_rio_config_read(struct rio_mport *mport, int index, u16 destid,
  * Generates an AXXIA write maintenance transaction.
  * Returns %0 on success or %-EINVAL on failure.
  */
-static int acp_rio_config_write(struct rio_mport *mport, int index, u16 destid,
+static int axxia_rio_config_write(struct rio_mport *mport, int index, u16 destid,
 				u8 hopcount, u32 offset, int len, u32 val)
 {
 	struct rio_priv *priv = mport->priv;
@@ -393,7 +393,7 @@ static int acp_rio_config_write(struct rio_mport *mport, int index, u16 destid,
 		goto err;
 	}
 
-	__acp_local_config_read_actual(priv,
+	__axxia_local_config_read_actual(priv,
 				RAB_APIO_AMAP_CTRL(priv->maint_win_id),
 				&ctrl,
 				0);
@@ -409,14 +409,14 @@ static int acp_rio_config_write(struct rio_mport *mport, int index, u16 destid,
 
 	rbar &= ~HOP_COUNT(0xff);     /* Hop Count clear */
 	rbar |= HOP_COUNT(hopcount);  /* Hop Count set */
-	__acp_local_config_write_actual(priv,
+	__axxia_local_config_write_actual(priv,
 				 RAB_APIO_AMAP_RBAR(priv->maint_win_id),
 				 rbar,
 				 0);
 
 	ctrl &= ~TARGID(0xffff); /* Target id clear */
 	ctrl |= TARGID(destid);  /* Target id set */
-	__acp_local_config_write_actual(priv,
+	__axxia_local_config_write_actual(priv,
 				 RAB_APIO_AMAP_CTRL(priv->maint_win_id),
 				 ctrl,
 				 0);
@@ -447,7 +447,7 @@ err:
 	AXXIA_RIO_IF_MACHINE_CHECK(mcsr);
 	if (mcsr) {
 		dev_dbg(priv->dev,
-			"acp_rio_config_write: Machine check exception when "
+			"axxia_rio_config_write: Machine check exception when "
 			"writing AXXIA SRIO register 0x%0x\n",
 			offset);
 	}
@@ -475,10 +475,10 @@ static inline int __flags2rio_tr_type(u32 mflags, u32 *trans_type)
 }
 
 /**
- * acp_rio_map_outb_mem -- Mapping outbound memory.
+ * axxia_rio_map_outb_mem -- Mapping outbound memory.
  * @mport:  RapidIO master port
  * @win:    Outbound ATMU window for this access
- *          - obtained by calling acp_rio_req_outb_region.
+ *          - obtained by calling axxia_rio_req_outb_region.
  * @destid: Destination ID of transaction
  * @addr:   RapidIO space start address.
  * @res:    Mapping region phys and virt start address
@@ -486,7 +486,7 @@ static inline int __flags2rio_tr_type(u32 mflags, u32 *trans_type)
  * Return: 0 -- Success.
  *
  */
-static int acp_rio_map_outb_mem(struct rio_mport *mport, u32 win,
+static int axxia_rio_map_outb_mem(struct rio_mport *mport, u32 win,
 				u16 destid, u32 addr, u32 mflags,
 				struct rio_map_addr *res)
 {
@@ -539,7 +539,7 @@ static int acp_rio_map_outb_mem(struct rio_mport *mport, u32 win,
 }
 
 /**
- * acp_rio_req_outb_region -- Request outbound region in the
+ * axxia_rio_req_outb_region -- Request outbound region in the
  *                            RapidIO bus address space.
  * @mport:  RapidIO master port
  * @size:   The mapping region size.
@@ -552,7 +552,7 @@ static int acp_rio_map_outb_mem(struct rio_mport *mport, u32 win,
  * This function will reserve a memory region that may
  * be used to create mappings from local iomem to rio space.
  */
-static int acp_rio_req_outb_region(struct rio_mport *mport,
+static int axxia_rio_req_outb_region(struct rio_mport *mport,
 				   resource_size_t size,
 				   const char *name,
 				   u32 mflags, u32 *id)
@@ -662,13 +662,13 @@ out_err_resource:
 }
 
 /**
- * acp_rio_release_outb_region -- Unreserve outbound memory region.
+ * axxia_rio_release_outb_region -- Unreserve outbound memory region.
  * @mport: RapidIO master port
  * @win:   Allocated outbound ATMU window id
  *
  * Disables and frees the memory resource of an outbound memory region
  */
-static void acp_rio_release_outb_region(struct rio_mport *mport,
+static void axxia_rio_release_outb_region(struct rio_mport *mport,
 					u32 win)
 {
 	struct rio_priv *priv = mport->priv;
@@ -801,16 +801,32 @@ static void rio_init_port_data(struct rio_mport *mport)
 	mport->sys_size = (data & RIO_PEF_CTLS) >> 4;
 	dev_dbg(priv->dev, "RapidIO Common Transport System size: %d\n",
 		mport->sys_size ? 65536 : 256);
+
+	{
+		int i, devid;
+		static const u32 legacyids[] = {
+			0x5101000a, 0x5108000a,
+		};
+		__rio_local_read_config_32(mport, RIO_DEV_ID_CAR, &devid);
+		__rio_local_read_config_32(mport, RAB_CTRL, &data);
+		priv->internalDesc = (data & 0x00001000) ? 1 : 0;
+		for (i=0; i < 2; i++) {
+			if (devid == legacyids[i])
+				priv->internalDesc = 1;
+		}
+		/* printk("rio[%d]: RapidIO internal descriptors: %d (%x %x)\n",
+			__LINE__, priv->internalDesc, devid, data); */
+	}
 }
 
 /**
- * acp_rio_info - Log Port HW setup
+ * axxia_rio_info - Log Port HW setup
  *
  * @dev: RIO device
  * @ccsr: Port N Error and Command Status register
  *
  */
-static void acp_rio_info(struct device *dev, u32 ccsr)
+static void axxia_rio_info(struct device *dev, u32 ccsr)
 {
 	const char *str;
 	if (ccsr & 1) {
@@ -891,7 +907,7 @@ static int rio_start_port(struct rio_mport *mport)
 		__rio_local_write_config_32(mport, RIO_CCSR, ccsr);
 		msleep(100);
 		__rio_local_read_config_32(mport, RIO_ESCSR, &escsr);
-		acp_rio_info(priv->dev, ccsr);
+		axxia_rio_info(priv->dev, ccsr);
 		if (escsr & RIO_ESCSR_PU) {
 			dev_dbg(priv->dev, "Port restart failed.\n");
 			return -ENOLINK;
@@ -987,7 +1003,7 @@ int axxia_rio_static_win_init(struct rio_mport *mport)
 	__rio_local_write_config_32(mport, RAB_IB_DB_CSR, IB_DB_CSR_EN);
 
 	/* Configure maintenance transaction window */
-	if ((acp_rio_req_outb_region(mport, CONFIG_RIO_MAINT_WIN_SIZE,
+	if ((axxia_rio_req_outb_region(mport, CONFIG_RIO_MAINT_WIN_SIZE,
 				     "rio_maint_win", RIO_MAINT_WRITE,
 				     &priv->maint_win_id)) < 0)
 		goto err;
@@ -1024,7 +1040,7 @@ void axxia_rio_static_win_release(struct rio_mport *mport)
 	__rio_local_write_config_32(mport, RAB_IB_DB_CSR, ibdb);
 
 	/* Release maintenance transaction window */
-	acp_rio_release_outb_region(mport, priv->maint_win_id);
+	axxia_rio_release_outb_region(mport, priv->maint_win_id);
 }
 
 /* data_streaming */
@@ -1104,7 +1120,6 @@ static int rio_parse_dtb_ds(
  * @law_start: Local Access Window start address from DTB
  * @law_size: Local Access Window size from DTB
  * @regs: RapidIO registers from DTB
- * @entries: RapidIO num entries mapping from DTB
  * @obNumDmes: Number of outbound DMEs available
  * @outbDmes: RapidIO outbound DMEs array available;
  *                [0] for MSeg, [1] for SSeg
@@ -1121,7 +1136,6 @@ static int rio_parse_dtb(
 	u64 *law_start,
 	u64 *law_size,
 	struct resource *regs,
-	int *entries,
 	int *obNumDmes,
 	int *outbDmes,
 	int *ibNumDmes,
@@ -1132,7 +1146,6 @@ static int rio_parse_dtb(
 	const u32 *dt_range, *cell;
 	int rlen, rc;
 	int paw, aw, sw;
-	int pval;
 
 	if (!dev->dev.of_node) {
 		dev_err(&dev->dev, "Device OF-Node is NULL");
@@ -1184,14 +1197,6 @@ static int rio_parse_dtb(
 
 	dev_dbg(&dev->dev, "LAW start 0x%016llx, size 0x%016llx.\n",
 		*law_start, *law_size);
-
-	*entries = 0;
-	if (!of_property_read_u32(dev->dev.of_node,
-				"num-ram-descriptors",
-				&pval)) {
-		*entries = pval;
-		dev_dbg(&dev->dev, "num-ram-descriptors: %d\n", *entries);
-	}
 
 	outbDmes[0] = outbDmes[1] = 0;
 	cell = of_get_property(dev->dev.of_node, "outb-dmes", &rlen);
@@ -1270,10 +1275,10 @@ static struct rio_ops *rio_ops_setup(void)
 	if (!ops)
 		return ERR_PTR(-ENOMEM);
 
-	ops->lcread = acp_local_config_read;
-	ops->lcwrite = acp_local_config_write;
-	ops->cread = acp_rio_config_read;
-	ops->cwrite = acp_rio_config_write;
+	ops->lcread = axxia_local_config_read;
+	ops->lcwrite = axxia_local_config_write;
+	ops->cread = axxia_rio_config_read;
+	ops->cwrite = axxia_rio_config_write;
 	ops->dsend = axxia_rio_doorbell_send;
 	ops->pwenable = axxia_rio_pw_enable;
 	ops->open_outb_mbox = axxia_open_outb_mbox;
@@ -1309,10 +1314,10 @@ static struct rio_ops *rio_ops_setup(void)
  * struct rio_mport *ptr   to initialized mport data at Success
  */
 static int rio_port_index;
-static struct rio_mem_ops acp_mem_ops = {
-	.req_outb = acp_rio_req_outb_region,
-	.map_outb = acp_rio_map_outb_mem,
-	.release_outb = acp_rio_release_outb_region,
+static struct rio_mem_ops axxia_mem_ops = {
+	.req_outb = axxia_rio_req_outb_region,
+	.map_outb = axxia_rio_map_outb_mem,
+	.release_outb = axxia_rio_release_outb_region,
 };
 
 static struct rio_mport *rio_mport_dtb_setup(struct platform_device *dev,
@@ -1349,7 +1354,7 @@ static struct rio_mport *rio_mport_dtb_setup(struct platform_device *dev,
 	sprintf(mport->name, "RIO%d mport", mport->index);
 
 	mport->ops = ops;
-	mport->mops = &acp_mem_ops;
+	mport->mops = &axxia_mem_ops;
 	mport->phys_efptr = 0x100; /* define maybe */
 
 	return mport;
@@ -1362,7 +1367,6 @@ static struct rio_mport *rio_mport_dtb_setup(struct platform_device *dev,
  * @dev: RIO platform device
  * @regs: RapidIO registers from DTB
  * @mport: master port
- * @entries: override num descriptor entries
  * @numObNumDmes: override num outbound DMEs available
  * @outbDmes: RapidIO outbound DMEs array available; [0] for MSeg, [1] for SSeg
  * @numIbNumDmes: override num inbound DMEs available
@@ -1380,7 +1384,6 @@ static struct rio_priv *rio_priv_dtb_setup(
 	struct platform_device *dev,
 	struct resource *regs,
 	struct rio_mport *mport,
-	int entries,
 	int *numOutbDmes,
 	int *outbDmes,
 	int *numInbDmes,
@@ -1398,28 +1401,16 @@ static struct rio_priv *rio_priv_dtb_setup(
 	mport->priv = priv;
 
 	/* Max descriptors */
-	if (entries) {
-		priv->desc_max_entries = entries;
-		priv->descriptors = kzalloc(sizeof(struct rio_desc) * entries,
-						GFP_KERNEL);
-		if (!priv->descriptors) {
-			rc = -ENOMEM;
-			goto err_desc;
-		}
-	} else {
-		priv->desc_max_entries = RIO_MSG_MAX_ENTRIES;
-		priv->descriptors = NULL;
-	}
+	priv->desc_max_entries = RIO_MSG_MAX_ENTRIES;
 
-	/* Support for alloc_message_engine() */
-	{
+	if (priv->internalDesc) {
+		/* Support for alloc_message_engine() */
 		struct resource *dres = &priv->acpres[ACP_HW_DESC_RESOURCE];
 
 		memset(dres, 0, sizeof(struct resource));
 			/* 'virtual' mapping of descriptors */
-		dres->start = mport->iores.start -
-				priv->desc_max_entries - 1024;
-		dres->end = dres->start + priv->desc_max_entries - 1;
+		dres->start = 0;
+		dres->end = priv->desc_max_entries - 1;
 		dres->flags = ACP_RESOURCE_HW_DESC;
 		dres->name = "rio_desc_win";
 		dres->parent = NULL;
@@ -1482,13 +1473,21 @@ static struct rio_priv *rio_priv_dtb_setup(
 		rc = -ENOMEM;
 		goto err_paged;
 	}
+
+        if (dma_set_coherent_mask(&dev->dev, DMA_BIT_MASK(64)) != 0 &&
+	    dma_set_coherent_mask(&dev->dev, DMA_BIT_MASK(32)) != 0) {
+		dev_err(&dev->dev, "No memory for Message Blocks\n");
+		rc = -ENOMEM;
+		goto err_dma;
+	}
+
 	return priv;
 
+err_dma:
+	iounmap(priv->regs_win_paged);
 err_paged:
 	iounmap(priv->regs_win_fixed);
 err_fixed:
-	kfree(priv->descriptors);
-err_desc:
 	kfree(priv);
 	return ERR_PTR(rc);
 }
@@ -1581,7 +1580,6 @@ static int axxia_rio_setup(struct platform_device *dev)
 	int rc = -EFAULT;
 	struct resource regs;
 	u64 law_start, law_size;
-	int entries;
 	int irq = 0;
 	int numObDmes[2], outbDmes[2];
 	int numIbDmes[2], inbDmes[2];
@@ -1592,7 +1590,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 		return -EFAULT;
 
 	/* Get address boundaries from DTB */
-	if (rio_parse_dtb(dev, &law_start, &law_size, &regs, &entries,
+	if (rio_parse_dtb(dev, &law_start, &law_size, &regs,
 			  &numObDmes[0], &outbDmes[0],
 			  &numIbDmes[0], &inbDmes[0],
 			  &irq, &ds_dtb_info))
@@ -1609,7 +1607,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 		rc = PTR_ERR(mport);
 		goto err_port;
 	}
-	priv = rio_priv_dtb_setup(dev, &regs, mport, entries,
+	priv = rio_priv_dtb_setup(dev, &regs, mport,
 				  &numObDmes[0], &outbDmes[0],
 				  &numIbDmes[0], &inbDmes[0],
 				  irq, &ds_dtb_info);
@@ -1656,6 +1654,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 
 	axxia_rio_set_mport_disc_mode(mport);
 
+	printk("rio[%d]: mp %p priv %p\n", __LINE__, mport, priv);
 	return 0;
 
 err_mport:
@@ -1668,7 +1667,6 @@ err_irq:
 err_maint:
 	iounmap(priv->regs_win_fixed);
 	iounmap(priv->regs_win_paged);
-	kfree(priv->descriptors);
 	kfree(priv);
 err_priv:
 	kfree(mport);

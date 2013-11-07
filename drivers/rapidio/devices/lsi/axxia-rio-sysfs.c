@@ -152,7 +152,7 @@ static const char *ob_dme_str[] = {
 	"RIO_OB_DME_NUM"
 };
 
-static ssize_t acp_rio_stat_show(struct device *dev,
+static ssize_t axxia_rio_stat_show(struct device *dev,
 				 struct device_attribute *attr,
 				 char *buf)
 {
@@ -181,9 +181,9 @@ static ssize_t acp_rio_stat_show(struct device *dev,
 	}
 	return str - buf;
 }
-static DEVICE_ATTR(stat, S_IRUGO, acp_rio_stat_show, NULL);
+static DEVICE_ATTR(stat, S_IRUGO, axxia_rio_stat_show, NULL);
 
-static ssize_t acp_rio_ib_dme_show(struct device *dev,
+static ssize_t axxia_rio_ib_dme_show(struct device *dev,
 				   struct device_attribute *attr,
 				   char *buf)
 {
@@ -205,7 +205,7 @@ static ssize_t acp_rio_ib_dme_show(struct device *dev,
 	return str - buf;
 }
 
-static ssize_t acp_rio_ib_dme_store(struct device *dev,
+static ssize_t axxia_rio_ib_dme_store(struct device *dev,
 				    struct device_attribute *attr,
 				    const char *buf,
 				    size_t count)
@@ -221,9 +221,9 @@ static ssize_t acp_rio_ib_dme_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR(ib_dme_event, S_IRUGO|S_IWUGO,
-		   acp_rio_ib_dme_show, acp_rio_ib_dme_store);
+		   axxia_rio_ib_dme_show, axxia_rio_ib_dme_store);
 
-static ssize_t acp_rio_ob_dme_show(struct device *dev,
+static ssize_t axxia_rio_ob_dme_show(struct device *dev,
 				   struct device_attribute *attr,
 				   char *buf)
 {
@@ -245,7 +245,7 @@ static ssize_t acp_rio_ob_dme_show(struct device *dev,
 	return str - buf;
 }
 
-static ssize_t acp_rio_ob_dme_store(struct device *dev,
+static ssize_t axxia_rio_ob_dme_store(struct device *dev,
 				    struct device_attribute *attr,
 				    const char *buf,
 				    size_t count)
@@ -261,11 +261,11 @@ static ssize_t acp_rio_ob_dme_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR(ob_dme_event, S_IWUGO|S_IRUGO,
-		   acp_rio_ob_dme_show, acp_rio_ob_dme_store);
+		   axxia_rio_ob_dme_show, axxia_rio_ob_dme_store);
 
 #ifdef CONFIG_SRIO_IRQ_TIME
 
-static ssize_t acp_rio_ib_dme_time_show(struct device *dev,
+static ssize_t axxia_rio_ib_dme_time_show(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
@@ -317,7 +317,7 @@ static ssize_t acp_rio_ib_dme_time_show(struct device *dev,
 	return str - buf;
 }
 
-static ssize_t acp_rio_ib_dme_time_store(struct device *dev,
+static ssize_t axxia_rio_ib_dme_time_store(struct device *dev,
 					 struct device_attribute *attr,
 					 const char *buf,
 					 size_t count)
@@ -364,10 +364,10 @@ static ssize_t acp_rio_ib_dme_time_store(struct device *dev,
 }
 
 static DEVICE_ATTR(ib_dme_time, S_IWUGO|S_IRUGO,
-		   acp_rio_ib_dme_time_show, acp_rio_ib_dme_time_store);
+		   axxia_rio_ib_dme_time_show, axxia_rio_ib_dme_time_store);
 #endif
 
-static ssize_t acp_rio_irq_show(struct device *dev,
+static ssize_t axxia_rio_irq_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
@@ -397,9 +397,9 @@ static ssize_t acp_rio_irq_show(struct device *dev,
 
 	return str - buf;
 }
-static DEVICE_ATTR(irq, S_IRUGO, acp_rio_irq_show, NULL);
+static DEVICE_ATTR(irq, S_IRUGO, axxia_rio_irq_show, NULL);
 
-static ssize_t acp_rio_tmo_show(struct device *dev,
+static ssize_t axxia_rio_tmo_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
@@ -426,9 +426,9 @@ static ssize_t acp_rio_tmo_show(struct device *dev,
 
 	return str - buf;
 }
-static DEVICE_ATTR(tmo, S_IRUGO, acp_rio_tmo_show, NULL);
+static DEVICE_ATTR(tmo, S_IRUGO, axxia_rio_tmo_show, NULL);
 
-static ssize_t acp_ib_dme_log_show(struct device *dev,
+static ssize_t axxia_ib_dme_log_show(struct device *dev,
 				   struct device_attribute *attr,
 				   char *buf)
 {
@@ -444,7 +444,7 @@ static ssize_t acp_ib_dme_log_show(struct device *dev,
 
 	return str - buf;
 }
-static DEVICE_ATTR(dme_log, S_IRUGO, acp_ib_dme_log_show, NULL);
+static DEVICE_ATTR(dme_log, S_IRUGO, axxia_ib_dme_log_show, NULL);
 
 static ssize_t apio_enable(struct device *dev,
 			   struct device_attribute *attr,
@@ -605,26 +605,52 @@ static ssize_t ib_dme_show(struct device *dev,
 					"DME_SLEEP" : "OK"));
 		}
 	}
-	for (i = 0; i < priv->desc_max_entries; i++) {
-		int desc_no = i;
-		u32 data;
-
-		if (priv->descriptors) {
-			data = *((u32 *)DESC_TABLE_W0_MEM(priv, desc_no));
-		} else {
-			__rio_local_read_config_32(mport,
-						   DESC_TABLE_W0(desc_no),
-						   &data);
+	if (!priv->internalDesc) {
+		int j, k;
+		int ne = 0;
+		struct rio_irq_handler *ob = NULL;
+		struct rio_msg_dme *mb = NULL;
+		for (j = 0; j < DME_MAX_IB_ENGINES; j++) {
+			ob = &priv->ob_dme_irq[j];
+			if (ob == NULL)
+				continue;
+			mb = ob->data;
+			if (mb == NULL)
+				continue;
+			ne += mb->entries;
+			for (k = 0; k < mb->entries; k++) {
+				int desc_no = i;
+				u32 data;
+				data = *((u32 *)DESC_TABLE_W0_MEM(mb, desc_no));
+				if (data & DME_DESC_DW0_READY_MASK)
+					ready++;
+				if (data  & DME_DESC_DW0_VALID)
+					valid++;
+				else
+					not_valid++;
+			}
 		}
-		if (data & DME_DESC_DW0_READY_MASK)
-			ready++;
-		if (data  & DME_DESC_DW0_VALID)
-			valid++;
-		else
-			not_valid++;
+		str += sprintf(str, "External Message Descriptor Memory (%d)\n",
+				ne);
+	} else {
+		for (i = 0; i < priv->desc_max_entries; i++) {
+			int desc_no = i;
+			u32 data;
+			__rio_local_read_config_32(mport,
+					   	DESC_TABLE_W0(desc_no),
+					   	&data);
+			if (data & DME_DESC_DW0_READY_MASK)
+				ready++;
+			if (data  & DME_DESC_DW0_VALID)
+				valid++;
+			else
+				not_valid++;
+		}
+		str += sprintf(str, "Internal Message Descriptor Memory (%d)\n",
+				priv->desc_max_entries);
 	}
 	str += sprintf(str, "desc ready %d desc valid %d desc not valid %d\n",
-		       ready, valid, not_valid);
+			ready, valid, not_valid);
 	return str - buf;
 }
 static DEVICE_ATTR(ib_mbox_stat, S_IRUGO, ib_dme_show, NULL);
@@ -771,7 +797,7 @@ err:
 }
 static DEVICE_ATTR(open_ib_mbox, S_IWUGO, NULL, open_ib_dme);
 
-struct acp_mbox_work {
+struct axxia_mbox_work {
 	struct rio_mport *mport;
 	int out;
 	int mbox;
@@ -780,8 +806,8 @@ struct acp_mbox_work {
 
 static void mbox_work(struct work_struct *work)
 {
-	struct acp_mbox_work *mb_work = container_of(work,
-						     struct acp_mbox_work,
+	struct axxia_mbox_work *mb_work = container_of(work,
+						     struct axxia_mbox_work,
 						     work);
 	struct rio_mport *mport = mb_work->mport;
 	int rc = 0;
@@ -808,7 +834,7 @@ static ssize_t close_ob_dme(struct device *dev,
 	int rc = sscanf(buf, "%d", &dme);
 
 	if (rc == 1) {
-		struct acp_mbox_work *mb_work = kzalloc(sizeof(*mb_work),
+		struct axxia_mbox_work *mb_work = kzalloc(sizeof(*mb_work),
 							GFP_KERNEL);
 
 		if (!mb_work)
@@ -834,7 +860,7 @@ static ssize_t close_ib_dme(struct device *dev,
 	int rc = sscanf(buf, "%d", &mbox);
 
 	if (rc == 1) {
-		struct acp_mbox_work *mb_work = kzalloc(sizeof(*mb_work),
+		struct axxia_mbox_work *mb_work = kzalloc(sizeof(*mb_work),
 							GFP_KERNEL);
 
 		if (!mb_work)

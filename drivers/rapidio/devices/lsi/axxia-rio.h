@@ -338,16 +338,17 @@
 /* DME Message Descriptor Table */
 #define DESC_TABLE_W0_NDX(d)         (0x10 * (d))
 #define DESC_TABLE_W0_RAB_BASE(d)    (RAB_REG_BASE+0x10000+DESC_TABLE_W0_NDX(d))
-#define DESC_TABLE_W0(d)        (DESC_TABLE_W0_RAB_BASE(d) + 0x0)
-#define DESC_TABLE_W1(d)        (DESC_TABLE_W0_RAB_BASE(d) + 0x4)
-#define DESC_TABLE_W2(d)        (DESC_TABLE_W0_RAB_BASE(d) + 0x8)
-#define DESC_TABLE_W3(d)        (DESC_TABLE_W0_RAB_BASE(d) + 0xC)
+#define DESC_TABLE_W0(d)                (DESC_TABLE_W0_RAB_BASE(d) + 0x0)
+#define DESC_TABLE_W1(d)                (DESC_TABLE_W0_RAB_BASE(d) + 0x4)
+#define DESC_TABLE_W2(d)                (DESC_TABLE_W0_RAB_BASE(d) + 0x8)
+#define DESC_TABLE_W3(d)                (DESC_TABLE_W0_RAB_BASE(d) + 0xC)
 
-#define DESC_TABLE_W0_MEM_BASE(p, d) ((p)->descriptors + DESC_TABLE_W0_NDX(d))
-#define DESC_TABLE_W0_MEM(p, d) (DESC_TABLE_W0_MEM_BASE(p, d) + 0x0)
-#define DESC_TABLE_W1_MEM(p, d) (DESC_TABLE_W0_MEM_BASE(p, d) + 0x4)
-#define DESC_TABLE_W2_MEM(p, d) (DESC_TABLE_W0_MEM_BASE(p, d) + 0x8)
-#define DESC_TABLE_W3_MEM(p, d) (DESC_TABLE_W0_MEM_BASE(p, d) + 0xC)
+#define DESC_TABLE_W0_MEM_BASE(me, d)		\
+	(((u8 *)(me)->descriptors) + DESC_TABLE_W0_NDX(d))
+#define DESC_TABLE_W0_MEM(me, d)        (DESC_TABLE_W0_MEM_BASE(me, d) + 0x0)
+#define DESC_TABLE_W1_MEM(me, d)        (DESC_TABLE_W0_MEM_BASE(me, d) + 0x4)
+#define DESC_TABLE_W2_MEM(me, d)        (DESC_TABLE_W0_MEM_BASE(me, d) + 0x8)
+#define DESC_TABLE_W3_MEM(me, d)        (DESC_TABLE_W0_MEM_BASE(me, d) + 0xC)
 
 #define DME_DESC_DW0_SRC_DST_ID(id)     ((id) << 16)
 #define DME_DESC_DW0_RIO_ERR            (1 << 11)
@@ -373,11 +374,13 @@
 #define DME_DESC_DW1_PRIO(flags)        ((flags & 0x3) << 30)
 #define DME_DESC_DW1_CRF(flags)         ((flags & 0x4) << 27)
 #define DME_DESC_DW1_SEG_SIZE_256       (0x6 << 18)
-#define DME_DESC_DW1_XMBOX(m)           ((m & 0x3c) << 2)
+#define DME_DESC_DW1_XMBOX(m)           ((m & 0x30) << 2)
 #define DME_DESC_DW1_MBOX(m)            ((m & 0x3) << 2)
 #define DME_DESC_DW1_SIZE(s)            ((((s + 7) & ~7) >> 3) << 8) /* Round
 					 up and shift to make double word */
-#define DME_DESC_DW1_LETTER(l)          (l)
+#define DME_DESC_DW1_SIZE_F(d)          (((d) >> 8) & 0x3ff)
+#define DME_DESC_DW1_SIZE_SENT(sf)      ((sf) << 3) /* double words to bytes */
+#define DME_DESC_DW1_LETTER(l)          ((l) & 0x3)
 
 /***********************************/
 /* *********** RIO REG *********** */
@@ -481,8 +484,8 @@ struct rio_priv {
 	struct atmu_outb outb_atmu[RIO_OUTB_ATMU_WINDOWS];
 	struct resource acpres[ACP_MAX_RESOURCES];
 
+	int internalDesc;
 	int desc_max_entries;
-	struct rio_desc *descriptors;
 
 	int numOutbDmes[2];	/* [0]=MSeg, [1]=Sseg */
         int outbDmesInUse[2];
@@ -513,8 +516,8 @@ struct rio_priv {
 	/* Fatal err */
 	void (*port_notify_cb)(struct rio_mport *mport);
 
-    /* data_streaming */
-    struct rio_ds_priv     ds_priv_data;
+	/* data_streaming */
+	struct rio_ds_priv     ds_priv_data;
 };
 
 

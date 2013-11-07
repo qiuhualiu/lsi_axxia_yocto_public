@@ -155,14 +155,16 @@ enum rio_ob_dme_dbg {
 
 
 #define RIO_MSG_MAX_OB_MBOX_MULTI_ENTRIES  15
-#define RIO_MSG_MAX_MSG_SIZE               0x1000 /* 4kB */
+#define RIO_MSG_MULTI_SIZE                 0x1000 /* 4Kb */
 #define RIO_MSG_SEG_SIZE                   0x0100 /* 256B */
+#define RIO_MSG_MAX_MSG_SIZE               RIO_MSG_MULTI_SIZE
 #define RIO_MSG_MAX_ENTRIES                1024   /* Default Max descriptor
-						     table entries */
+						     table entries for internal
+						     descriptor builds */
 #define	RIO_MBOX_TO_BUF_SIZE(mid)		\
-	((mid <= RIO_MAX_RX_MBOX_4KB) ? RIO_MSG_MAX_MSG_SIZE : RIO_MSG_SEG_SIZE)
+	((mid <= RIO_MAX_RX_MBOX_4KB) ? RIO_MSG_MULTI_SIZE : RIO_MSG_SEG_SIZE)
 #define	RIO_OUTB_DME_TO_BUF_SIZE(p,did)		\
-	((did < p->numOutbDmes[0]) ? RIO_MSG_MAX_MSG_SIZE : RIO_MSG_SEG_SIZE)
+	((did < p->numOutbDmes[0]) ? RIO_MSG_MULTI_SIZE : RIO_MSG_SEG_SIZE)
 
 #define DME_MAX_IB_ENGINES          32
 #define     RIO_MAX_IB_DME_MSEG		32
@@ -222,6 +224,7 @@ struct rio_msg_dme {
 	void *dev_id;
 	int dme_no;
 	struct rio_msg_desc *desc;
+	struct rio_desc *descriptors;
 	struct rio_msg_tx_ack *tx_ack;
 #ifdef CONFIG_SRIO_IRQ_TIME
 	u64 start_irq_tb;

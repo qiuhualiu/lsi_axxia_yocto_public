@@ -195,12 +195,28 @@ dme <%d> state <%8.8x> <%s> <%s>
         #       oneof{ "DME_ERROR", "OK" },
         #       oneof{ "DME_SLEEP", "OK" },
 
-2.12.1.3 Read a line from this file summarizing all DME descriptor
+2.12.1.3 Read a couple of lines from this file summarizing all DME descriptor
          entries (inbound & outbound) where each line has the form,
+
+2.12.1.3.1 ACP class devices with internal message descriptor memory
+
+External Message Descriptor Memory (<%d>)
+        # where <%d> is a count of descriptors allocated to the open DMEs
 
 desc ready <%d> desc valid <%d> desc not valid <%d>
 
-        # where <%d> is a count of descriptors
+        # where each <%d> is a count of descriptors for the corresponding
+	# status
+
+2.12.1.3.2 AXXIA class devices with external message descriptor memory
+
+Internal Message Descriptor Memory (<%d>)
+        # where <%d> is a count of descriptors available
+
+desc ready <%d> desc valid <%d> desc not valid <%d>
+
+        # where each <%d> is a count of descriptors for the corresponding
+	# status
 
 2.12.2 Write: N/a
 
