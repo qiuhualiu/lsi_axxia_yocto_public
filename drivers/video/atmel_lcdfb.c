@@ -206,75 +206,15 @@ static unsigned long compute_hozval(unsigned long xres, unsigned long lcdcon2)
 
 static int atmel_lcdfb_setup_core(struct fb_info *info)
 {
+	struct fb_info *info = dev_id;
 	struct atmel_lcdfb_info *sinfo = info->par;
-	unsigned long hozval_linesz;
-	unsigned long value;
-	unsigned long clk_value_khz;
-	unsigned long pix_factor = 2;
+	u32 status;
 
-	/* ...set frame size and burst length = 8 words (?) */
-	value = (info->var.yres * info->var.xres * info->var.bits_per_pixel) / 32;
-	value |= ((ATMEL_LCDC_DMA_BURST_LEN - 1) << ATMEL_LCDC_BLENGTH_OFFSET);
-	lcdc_writel(sinfo, ATMEL_LCDC_DMAFRMCFG, value);
-
-	/* Set pixel clock */
-	if (cpu_is_at91sam9g45() && !cpu_is_at91sam9g45es())
-		pix_factor = 1;
-
-	clk_value_khz = clk_get_rate(sinfo->lcdc_clk) / 1000;
-
-	value = DIV_ROUND_UP(clk_value_khz, PICOS2KHZ(info->var.pixclock));
-
-	if (value < pix_factor) {
-		dev_notice(info->device, "Bypassing pixel clock divider\n");
-		lcdc_writel(sinfo, ATMEL_LCDC_LCDCON1, ATMEL_LCDC_BYPASS);
-	} else {
-		value = (value / pix_factor) - 1;
-		dev_dbg(info->device, "  * programming CLKVAL = 0x%08lx\n",
-				value);
-		lcdc_writel(sinfo, ATMEL_LCDC_LCDCON1,
-				value << ATMEL_LCDC_CLKVAL_OFFSET);
-		info->var.pixclock =
-			KHZ2PICOS(clk_value_khz / (pix_factor * (value + 1)));
-		dev_dbg(info->device, "  updated pixclk:     %lu KHz\n",
-					PICOS2KHZ(info->var.pixclock));
-	}
-
-
-	/* Initialize control register 2 */
-	value = sinfo->default_lcdcon2;
-
-	if (!(info->var.sync & FB_SYNC_HOR_HIGH_ACT))
-		value |= ATMEL_LCDC_INVLINE_INVERTED;
-	if (!(info->var.sync & FB_SYNC_VERT_HIGH_ACT))
-		value |= ATMEL_LCDC_INVFRAME_INVERTED;
-
-	switch (info->var.bits_per_pixel) {
-	case 1:
-		value |= ATMEL_LCDC_PIXELSIZE_1;
-		break;
-	case 2:
-		value |= ATMEL_LCDC_PIXELSIZE_2;
-		break;
-	case 4:
-		value |= ATMEL_LCDC_PIXELSIZE_4;
-		break;
-	case 8:
-		value |= ATMEL_LCDC_PIXELSIZE_8;
-		break;
-	case 15: /* fall through */
-	case 16:
-		value |= ATMEL_LCDC_PIXELSIZE_16;
-		break;
-	case 24:
-		value |= ATMEL_LCDC_PIXELSIZE_24;
-		break;
-	case 32:
-		value |= ATMEL_LCDC_PIXELSIZE_32;
-		break;
-	default:
-		BUG();
-		break;
+	status = lcdc_readl(sinfo, ATMEL_LCDC_ISR);
+	if (status & ATMEL_LCDC_UFLWI) {
+		dev_warn(info->device, "FIFO underflow %#x\n", status);
+		/* reset DMA and FIFO to avoid screen shifting */
+		schedule_work(&sinfo->task);
 	}
 	dev_dbg(info->device, "  * LCDCON2 = %08lx\n", value);
 	lcdc_writel(sinfo, ATMEL_LCDC_LCDCON2, value);

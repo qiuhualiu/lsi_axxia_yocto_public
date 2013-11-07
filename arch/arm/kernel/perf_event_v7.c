@@ -1112,7 +1112,9 @@ static irqreturn_t armv7pmu_handle_irq(int irq_num, void *dev)
 	 * platforms that can have the PMU interrupts raised as an NMI, this
 	 * will not work.
 	 */
+#ifndef CONFIG_PREEMPT_RT_FULL
 	irq_work_run();
+#endif
 
 	return IRQ_HANDLED;
 }
