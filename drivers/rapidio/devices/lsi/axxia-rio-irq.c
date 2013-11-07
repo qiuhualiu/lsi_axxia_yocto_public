@@ -2352,7 +2352,6 @@ void *axxia_get_inb_message(struct rio_mport *mport, int mbox, int letter,
 	if (!me)
 		return ERR_PTR(-EINVAL);
 
-#if 0
 	if (!in_interrupt() &&
 	    !test_bit(RIO_IRQ_ACTIVE, &priv->ib_dme_irq[mbox].state)) {
 		u32	intr;
@@ -2362,7 +2361,6 @@ void *axxia_get_inb_message(struct rio_mport *mport, int mbox, int letter,
 		ib_dme_irq_handler(&priv->ib_dme_irq[mbox], (1 << me->dme_no));
 		__rio_local_write_config_32(mport, RAB_INTR_ENAB_IDME, intr);
 	}
-#endif
 
 	while (me->pending) {
 		struct rio_msg_desc *desc = &me->desc[me->read_idx];
