@@ -814,8 +814,8 @@ static void rio_init_port_data(struct rio_mport *mport)
 			if (devid == legacyids[i])
 				priv->internalDesc = 1;
 		}
-		/* printk("rio[%d]: RapidIO internal descriptors: %d (%x %x)\n",
-			__LINE__, priv->internalDesc, devid, data); */
+		IODP("rio[%d]: RapidIO internal descriptors: %d (%x %x)\n",
+			__LINE__, priv->internalDesc, devid, data);
 	}
 }
 

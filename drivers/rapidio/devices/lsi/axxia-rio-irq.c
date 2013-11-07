@@ -429,7 +429,6 @@ int alloc_irq_handler(struct rio_irq_handler *h,
 		return rc;
 	}
 	__rio_local_read_config_32(mport, h->irq_enab_reg_addr, &mask);
-	printk("ARI[%d] enab dme[%08x] %08x | %08x -> %08x\n", __LINE__, h->irq_enab_reg_addr, mask, h->irq_state_mask, mask | h->irq_state_mask);
 	mask |= h->irq_state_mask;
 	__rio_local_write_config_32(mport, h->irq_enab_reg_addr, mask);
 
@@ -882,12 +881,7 @@ static void release_dme(struct kref *kref)
 	if (me->desc) {
 		for (i = 0, desc = me->desc; i < me->entries; i++, desc++) {
 			if (desc->msg_virt)
-#if 0	/* HACK000 */
-				dma_free_coherent(priv->dev, me->sz,
-						desc->msg_virt, desc->msg_phys);
-#else
 				kfree(desc->msg_virt);
-#endif
 		}
 		kfree(me->desc);
 	}
@@ -1030,7 +1024,6 @@ static struct rio_msg_dme *alloc_message_engine(struct rio_mport *mport,
 	me->descriptors = kzalloc(sizeof(struct rio_desc) * entries, GFP_KERNEL);
 	if (!me->descriptors)
 		goto err;
-	printk("ARI[%d] alloc desc[%d for %d] %p %08llx\n", __LINE__, dme_no, entries, me->descriptors, virt_to_phys(me->descriptors));
 	if (ack_buf) {
 		me->tx_ack = kzalloc(sizeof(struct rio_msg_tx_ack) * entries,
 				     GFP_KERNEL);
@@ -1047,20 +1040,10 @@ static struct rio_msg_dme *alloc_message_engine(struct rio_mport *mport,
 	me->dme_no = dme_no;
 
 	for (i = 0, desc = me->desc; i < entries; i++, desc++) {
-#if 0	/* HACK000 */
-		desc->msg_virt = dma_alloc_coherent(priv->dev, buf_sz,
-						&desc->msg_phys, GFP_KERNEL);
-#else
 		desc->msg_virt = kzalloc(buf_sz, GFP_KERNEL);
-		
-#endif
 		if (!desc->msg_virt)
 			goto err;
-#if 0	/* HACK000 */
-#else
 		desc->msg_phys = virt_to_phys(desc->msg_virt);
-#endif
-		printk("ARI[%d] alloc buf[%d, %d] %p %08llx\n", __LINE__, dme_no, i, desc->msg_virt, desc->msg_phys);
 		clear_bit(RIO_DESC_USED, &desc->state);
 		desc->desc_no = dres->start + i;
 	}
@@ -1144,7 +1127,6 @@ static void ob_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 	 */
 	__rio_local_read_config_32(mport, RAB_OB_DME_STAT(dme_no), &dme_stat);
 	__rio_local_write_config_32(mport, RAB_OB_DME_STAT(dme_no), dme_stat);
-	printk("ARI[%d] ob[%d] dmestat[%08x] %08x\n", __LINE__, dme_no, RAB_OB_DME_STAT(dme_no), dme_stat);
 	__ob_dme_dbg(priv, dme_stat);
 
 	/**
@@ -1198,7 +1180,6 @@ static void ob_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 
 		__rio_local_read_config_32(mport, RAB_OB_DME_CTRL(dme_no),
 					   &dme_ctrl);
-		printk("ARI[%d] ods[%d:%08x] %08x\n", __LINE__, dme_no, RAB_OB_DME_STAT(dme_no), dme_ctrl);
 		if (mbox->tx_dme_tmo > 100) {
 			/**
 			 * Must be in serious trouble now, don't burn more
@@ -1217,7 +1198,6 @@ static void ob_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 		}
 		__rio_local_write_config_32(mport, RAB_OB_DME_CTRL(dme_no),
 					    dme_ctrl);
-		printk("ARI[%d] ods[%d:%08x] %08x\n", __LINE__, dme_no, RAB_OB_DME_STAT(dme_no), dme_ctrl);
 		__ob_dme_event_dbg(priv, dme_no, debug);
 		spin_unlock_irqrestore(&mbox->lock, flags);
 		return;
@@ -1252,14 +1232,8 @@ static void ob_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 					dw0 & DME_DESC_DW0_NXT_DESC_VALID);
 			}
 			__ob_dme_dw_dbg(priv, dw0);
-			if (dw0 & DME_DESC_DW0_DONE) {
+			if (dw0 & DME_DESC_DW0_DONE)
 				mbox->entries_in_use--;
-				printk("ARI[%d] ob_dme_irq[%d, %d] desc.w0 %08x done\n", __LINE__, dme_no, desc->desc_no, dw0);
-			}
-/* HACK */		else
-			{
-				printk("ARI[%d] ob_dme_irq[%d, %d] desc.w0 %08x seen\n", __LINE__, dme_no, desc->desc_no, dw0);
-			}
 		}
 	}
 	spin_unlock_irqrestore(&mbox->lock, flags);
@@ -1354,7 +1328,6 @@ static int open_outb_mbox(struct rio_mport *mport, void *dev_id, int dme_no,
 			*((u32 *)DESC_TABLE_W1_MEM(me, desc->desc_no)) = dw1;
 			*((u32 *)DESC_TABLE_W2_MEM(me, desc->desc_no)) = dw2;
 			*((u32 *)DESC_TABLE_W3_MEM(me, desc->desc_no)) = 0;
-		printk("ARI[%d] desc[%d:%p] [%08x %08x %08x %08x]\n", __LINE__, desc->desc_no, (u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no), 0, dw1, dw2, 0);
 		} else {
 			dw1 = 0;
 			dw2 = (u32)(desc->msg_phys >> 8) & 0x3fffffff;
@@ -1386,7 +1359,6 @@ static int open_outb_mbox(struct rio_mport *mport, void *dev_id, int dme_no,
 		*((u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no)) = dw0;
 		*((u32 *)DESC_TABLE_W2_MEM(me, desc->desc_no)) = dw2;
 		*((u32 *)DESC_TABLE_W3_MEM(me, desc->desc_no)) = dw3;
-		printk("ARI[%d] last[%d:%p] [%08x %08x %08x %08x]\n", __LINE__, desc->desc_no, (u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no), dw0, dw1, dw2, dw3);
 	} else {
 		descChainStart = DESC_TABLE_W0(me->dres.start);
 
@@ -1419,14 +1391,6 @@ static int open_outb_mbox(struct rio_mport *mport, void *dev_id, int dme_no,
 	__rio_local_write_config_32(mport, RAB_OB_DME_DESC_ADDR(dme_no),
 				    descAddr);
 	__rio_local_write_config_32(mport, RAB_OB_DME_CTRL(dme_no), dme_ctrl);
-
-	{
-	__rio_local_read_config_32(mport,
-				RAB_OB_DME_STAT(dme_no), &dw2);
-	__rio_local_read_config_32(mport,
-				RAB_OB_DME_DESC(dme_no), &dw3);
-	printk("ARI[%d] obdme[%d:%08x] [%08x %08llx %08x %08x]\n", __LINE__, dme_no, RAB_OB_DME_CTRL(dme_no), dme_ctrl, descAddr, dw2, dw3);
-	}
 
 	/**
 	 * Create irq handler and enable MBOX DME Engine irq
@@ -1471,7 +1435,6 @@ static void release_outb_mbox(struct rio_irq_handler *h)
 	}
 
 	__rio_local_write_config_32(mport, RAB_OB_DME_CTRL(me->dme_no), 0);
-	printk("ARI[%d] ods[%d:%08x] %08x\n", __LINE__, me->dme_no, RAB_OB_DME_STAT(me->dme_no), 0);
 
 	if (me->entries_in_use) {
 		dev_warn(priv->dev,
@@ -1532,7 +1495,6 @@ static void ib_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 		__rio_local_write_config_32(mport,
 					    RAB_IB_DME_STAT(dme_no), dme_stat);
 		__ib_dme_dbg(priv, dme_stat);
-		printk("ARI[%d] ib_dme_irq(m%d, l%d) ib dmestat(%d:%08x) %08x\n", __LINE__, mbox_no, letter, dme_no, RAB_IB_DME_STAT(dme_no), dme_stat);
 #ifdef CONFIG_SRIO_IRQ_TIME
 		{
 			struct rio_irq_handler *hN;
@@ -1565,7 +1527,6 @@ static void ib_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 			if (!priv->internalDesc) {
 				dw0 = *((u32 *)DESC_TABLE_W0_MEM(me,
 							 desc->desc_no));
-				printk("ARI[%d] desc.w0[%d:%p] %08x\n", __LINE__, desc->desc_no, (u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no), dw0);
 			} else {
 				__rio_local_read_config_32(mport,
 					 DESC_TABLE_W0(desc->desc_no), &dw0);
@@ -1574,7 +1535,6 @@ static void ib_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 			if ((dw0 & DME_DESC_DW0_READY_MASK) &&
 			    (dw0 & DME_DESC_DW0_VALID)) {
 				if (!priv->internalDesc) {
-				printk("ARI[%d]\n", __LINE__);
 					*((u32 *)DESC_TABLE_W0_MEM(me,
 							 desc->desc_no)) =
 						 dw0 & ~DME_DESC_DW0_VALID;
@@ -1586,13 +1546,6 @@ static void ib_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 				__ib_dme_dw_dbg(priv, dw0);
 				__ib_dme_event_dbg(priv, dme_no,
 						   1 << RIO_IB_DME_RX_PUSH);
-/* HACK */			{
-				u32 *p;
-				printk("ARI[%d] ib_dme_irq[%d, %d] dmestat %08x valid\n", __LINE__, dme_no, me->write_idx, dw0);
-				printk("ARI[%d] ib_dme_irq desc[%d:%p] v[%d:%08llx] -> %p\n", __LINE__, desc->desc_no, (u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no), desc->desc_no, desc->msg_phys, desc->msg_virt);
-				p = (u32 *) desc->msg_virt;
-				printk("ARI[%d] irq buf content[%08x %08x %08x %08x]\n", __LINE__, p[0], p[1], p[2], p[3]);
-				}
 				me->write_idx = (me->write_idx + 1) %
 						 me->entries;
 				num_new++;
@@ -1631,7 +1584,6 @@ static void ib_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 				 i++, desc++) {
 
 				if (!priv->internalDesc) {
-				printk("ARI[%d]\n", __LINE__);
 					dw0 = *((u32 *)DESC_TABLE_W0_MEM(me,
 							      desc->desc_no));
 				} else {
@@ -1794,7 +1746,6 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 						 desc->desc_no)) = dw2;
 				*((u32 *)DESC_TABLE_W3_MEM(me,
 						 desc->desc_no)) = dw3;
-		printk("ARI[%d] desc[%d:%p] [%08x %08x %08x %08x]\n", __LINE__, desc->desc_no, (u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no), dw0, dw1, dw2, dw3);
 			} else {
 				dw1 |= 0;
 				dw2  = (u32)(desc->msg_phys >> 8) & 0x3fffffff;
@@ -1807,7 +1758,6 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 				__rio_local_write_config_32(mport,
 					DESC_TABLE_W3(desc->desc_no), dw3);
 			}
-			memset(desc->msg_virt, 0xa, buf_sz);	/* HACK */
 		}
 
 		/**
@@ -1825,10 +1775,8 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 			dw2 |= (descChainStart >> 4) & 0xc0000000;
 			dw3  = descChainStart >> 4;
 			*((u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no)) = dw0;
-/* HACK */		*((u32 *)DESC_TABLE_W1_MEM(me, desc->desc_no)) = dw1;
 			*((u32 *)DESC_TABLE_W2_MEM(me, desc->desc_no)) = dw2;
 			*((u32 *)DESC_TABLE_W3_MEM(me, desc->desc_no)) = dw3;
-		printk("ARI[%d] last [%d:%p] [%08x %08x %08x %08x]\n", __LINE__, desc->desc_no, (u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no), dw0, dw1, dw2, dw3);
 		} else {
 			descChainStart = DESC_TABLE_W0(me->dres.start);
 
@@ -1861,14 +1809,6 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 					RAB_IB_DME_DESC_ADDR(dme_no), descAddr);
 		__rio_local_write_config_32(mport,
 					RAB_IB_DME_CTRL(dme_no), dme_ctrl);
-
-/*HACK*/	{
-		__rio_local_read_config_32(mport,
-					RAB_IB_DME_STAT(dme_no), &dw2);
-		__rio_local_read_config_32(mport,
-					RAB_IB_DME_DESC(dme_no), &dw3);
-		printk("ARI[%d] ibdme[%d:%08x] [%08x %08llx %08x %08x]\n", __LINE__, dme_no, RAB_IB_DME_CTRL(dme_no), dme_ctrl, descAddr, dw2, dw3);
-		}
 
 		priv->inbDmesInUse[di] |= (1 << dj);
 	}
@@ -2259,15 +2199,8 @@ int axxia_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev,
 
 	/* Copy and clear rest of buffer */
 	memcpy(desc->msg_virt, buffer, len);
-/*HACK*/{
-	u32 *p = (u32*) buffer;
-	printk("ARI[%d] aob desc[%d:%p] %p -> %p for %d\n", __LINE__, desc->desc_no, (u32 *)DESC_TABLE_W0_MEM(mb, desc->desc_no), buffer, desc->msg_virt, len);
-	printk("ARI[%d] in buf content[%08x %08x %08x %08x]\n", __LINE__, p[0], p[1], p[2], p[3]);
-	}
-	if (len < (buf_sz - 4)) {
+	if (len < (buf_sz - 4))
 		memset(desc->msg_virt + len, 0, buf_sz - len);
-		printk("ARI[%d] aob memset(%p, 0, %d)\n", __LINE__, desc->msg_virt+len, 0, buf_sz-len);
-	}
 
 	dw0 = DME_DESC_DW0_SRC_DST_ID(destid) |
 		DME_DESC_DW0_EN_INT |
@@ -2287,7 +2220,6 @@ int axxia_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev,
 	if (!priv->internalDesc) {
 		*((u32 *)DESC_TABLE_W1_MEM(mb, desc->desc_no)) = dw1;
 		*((u32 *)DESC_TABLE_W0_MEM(mb, desc->desc_no)) = dw0;
-		printk("ARI[%d] aom desc[%d:%p] %08x %08x\n", __LINE__, desc->desc_no, (u32 *)DESC_TABLE_W0_MEM(mb, desc->desc_no), dw0, dw1);
 	} else {
 		__rio_local_write_config_32(mport,
 					 DESC_TABLE_W1(desc->desc_no), dw1);
@@ -2302,7 +2234,6 @@ int axxia_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev,
 	dme_ctrl |= DME_WAKEUP | DME_ENABLE;
 	__rio_local_write_config_32(mport, RAB_OB_DME_CTRL(mb->dme_no),
 				    dme_ctrl);
-	printk("ARI[%d] aom odc[%d:%08x] %08x\n", __LINE__, mb->dme_no, RAB_OB_DME_CTRL(mb->dme_no), dme_ctrl);
 
 done:
 	spin_unlock_irqrestore(&mb->lock, iflags);
@@ -2440,7 +2371,6 @@ void *axxia_get_inb_message(struct rio_mport *mport, int mbox, int letter,
 		buf = NULL;
 		*sz = 0;
 		if (!priv->internalDesc) {
-				printk("ARI[%d]\n", __LINE__);
 			dw0 = *((u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no));
 			dw1 = *((u32 *)DESC_TABLE_W1_MEM(me, desc->desc_no));
 		} else {
@@ -2453,7 +2383,6 @@ void *axxia_get_inb_message(struct rio_mport *mport, int mbox, int letter,
 		}
 		if (dw0 & DME_DESC_DW0_ERROR_MASK) {
 			if (!priv->internalDesc) {
-				printk("ARI[%d]\n", __LINE__);
 				*((u32 *)DESC_TABLE_W0_MEM(me,
 					desc->desc_no)) =
 					(dw0 & 0xff) | DME_DESC_DW0_VALID;
@@ -2473,11 +2402,6 @@ void *axxia_get_inb_message(struct rio_mport *mport, int mbox, int letter,
 			if (!buf)
 				goto err;
 			memcpy(buf, desc->msg_virt, buf_sz);
-/* HACK */		{
-			u32 *p = (u32 *)desc->msg_virt;
-			printk("ARI[%d] gib desc[%d:%p] v[%d:%p] -> %p for %d\n", __LINE__, desc->desc_no, (u32 *)DESC_TABLE_W0_MEM(me, desc->desc_no), mb->next_rx_slot, desc->msg_virt, buf, buf_sz);
-			printk("ARI[%d] out buf content[%08x %08x %08x %08x]\n", __LINE__, p[0], p[1], p[2], p[3]);
-			}
 			mb->virt_buffer[mb->next_rx_slot] = NULL;
 			if (!priv->internalDesc) {
 				*((u32 *)DESC_TABLE_W0_MEM(me,
@@ -2517,7 +2441,6 @@ void *axxia_get_inb_message(struct rio_mport *mport, int mbox, int letter,
 					    mb->ring_size;
 			me->read_idx = (me->read_idx + 1) % me->entries;
 			me->pending--;
-			printk("ARI[%d]\n", __LINE__);
 			goto done;
 		}
 	}
