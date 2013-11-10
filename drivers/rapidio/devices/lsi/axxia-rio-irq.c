@@ -155,6 +155,11 @@ static inline void __misc_info_dbg(struct rio_priv *priv, u32 misc_state)
 	}
 }
 
+static inline void __linkdown_dbg(struct rio_priv *priv, u32 misc_state)
+{
+	__irq_dbg(priv, RIO_LINKDOWN);
+}
+
 static inline void __ob_db_dbg(struct rio_priv *priv, struct rio_mport *mport)
 {
 	int db;
@@ -428,9 +433,11 @@ int alloc_irq_handler(struct rio_irq_handler *h,
 		h->data = NULL;
 		return rc;
 	}
-	__rio_local_read_config_32(mport, h->irq_enab_reg_addr, &mask);
-	mask |= h->irq_state_mask;
-	__rio_local_write_config_32(mport, h->irq_enab_reg_addr, mask);
+	if (h->irq_enab_reg_addr) {
+		__rio_local_read_config_32(mport, h->irq_enab_reg_addr, &mask);
+		mask |= h->irq_state_mask;
+		__rio_local_write_config_32(mport, h->irq_enab_reg_addr, mask);
+	}
 
 	return rc;
 }
@@ -530,7 +537,6 @@ static inline void __misc_fatal(struct rio_mport *mport,
  * misc_irq_handler - MISC interrupt handler
  * @h: handler specific data
  * @state: Interrupt state
- *
  */
 static void misc_irq_handler(struct rio_irq_handler *h, u32 state)
 {
@@ -549,6 +555,41 @@ static void misc_irq_handler(struct rio_irq_handler *h, u32 state)
 	 * update event stats
 	 */
 	__misc_info_dbg(priv, state);
+#endif
+}
+
+/**
+ * linkdown_irq_handler - Link Down interrupt Status interrupt handler
+ * @h: handler specific data
+ * @state: Interrupt state
+ */
+static void linkdown_irq_handler(struct rio_irq_handler *h, u32 state)
+{
+	struct rio_mport *mport = h->mport;
+#if defined(CONFIG_AXXIA_RIO_STAT)
+	struct rio_priv *priv = mport->priv;
+#endif
+
+	/**
+	 * Reset platform if port is broken
+	 */
+	if (state & RAB_SRDS_STAT1_LINKDOWN_INT) {
+		u32 r32;
+		r32 = *((u32 *)priv->linkdown_reset.win+
+				priv->linkdown_reset.reg_addr);
+		r32 |= priv->linkdown_reset.reg_mask;
+		*((u32 *)priv->linkdown_reset.win+
+			 priv->linkdown_reset.reg_addr) =
+		    r32 | priv->linkdown_reset.reg_mask;
+		*((u32 *)priv->linkdown_reset.win+
+			 priv->linkdown_reset.reg_addr) = r32;
+	}
+
+#if defined(CONFIG_AXXIA_RIO_STAT)
+	/**
+	 * Update event stats
+	 */
+	__linkdown_dbg(priv, state);
 #endif
 }
 
@@ -2476,6 +2517,18 @@ void axxia_rio_port_irq_init(struct rio_mport *mport)
 	priv->misc_irq.thrd_irq_fn = misc_irq_handler;
 	priv->misc_irq.data = NULL;
 	priv->misc_irq.release_fn = NULL;
+
+	/**
+	 * Deadman Monitor status interrupt
+	 */
+	clear_bit(RIO_IRQ_ENABLED, &priv->linkdown_irq.state);
+	priv->linkdown_irq.mport = mport;
+	priv->linkdown_irq.irq_enab_reg_addr = 0;
+	priv->linkdown_irq.irq_state_reg_addr = RAB_SRDS_STAT1;
+	priv->linkdown_irq.irq_state_mask = RAB_SRDS_STAT1_LINKDOWN_INT;
+	priv->linkdown_irq.thrd_irq_fn = linkdown_irq_handler;
+	priv->linkdown_irq.data = NULL;
+	priv->linkdown_irq.release_fn = NULL;
 
 	/**
 	 * Port Write messages

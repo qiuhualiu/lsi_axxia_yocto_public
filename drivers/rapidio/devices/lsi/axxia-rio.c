@@ -15,6 +15,7 @@
  */
 
 /* #define DEBUG */
+/* #define SRIO_IODEBUG */
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -41,9 +42,9 @@
 static DEFINE_SPINLOCK(rio_io_lock);
 
 #ifdef SRIO_IODEBUG
-#define	IODP(a, ...)	printk(a)
+#define	IODP(...)	printk(__VA_ARGS__)
 #else
-#define	IODP(a, ...)
+#define	IODP(...)
 #endif
 
 /**
@@ -814,8 +815,8 @@ static void rio_init_port_data(struct rio_mport *mport)
 			if (devid == legacyids[i])
 				priv->internalDesc = 1;
 		}
-		IODP("rio[%d]: RapidIO internal descriptors: %d (%x %x)\n",
-			__LINE__, priv->internalDesc, devid, data);
+		IODP("rio: RapidIO internal descriptors: %d (%x %x)\n",
+			priv->internalDesc, devid, data);
 	}
 }
 
@@ -925,12 +926,12 @@ static int rio_start_port(struct rio_mport *mport)
 		__rio_local_read_config_32(mport, RIO_DEV_ID_CAR, &didcar);
 		__rio_local_read_config_32(mport, RAB_VER, &rabver);
 
-		IODP("rio[%d]: DIDCAR[%x]=%08x RAB_VER[%x]=%08x\n",
+		printk("rio[%d]: DIDCAR[%x]=%08x RAB_VER[%x]=%08x\n",
 			__LINE__,
 			RIO_DEV_ID_CAR, didcar,
 			RAB_VER, rabver);
-		IODP("rio[%d]: CCSR[%x]=%08x ESCSR[%x]=%08x "
-		     "HBDIDLCSR[%x]=%08x\n",
+		printk("rio[%d]: CCSR[%x]=%08x ESCSR[%x]=%08x "
+		      "HBDIDLCSR[%x]=%08x\n",
 			__LINE__,
 			RIO_CCSR, ccsr,
 			RIO_ESCSR, escsr,
@@ -1043,7 +1044,7 @@ void axxia_rio_static_win_release(struct rio_mport *mport)
 	axxia_rio_release_outb_region(mport, priv->maint_win_id);
 }
 
-/* data_streaming */
+/* Data_streaming */
 /**
  * rio_parse_dtb_ds - Parse RapidIO platform entry for data streaming
  *
@@ -1056,13 +1057,13 @@ void axxia_rio_static_win_release(struct rio_mport *mport)
  */
 static int rio_parse_dtb_ds(
 	struct platform_device *dev,
-	struct rio_ds_dtb_info   *ptr_ds_dtb_info)
+	struct rio_ds_dtb_info *ptr_ds_dtb_info)
 {
 	const u32 *cell;
 	int rlen;
-	u32    pval;
+	u32 pval;
 
-	memset( ptr_ds_dtb_info, 0, sizeof( struct rio_ds_dtb_info ) );
+	memset(ptr_ds_dtb_info, 0, sizeof(struct rio_ds_dtb_info));
 
 	/* check if data streaming is enabled */
 	if (!of_property_read_u32(dev->dev.of_node,
@@ -1141,7 +1142,8 @@ static int rio_parse_dtb(
 	int *ibNumDmes,
 	int *inbDmes,
 	int *irq,
-	struct rio_ds_dtb_info    *ptr_ds_dtb_info)
+	struct event_regs      *linkdown_reset,
+	struct rio_ds_dtb_info *ptr_ds_dtb_info)
 {
 	const u32 *dt_range, *cell;
 	int rlen, rc;
@@ -1252,6 +1254,32 @@ static int rio_parse_dtb(
 
 	*irq = irq_of_parse_and_map(dev->dev.of_node, 0);
 	dev_dbg(&dev->dev, "irq: %d\n", *irq);
+
+	memset(linkdown_reset, 0, sizeof(struct event_regs));
+	dt_range = of_get_property(dev->dev.of_node, "linkdown-reset", &rlen);
+	if (dt_range) {
+		if (rlen < (6 * sizeof(int))) {
+			dev_err(&dev->dev, "Invalid %s property 'linkdown-reset'\n",
+				dev->dev.of_node->full_name);
+			return -EFAULT;
+		} else {
+			linkdown_reset->phy_reset_start =
+				of_read_number(dt_range + aw, paw);
+			linkdown_reset->phy_reset_size =
+				of_read_number(dt_range + aw + paw, sw);
+			linkdown_reset->reg_addr =
+				of_read_number(dt_range + 0, 1);
+			linkdown_reset->reg_mask =
+				of_read_number(dt_range + 1, 1);
+			linkdown_reset->in_use = 1;
+			IODP("rio: LDR st=%llx sz=%llx RA=%x MSK=%x iu=%d\n",
+				linkdown_reset->phy_reset_start,
+				linkdown_reset->phy_reset_size,
+				linkdown_reset->reg_addr,
+				linkdown_reset->reg_mask,
+				linkdown_reset->in_use);
+		}
+	}
 
 	/* Data_streaming */
 	rc = rio_parse_dtb_ds(dev, ptr_ds_dtb_info);
@@ -1389,7 +1417,8 @@ static struct rio_priv *rio_priv_dtb_setup(
 	int *numInbDmes,
 	int *inbDmes,
 	int irq,
-	struct rio_ds_dtb_info   *ptr_ds_dtb_info)
+	struct event_regs      *linkdown_reset,
+	struct rio_ds_dtb_info *ptr_ds_dtb_info)
 {
 	struct rio_priv *priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	int i, rc;
@@ -1473,17 +1502,24 @@ static struct rio_priv *rio_priv_dtb_setup(
 		rc = -ENOMEM;
 		goto err_paged;
 	}
-
-        if (dma_set_coherent_mask(&dev->dev, DMA_BIT_MASK(64)) != 0 &&
-	    dma_set_coherent_mask(&dev->dev, DMA_BIT_MASK(32)) != 0) {
-		dev_err(&dev->dev, "No memory for Message Blocks\n");
-		rc = -ENOMEM;
-		goto err_dma;
+	if (linkdown_reset) {
+		memcpy(&priv->linkdown_reset, linkdown_reset,
+			sizeof(struct event_regs));
+		priv->linkdown_reset.win =
+			ioremap(linkdown_reset->phy_reset_start,
+				linkdown_reset->phy_reset_size);
+		if (!priv->linkdown_reset.win) {
+			rc = -ENOMEM;
+			goto err_linkdown;
+		}
+		IODP("rio: LDR win=%p\n", priv->linkdown_reset.win);
 	}
 
 	return priv;
 
-err_dma:
+err_linkdown:
+	if (priv->linkdown_reset.win)
+		iounmap(priv->linkdown_reset.win);
 	iounmap(priv->regs_win_paged);
 err_paged:
 	iounmap(priv->regs_win_fixed);
@@ -1583,6 +1619,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 	int irq = 0;
 	int numObDmes[2], outbDmes[2];
 	int numIbDmes[2], inbDmes[2];
+	struct event_regs linkdown_reset;
 	/* data_streaming */
 	struct rio_ds_dtb_info ds_dtb_info;
 
@@ -1593,7 +1630,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 	if (rio_parse_dtb(dev, &law_start, &law_size, &regs,
 			  &numObDmes[0], &outbDmes[0],
 			  &numIbDmes[0], &inbDmes[0],
-			  &irq, &ds_dtb_info))
+			  &irq, &linkdown_reset, &ds_dtb_info))
 		return -EFAULT;
 
 	/* Alloc and Initialize driver SW data structure */
@@ -1610,7 +1647,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 	priv = rio_priv_dtb_setup(dev, &regs, mport,
 				  &numObDmes[0], &outbDmes[0],
 				  &numIbDmes[0], &inbDmes[0],
-				  irq, &ds_dtb_info);
+				  irq, &linkdown_reset, &ds_dtb_info);
 	if (IS_ERR(priv)) {
 		rc = PTR_ERR(priv);
 		goto err_priv;
@@ -1654,7 +1691,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 
 	axxia_rio_set_mport_disc_mode(mport);
 
-	printk("rio[%d]: mp %p priv %p\n", __LINE__, mport, priv);
+	IODP("rio: mport=%p priv=%p\n", mport, priv);
 	return 0;
 
 err_mport:
@@ -1665,6 +1702,9 @@ err_mport:
 err_irq:
 	axxia_rio_static_win_release(mport);
 err_maint:
+	if (priv->linkdown_reset.win)
+		iounmap(priv->linkdown_reset.win);
+	iounmap(priv->regs_win_fixed);
 	iounmap(priv->regs_win_fixed);
 	iounmap(priv->regs_win_paged);
 	kfree(priv);

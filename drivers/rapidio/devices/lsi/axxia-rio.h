@@ -108,6 +108,11 @@
 #define RAB_SRDS_CTRL1          (RAB_REG_BASE + 0x984)
 #define  RAB_SRDS_CTRL1_RST      0x00000001
 
+#define RAB_SRDS_CTRL2          (RAB_REG_BASE + 0x988)
+#define RAB_SRDS_STAT0          (RAB_REG_BASE + 0x990)
+#define RAB_SRDS_STAT1          (RAB_REG_BASE + 0x994)
+#define  RAB_SRDS_STAT1_LINKDOWN_INT    0x80000000
+
 /* AW SMON control */
 #define RAB_SMON_CTRL0          (RAB_REG_BASE + 0x9A0)
 #define  RAB_SMON_CTRL0_INT_TM_OF       0x00200000
@@ -465,6 +470,15 @@ struct atmu_outb {
 	int in_use;
 };
 
+struct event_regs {
+	void __iomem *win;
+	u64 phy_reset_start;
+	u64 phy_reset_size;
+	u32 reg_addr;
+	u32 reg_mask;
+	int in_use;
+};
+
 struct rio_desc {
 	u32     d0;
 	u32     d1;
@@ -487,6 +501,7 @@ struct rio_priv {
 	int internalDesc;
 	int desc_max_entries;
 
+	/* Chip-specific DME availability */
 	int numOutbDmes[2];	/* [0]=MSeg, [1]=Sseg */
         int outbDmesInUse[2];
 	int outbDmes[2];	/* set of defined outbound DMEs:
@@ -495,10 +510,14 @@ struct rio_priv {
         int inbDmesInUse[2];
 	int inbDmes[2];		/* set of defined inbound DMEs */
 
+	/* Linkdown Reset; Trigger via SRDS STAT1 */
+	struct event_regs linkdown_reset;
+
 	/* Interrupts */
 	atomic_t api_user;
 	int irq_line;
 	struct rio_irq_handler misc_irq;
+	struct rio_irq_handler linkdown_irq; /* AXM55xx+SRDS STAT1+APB2SER */
 	struct rio_irq_handler pw_irq;
 	struct rio_irq_handler db_irq;
 	struct rio_irq_handler apio_irq;

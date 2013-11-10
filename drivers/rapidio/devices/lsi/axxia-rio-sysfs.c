@@ -52,17 +52,18 @@ static const char *state_str[] = {
 };
 
 static const char *irq_str[] = {
-	/* Axxi Error Events - really bad! */
-	"Axxi Master Write timouts                            ",
-	"Axxi Master Read timouts                             ",
-	"Axxi Slave write decode error response               ",
-	"Axxi Slave write error response                      ",
-	"Axxi Slave read decode error response                ",
-	"Axxi Slave read error response                       ",
-	"Axxi Slave unsupported cmds                          ",
+	/* Axxia Error Events - really bad! */
+	"Axxia Master Write timouts                            ",
+	"Axxia Master Read timouts                             ",
+	"Axxia Slave write decode error response               ",
+	"Axxia Slave write error response                      ",
+	"Axxia Slave read decode error response                ",
+	"Axxia Slave read error response                       ",
+	"Axxia Slave unsupported cmds                          ",
 	"Logical/Transport layer errors                       ",
 	"General RapidIO Controller errors                    ",
 	"Unsupported RIO req received                         ",
+	"Linkdown per Deadman Monitor IRQ                     ",
 	/*
 	 * Peripheral Bus bridge, RapidIO -> Peripheral
 	 * bus events - mostly bad!
@@ -389,10 +390,10 @@ static ssize_t axxia_rio_irq_show(struct device *dev,
 	str += sprintf(str, "Miscellaneous Events     (%p)\t%8.8x\n",
 		       (void *)RAB_INTR_ENAB_MISC, stat);
 	__rio_local_read_config_32(mport, RAB_INTR_ENAB_APIO, &stat);
-	str += sprintf(str, "Axxi Bus to RIO Events   (%p)\t%8.8x\n",
+	str += sprintf(str, "Axxia Bus to RIO Events  (%p)\t%8.8x\n",
 		       (void *)RAB_INTR_ENAB_APIO, stat);
 	__rio_local_read_config_32(mport, RAB_INTR_ENAB_RPIO, &stat);
-	str += sprintf(str, "RIO to Axxi Bus Events   (%p)\t%8.8x\n",
+	str += sprintf(str, "RIO to Axxia Bus Events  (%p)\t%8.8x\n",
 		       (void *)RAB_INTR_ENAB_RPIO, stat);
 
 	return str - buf;

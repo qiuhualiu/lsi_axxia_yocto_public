@@ -58,6 +58,7 @@ enum rio_irq_dbg {
 	RIO_MISC_TL,
 	RIO_MISC_GRIO,
 	RIO_MISC_UNSUP,
+	RIO_LINKDOWN,
 	/**
 	 * Peripheral Bus bridge, RapidIO -> Peripheral bus events - mostly bad!
 	 */
