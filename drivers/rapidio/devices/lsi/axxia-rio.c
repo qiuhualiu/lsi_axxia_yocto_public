@@ -1502,7 +1502,7 @@ static struct rio_priv *rio_priv_dtb_setup(
 		rc = -ENOMEM;
 		goto err_paged;
 	}
-	if (linkdown_reset) {
+	if (linkdown_reset && linkdown_reset->in_use) {
 		memcpy(&priv->linkdown_reset, linkdown_reset,
 			sizeof(struct event_regs));
 		priv->linkdown_reset.win =
@@ -1619,7 +1619,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 	int irq = 0;
 	int numObDmes[2], outbDmes[2];
 	int numIbDmes[2], inbDmes[2];
-	struct event_regs linkdown_reset;
+	struct event_regs linkdown_reset = { 0 };
 	/* data_streaming */
 	struct rio_ds_dtb_info ds_dtb_info;
 
@@ -1704,7 +1704,6 @@ err_irq:
 err_maint:
 	if (priv->linkdown_reset.win)
 		iounmap(priv->linkdown_reset.win);
-	iounmap(priv->regs_win_fixed);
 	iounmap(priv->regs_win_fixed);
 	iounmap(priv->regs_win_paged);
 	kfree(priv);
