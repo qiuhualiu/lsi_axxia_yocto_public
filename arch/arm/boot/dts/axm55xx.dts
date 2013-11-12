@@ -427,7 +427,7 @@
 
         rio0: rapidio {
                 index = <0>;
-                enabled = <1>;
+                status = "disabled";
                 #address-cells = <2>;
                 #size-cells = <2>;
                 compatible = "axxia,rapidio-delta";
