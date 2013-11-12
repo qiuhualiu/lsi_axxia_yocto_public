@@ -1155,10 +1155,10 @@ static int rio_parse_dtb(
 	}
 
 	if (!of_device_is_available(dev->dev.of_node)) {
-		IODP("AR[%d] status = not available\n");
+		IODP("AR[%d] status = not available\n", __LINE__);
 	        return -ENODEV;
 	} else {
-		IODP("AR[%d] status = available\n");
+		IODP("AR[%d] status = available\n", __LINE__);
 	}
 
 	rc = of_address_to_resource(dev->dev.of_node, 0, regs);
@@ -1690,15 +1690,32 @@ static int axxia_rio_setup(struct platform_device *dev)
 		dev_err(&dev->dev, "register mport failed\n");
 		goto err_mport;
 	}
-	/* if (mport->host_deviceid >= 0) -- CHG due to anomaly -- */
-	if (mport->host_deviceid == 0)
+
+	/* Correct the host device id if needed
+	 */
+	{
+		u16 id = rio_local_get_device_id(mport);
+		IODP("rio[%d] devid=%d hdid=%d\n", __LINE__,
+			mport->host_deviceid, rio_local_get_device_id(mport));
+		if (mport->host_deviceid < 0) {
+			if ((id != 0xFF) && (mport->sys_size == 0))
+				mport->host_deviceid = id;
+			else if ((id != 0xFFFF) && (mport->sys_size != 0))
+				mport->host_deviceid = id;
+		}
+	}
+
+	/* And set the discovery mode for this port before we go
+	 */
+	if (mport->host_deviceid >= 0)
 		mport->enum_host = 1;
 	else
 		mport->enum_host = 0;
 
 	axxia_rio_set_mport_disc_mode(mport);
 
-	IODP("rio: mport=%p priv=%p\n", mport, priv);
+	IODP("rio: mport=%p priv=%p enum_host=%d\n", mport, priv,
+		mport->enum_host);
 	return 0;
 
 err_mport:
