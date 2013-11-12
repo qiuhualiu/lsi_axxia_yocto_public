@@ -110,7 +110,7 @@ static void muxed_ipi_message_pass(const struct cpumask *mask,
 
 	/*
 	 * Order previous accesses before accesses in the IPI handler.
-	*/
+	 */
 	dmb();
 
 	for_each_cpu(cpu, mask) {
@@ -201,6 +201,7 @@ struct axxia_gic_rpc {
 	int cpu;
 	axxia_call_func_t *func;
 	void *info;
+	raw_spinlock_t lock;
 };
 
 static DEFINE_PER_CPU_SHARED_ALIGNED(struct axxia_gic_rpc, axxia_gic_rpc);
@@ -209,7 +210,7 @@ void axxia_gic_handle_gic_rpc(void)
 {
 	u32 this_cpu = cpu_logical_map(smp_processor_id());
 	int cpu;
-	dmb();			/* FIXME: Not sure this is necessary */
+
 	for_each_possible_cpu(cpu)
 	{
 		struct axxia_gic_rpc *slot = &per_cpu(axxia_gic_rpc, cpu);
@@ -231,10 +232,11 @@ static void axxia_gic_handle_gic_rpc_ipi(void)
 static void axxia_gic_run_gic_rpc(int cpu, axxia_call_func_t *func, void *info)
 {
 	struct axxia_gic_rpc *slot = &__get_cpu_var(axxia_gic_rpc);
+	unsigned long flags;
 	int timeout;
 
-	/* Prevent preemption. */
-	preempt_disable();
+	/* Prevent the same core from preempting us. */
+	raw_spin_lock_irqsave(&slot->lock, flags);
 
 	slot->cpu = cpu;
 	slot->info = info;
@@ -252,9 +254,12 @@ static void axxia_gic_run_gic_rpc(int cpu, axxia_call_func_t *func, void *info)
 		axxia_gic_handle_gic_rpc(); /* Execute other CPU requests */
 		cpu_relax();
 	}
-	BUG_ON(timeout == 0);
 
-	preempt_enable();
+	/* OK, now it's safe to be preempted by the same core. */
+	raw_spin_unlock_irqrestore(&slot->lock, flags);
+
+	/* We should never hit this! */
+	BUG_ON(timeout == 0);
 }
 
 /*
@@ -693,6 +698,12 @@ static void __init gic_axxia_init(struct gic_chip_data *gic)
 {
 	int i;
 	u32 cpumask;
+  
+	/* Initialize the Axxia RPC spinlock. */
+        for_each_possible_cpu(i) {
+                struct axxia_gic_rpc *p = &per_cpu(axxia_gic_rpc, i);
+                raw_spin_lock_init(&p->lock);
+        }
 
 	/*
 	 * Initialize the Axxia IRQ affinity table. All non-IPI

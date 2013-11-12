@@ -273,7 +273,7 @@ platform_smp_prepare_cpus(unsigned int max_cpus)
 	int phys_cpu, cpu_count=0;
 	struct device_node *np;
 	unsigned long release_addr[NR_CPUS] = {0};
-	unsigned long release;
+	u32 release;
 
 	if (of_find_compatible_node(NULL, NULL, "lsi,axm5516")) {
 		for_each_node_by_name(np, "cpu") {
