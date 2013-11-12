@@ -1065,13 +1065,13 @@ static int rio_parse_dtb_ds(
 
 	memset(ptr_ds_dtb_info, 0, sizeof(struct rio_ds_dtb_info));
 
-	/* check if data streaming is enabled */
+	/* Check if data streaming is enabled */
 	if (!of_property_read_u32(dev->dev.of_node,
 				  "enable_ds",
 				  &pval)) {
 		ptr_ds_dtb_info->ds_enabled = pval;
 	}
-	dev_dbg(&dev->dev, "enable_ds: %d\n", ptr_ds_dtb_info->ds_enabled );
+	dev_dbg(&dev->dev, "enable_ds: %d\n", ptr_ds_dtb_info->ds_enabled);
 
 	/* data streaming is not enabled */
 	if (ptr_ds_dtb_info->ds_enabled == 0)
@@ -1152,6 +1152,13 @@ static int rio_parse_dtb(
 	if (!dev->dev.of_node) {
 		dev_err(&dev->dev, "Device OF-Node is NULL");
 		return -EFAULT;
+	}
+
+	if (!of_device_is_available(dev->dev.of_node)) {
+		IODP("AR[%d] status = not available\n");
+	        return -ENODEV;
+	} else {
+		IODP("AR[%d] status = available\n");
 	}
 
 	rc = of_address_to_resource(dev->dev.of_node, 0, regs);
@@ -1721,7 +1728,7 @@ err_ops:
 */
 static int __devinit axxia_of_rio_rpn_probe(struct platform_device *dev)
 {
-	printk(KERN_INFO "Setting up RapidIO peer-to-peer network %s\n",
+	IODP(KERN_INFO "Setting up RapidIO peer-to-peer network %s\n",
 	       dev->dev.of_node->full_name);
 
 	return axxia_rio_setup(dev);
@@ -1744,7 +1751,7 @@ static struct platform_driver axxia_of_rio_rpn_driver = {
 
 static __init int axxia_of_rio_rpn_init(void)
 {
-	printk(KERN_INFO "Register RapidIO platform driver\n");
+	IODP(KERN_INFO "Register RapidIO platform driver\n");
 	return platform_driver_register(&axxia_of_rio_rpn_driver);
 }
 

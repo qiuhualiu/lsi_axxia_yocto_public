@@ -302,7 +302,7 @@
 
 	rio0: rapidio {
                 index = <0>;
-		enabled = <1>;
+		status = "ok";
                 #address-cells = <2>;
                 #size-cells = <2>;
 		compatible = "acp,rapidio-delta";
