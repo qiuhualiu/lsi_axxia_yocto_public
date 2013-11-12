@@ -46,6 +46,7 @@
 #include <asm/mach/time.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
+#include <mach/hardware.h>
 #include <mach/timers.h>
 #include <mach/axxia-gic.h>
 #include "axxia.h"
@@ -62,8 +63,20 @@ static const char *axxia_dt_match[] __initconst = {
 
 static void __iomem *ssp_base;
 
+static struct map_desc axxia_static_mappings[] __initdata = {
+#ifdef CONFIG_DEBUG_LL
+	{
+		.virtual	=  AXXIA_DEBUG_UART_VIRT,
+		.pfn		= __phys_to_pfn(AXXIA_DEBUG_UART_PHYS),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE
+	},
+#endif
+};
+
 void __init axxia_dt_map_io(void)
 {
+	iotable_init(axxia_static_mappings, ARRAY_SIZE(axxia_static_mappings));
 }
 
 void __init axxia_dt_init_early(void)
@@ -240,8 +253,9 @@ l3_set_pstate(void __iomem *l3ctrl, unsigned int req, unsigned int act)
 void __init axxia_dt_init(void)
 {
 	void __iomem *l3ctrl;
+	void __iomem *apb2ser3_base;
 	int rc;
-       
+
 	/* Enable L3-cache */
 #ifndef CONFIG_ARCH_AXXIA_SIM
 	l3ctrl = ioremap(0x2000000000ULL, SZ_4M);
@@ -253,6 +267,21 @@ void __init axxia_dt_init(void)
 	} else {
 		pr_warn("axxia: Failed to map L3-cache control regs\n");
 	}
+#endif
+
+#if 0 /* FIXME - this works well enough to get the machine to boot,
+       * but still seeing stall failures in LTP testing. If we remove
+       * the use of wfe/sev in arch/arm/include/asm/spinlock.h instead,
+       * the machine boots -and- we don't see LTP failure. So for now,
+       * disable this and go with the other solution.
+       */
+
+	/* Enable wfe/sev across clusters. */
+	apb2ser3_base = ioremap(0x2010030000ULL, SZ_64K);
+	if (apb2ser3_base)
+		writel(0x0000ffff, apb2ser3_base + 0x14);
+	else
+		pr_warn("axxia: Failed to enable multi-cluster wfe/sev!\n");
 #endif
 
 	of_platform_populate(NULL, of_default_bus_match_table,
