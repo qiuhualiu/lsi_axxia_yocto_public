@@ -119,12 +119,12 @@
 
 /* data streaming dtb related information */
 struct rio_ds_dtb_info{
-    int ds_enabled;
-    int num_inb_virtaul_m;      /* number of inbound virtual M */
-    int num_outb_dses;          /* number of outbound DSEs */
-    int inb_num_data_descs;     /* number of inbound data descriptors */
-    int outb_num_hdr_descs;     /* number of outbound header descriptors */
-    int outb_num_data_descs;    /* number of outbound data descriptors */
+	int ds_enabled;
+	int num_inb_virtaul_m;      /* number of inbound virtual M */
+	int num_outb_dses;          /* number of outbound DSEs */
+	int inb_num_data_descs;     /* number of inbound data descriptors */
+	int outb_num_hdr_descs;     /* number of outbound header descriptors */
+	int outb_num_data_descs;    /* number of outbound data descriptors */
 };
 
 /*
@@ -135,30 +135,30 @@ struct rio_ds_dtb_info{
 */
 /* outbound data descriptor */
 struct rio_ods_data_desc{
-    u32 dw0;
-    u32 dw1;
-    u32 dw2;
-    u32 dw3;
+	u32 dw0;
+	u32 dw1;
+	u32 dw2;
+	u32 dw3;
 
-    /* SW usage */
-    u32 virt_data_buf;
-    u32 sw1;
-    u32 sw2;
-    u32 sw3;
+	/* SW usage */
+	u32 virt_data_buf;
+	u32 sw1;
+	u32 sw2;
+	u32 sw3;
 };
 
 /* inbound data descriptor */
 struct rio_ids_data_desc{
-    u32 dw0;
-    u32 dw1;
-    u32 dw2;
-    u32 dw3;
-    u32 dw4;
+	u32 dw0;
+	u32 dw1;
+	u32 dw2;
+	u32 dw3;
+	u32 dw4;
 
-    /* SW usage */
-    u32 virt_data_buf;
-    u32 usr_virt_data_buf;
-    u32 sw2;
+	/* SW usage */
+	u32 virt_data_buf;
+	u32 usr_virt_data_buf;
+	u32 sw2;
 };
 
 /*
@@ -166,14 +166,14 @@ struct rio_ids_data_desc{
 **  only used in outbound
 */
 struct rio_ds_hdr_desc{
-    u32 dw0;
-    u32 dw1;
-    u32 dw2;
-    u32 dw3;
-    u32 dw4;
+	u32 dw0;
+	u32 dw1;
+	u32 dw2;
+	u32 dw3;
+	u32 dw4;
 
-    /* SW usage */
-    u32 virt_data_buf;
+	/* SW usage */
+	u32     virt_data_buf;
 	u32	sw1;
 	u32	sw2;
 };
@@ -182,21 +182,21 @@ struct rio_ds_hdr_desc{
 ** OBDS DSE configuration
 */
 struct rio_obds_dse_cfg {
-    u8         in_use;     /* if the DSE is in_use */
-    u8         cos;
-    u16        dest_id;
-    u16        stream_id;
-    spinlock_t lock;
-	u8		   irqEnabled;
-    char       name[16];
+	u8         in_use;     /* if the DSE is in_use */
+	u8         cos;
+	u16        dest_id;
+	u16        stream_id;
+	spinlock_t lock;
+	u8         irqEnabled;
+	char       name[16];
 
-    /* header descriptor */
-    u16        num_hdr_desc_free;
-    u16        max_num_hdr_desc;
+	/* header descriptor */
+	u16        num_hdr_desc_free;
+	u16        max_num_hdr_desc;
 
-    /* data descriptor */
-    u16        num_data_desc_free;
-    u16        max_num_data_desc;
+	/* data descriptor */
+	u16        num_data_desc_free;
+	u16        max_num_data_desc;
 	u16		hdr_read_ptr;
 	u16		hdr_write_ptr;
 	u8		first_hdr_desc;
@@ -207,25 +207,24 @@ struct rio_obds_dse_cfg {
 
 	struct rio_ds_hdr_desc		*ptr_obds_hdr_desc;
 	struct rio_ods_data_desc	*ptr_obds_data_desc;
-
 };
 
 /*
 ** IBDS configuration
 */
 struct ibds_virt_m_cfg {
-    spinlock_t lock;
-    u32        in_use;     /* if the DSE is in_use */
-    u8         cos;
-    u16        dest_id;
-    u16        stream_id;
-    u16        source_id;
-    char       name[16];
+	spinlock_t lock;
+	u32        in_use;     /* if the DSE is in_use */
+	u8         cos;
+	u16        dest_id;
+	u16        stream_id;
+	u16        source_id;
+	char       name[16];
 
-    u16        num_desc_free;
-    u16        max_num_data_desc;
-    u16        data_read_ptr;
-    u16        data_write_ptr;
+	u16        num_desc_free;
+	u16        max_num_data_desc;
+	u16        data_read_ptr;
+	u16        data_write_ptr;
 
 	struct rio_ids_data_desc    *ptr_ibds_data_desc;
 	u32			desc_dbuf_size;
@@ -237,30 +236,30 @@ struct ibds_virt_m_cfg {
 
 /* Outbound data stream stats */
 struct rio_ds_obds_dse_stats {
-    u32	       num_desc_chain_transferred;
-    u32	       num_desc_transferred;
-    u32        num_desc_err;
-    u32        num_desc_fetch_err;
-    u32        num_desc_data_transaction_err;
-    u32        num_desc_update_err;
-    u32        num_desc_axi_err;
+	u32	   num_desc_chain_transferred;
+	u32	   num_desc_transferred;
+	u32        num_desc_err;
+	u32        num_desc_fetch_err;
+	u32        num_desc_data_transaction_err;
+	u32        num_desc_update_err;
+	u32        num_desc_axi_err;
 };
 
 /* Inbound data stream stats */
 struct rio_ds_ibds_vsid_m_stats {
-    u32	       num_desc_chain_transferred;
-    u32        num_desc_transferred;
-    u32        num_desc_fetch_err;
-    u32        num_timeout_err;
-    u32        num_desc_update_err;
-    u32	       num_data_transaction_err;
-    u32        num_mtu_len_mismatch_err;
-    u32        num_pdu_dropped;
-    u32        num_pdu_len_mismatch_err;
-    u32        num_dropped_pdu;
-    u32        num_segment_loss;
-    u32        num_desc_axi_err;
-    u32        num_desc_ds_err;
+	u32	   num_desc_chain_transferred;
+	u32        num_desc_transferred;
+	u32        num_desc_fetch_err;
+	u32        num_timeout_err;
+	u32        num_desc_update_err;
+	u32	   num_data_transaction_err;
+	u32        num_mtu_len_mismatch_err;
+	u32        num_pdu_dropped;
+	u32        num_pdu_len_mismatch_err;
+	u32        num_dropped_pdu;
+	u32        num_segment_loss;
+	u32        num_desc_axi_err;
+	u32        num_desc_ds_err;
 };
 
 /*
@@ -268,41 +267,52 @@ struct rio_ds_ibds_vsid_m_stats {
 ** feature
 */
 struct rio_ds_priv {
-    /* IBDS */
-    u16				max_pdu_len;
-	u16				mtu;
-	u16				seg_support;
-	u32				ibds_avsid_mapping;
-    u16                         num_ibds_dses;/* TBR */
-    u16                         num_ibds_virtual_m;/* TBR */
-    struct ibds_virt_m_cfg	ibds_vsid_m_cfg[RIO_MAX_NUM_IBDS_VSID_M];
+	/* IBDS */
+	u16			max_pdu_len;
+	u16			mtu;
+	u16			seg_support;
+	u32			ibds_avsid_mapping;
+	u16                     num_ibds_dses;/* TBR */
+	u16                     num_ibds_virtual_m;/* TBR */
+	struct ibds_virt_m_cfg	ibds_vsid_m_cfg[RIO_MAX_NUM_IBDS_VSID_M];
 
-    /* OBDS */
-    u16                         num_obds_dses; /* TBR */
-    struct rio_obds_dse_cfg     obds_dse_cfg[RIO_MAX_NUM_OBDS_DSE];
+	/* OBDS */
+	u16                     num_obds_dses; /* TBR */
+	struct rio_obds_dse_cfg obds_dse_cfg[RIO_MAX_NUM_OBDS_DSE];
 
-    struct rio_irq_handler      ob_dse_irq[RIO_MAX_NUM_OBDS_DSE];
-    struct rio_irq_handler      ib_dse_vsid_irq[RIO_MAX_NUM_IBDS_VSID_M];
+	struct rio_irq_handler  ob_dse_irq[RIO_MAX_NUM_OBDS_DSE];
+	struct rio_irq_handler  ib_dse_vsid_irq[RIO_MAX_NUM_IBDS_VSID_M];
 
-    struct rio_ds_ibds_vsid_m_stats ib_vsid_m_stats[RIO_MAX_NUM_IBDS_VSID_M];
-    struct rio_ds_obds_dse_stats        ob_dse_stats[RIO_MAX_NUM_OBDS_DSE];
-
+	struct rio_ds_ibds_vsid_m_stats ib_vsid_m_stats[RIO_MAX_NUM_IBDS_VSID_M];
+	struct rio_ds_obds_dse_stats        ob_dse_stats[RIO_MAX_NUM_OBDS_DSE];
 };
+
+/* Platform driver initialization */
+extern int axxia_parse_dtb_ds(
+	struct platform_device *dev,
+	struct rio_ds_dtb_info *ptr_ds_dtb_info);
+
+extern int axxia_cfg_ds(
+    struct rio_mport        *mport,
+    struct rio_ds_dtb_info  *ptr_ds_dtb_info);
+
+extern void axxia_rio_ds_port_irq_init(
+    struct rio_mport        *mport);
 
 /* open an OBDS data stream */
 extern int axxia_open_ob_data_stream(
 	struct rio_mport    *mport,
-	void				*dev_id,
-	int					dse_id,
-	int					num_header_entries,
-	int					num_data_entries);
+	void                *dev_id,
+	int                  dse_id,
+	int                  num_header_entries,
+	int                  num_data_entries);
 
-int open_ob_data_stream(
+extern int open_ob_data_stream(
 	struct rio_mport    *mport,
-	void		    	*dev_id,
-	int					dse_id,
-	int					num_header_entries,
-	int					num_data_entries);
+	void                *dev_id,
+	int                  dse_id,
+	int                  num_header_entries,
+	int                  num_data_entries);
 
 /* add user's data */
 extern int axxia_add_ob_data_stream(
@@ -310,8 +320,8 @@ extern int axxia_add_ob_data_stream(
 	int		     	dest_id,
 	int		     	stream_id,
 	int		     	cos,
-	int				priority,
-	int				is_hdr_desc,
+	int                     priority,
+	int                     is_hdr_desc,
 	void		    	*buffer,
 	int		     	data_len);
 
@@ -323,7 +333,7 @@ void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state);
 
 /* data streaming global configuration */
 extern int axxia_data_stream_global_cfg(
-	struct rio_mport    *mport,
+	struct rio_mport       *mport,
 	int			max_pdu_length,
 	int			seg_support,
 	int			mtu,
@@ -348,11 +358,11 @@ int open_ib_data_stream(
 
 /* add IBDS data buffer */
 extern int axxia_add_ibds_buffer(
-	struct rio_mport   *mport,
-	int		   source_id,
-	int		   cos,
-	void		  *buf,
-	int			buf_size);
+	struct rio_mport       *mport,
+	int                     source_id,
+	int                     cos,
+	void                   *buf,
+	int                     buf_size);
 
 /* get IBDS data */
 extern void *axxia_get_ibds_data(
@@ -378,11 +388,6 @@ extern int axxia_close_ib_data_stream(
 extern int axxia_close_ob_data_stream(
 	struct rio_mport    	*mport,
 	int		 	dse_id);
-
-/* configure the data streaming data structures */
-int axxia_cfg_ds(
-    struct rio_mport        *mport,
-    struct rio_ds_dtb_info  *ptr_ds_dtb_info);
 
 void release_ob_ds(struct rio_irq_handler *h);
 

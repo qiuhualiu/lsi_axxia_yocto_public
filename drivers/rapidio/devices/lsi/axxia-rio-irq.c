@@ -2498,9 +2498,6 @@ void axxia_rio_port_irq_init(struct rio_mport *mport)
 	struct rio_priv *priv = mport->priv;
 	int i;
 
-	/* Data_streaming */
-	struct rio_ds_priv      *ptr_ds_priv;
-
 	/**
 	 * Port general error indications
 	 */
@@ -2583,36 +2580,6 @@ void axxia_rio_port_irq_init(struct rio_mport *mport)
 		priv->ib_dme_irq[i].thrd_irq_fn = ib_dme_irq_handler;
 		priv->ib_dme_irq[i].data = NULL;
 		priv->ib_dme_irq[i].release_fn = release_inb_mbox;
-	}
-
-	/* Data_streaming */
-	ptr_ds_priv = &(priv->ds_priv_data);
-
-	for (i = 0; i < RIO_MAX_NUM_OBDS_DSE; i++) {
-		clear_bit(RIO_IRQ_ENABLED, &(ptr_ds_priv->ob_dse_irq[i].state));
-		ptr_ds_priv->ob_dse_irq[i].mport = mport;
-		ptr_ds_priv->ob_dse_irq[i].irq_enab_reg_addr = RAB_INTR_ENAB_ODSE;
-		ptr_ds_priv->ob_dse_irq[i].irq_state_reg_addr = RAB_INTR_STAT_ODSE;
-		ptr_ds_priv->ob_dse_irq[i].irq_state_mask = (1 << i);
-		ptr_ds_priv->ob_dse_irq[i].thrd_irq_fn = ob_dse_irq_handler;
-		ptr_ds_priv->ob_dse_irq[i].data = NULL;
-		ptr_ds_priv->ob_dse_irq[i].release_fn = release_ob_ds;
-	}
-
-        /*
-        ** Inbound Data Streaming
-        */
-        ptr_ds_priv = &(priv->ds_priv_data);
-
-        for (i = 0; i < RIO_MAX_NUM_IBDS_VSID_M; i++) {
-		clear_bit(RIO_IRQ_ENABLED, &(ptr_ds_priv->ib_dse_vsid_irq[i].state));
-		ptr_ds_priv->ib_dse_vsid_irq[i].mport = mport;
-		ptr_ds_priv->ib_dse_vsid_irq[i].irq_enab_reg_addr = RAB_INTR_ENAB_IBDS;
-		ptr_ds_priv->ib_dse_vsid_irq[i].irq_state_reg_addr = RAB_INTR_STAT_IBSE_VSID_M;
-		ptr_ds_priv->ib_dse_vsid_irq[i].irq_state_mask = (1 << i);
-		ptr_ds_priv->ib_dse_vsid_irq[i].thrd_irq_fn = ib_dse_vsid_m_irq_handler;
-		ptr_ds_priv->ib_dse_vsid_irq[i].data = NULL;
-		ptr_ds_priv->ob_dse_irq[i].release_fn = release_ib_ds;
 	}
 
 	/**

@@ -1044,39 +1044,6 @@ void axxia_rio_static_win_release(struct rio_mport *mport)
 	axxia_rio_release_outb_region(mport, priv->maint_win_id);
 }
 
-/* Data_streaming */
-/**
- * rio_parse_dtb_ds - Parse RapidIO platform entry for data streaming
- *
- * @dev: RIO platform device
- * @ptr_ds_dtb_info: pointer to where data streaming dtb info is stored
- *
- * Returns:
- * -EFAULT          At failure
- * 0                Success
- */
-static int rio_parse_dtb_ds(
-	struct platform_device *dev,
-	struct rio_ds_dtb_info *ptr_ds_dtb_info)
-{
-	const u32 *cell;
-	int rlen;
-	u32 pval;
-
-	memset(ptr_ds_dtb_info, 0, sizeof(struct rio_ds_dtb_info));
-
-	/* Check if data streaming is enabled */
-	if (!of_property_read_u32(dev->dev.of_node,
-				  "enable_ds",
-				  &pval)) {
-		ptr_ds_dtb_info->ds_enabled = pval;
-	}
-	dev_dbg(&dev->dev, "enable_ds: %d\n", ptr_ds_dtb_info->ds_enabled);
-
-	return 0;
-}
-
-
 /**
  * rio_parse_dtb - Parse RapidIO platform entry
  *
@@ -1105,8 +1072,7 @@ static int rio_parse_dtb(
 	int *ibNumDmes,
 	int *inbDmes,
 	int *irq,
-	struct event_regs      *linkdown_reset,
-	struct rio_ds_dtb_info *ptr_ds_dtb_info)
+	struct event_regs      *linkdown_reset)
 {
 	const u32 *dt_range, *cell;
 	int rlen, rc;
@@ -1250,11 +1216,6 @@ static int rio_parse_dtb(
 				linkdown_reset->in_use);
 		}
 	}
-
-	/* Data_streaming */
-	rc = rio_parse_dtb_ds(dev, ptr_ds_dtb_info);
-	if (rc != 0)
-		return rc;
 
 	return 0;
 }
@@ -1582,18 +1543,21 @@ static int axxia_rio_setup(struct platform_device *dev)
 	int numObDmes[2], outbDmes[2];
 	int numIbDmes[2], inbDmes[2];
 	struct event_regs linkdown_reset = { 0 };
-	/* data_streaming */
-	struct rio_ds_dtb_info ds_dtb_info;
+	struct rio_ds_dtb_info ds_dtb_info; /* data_streaming */
 
 	if (axxia_rapidio_board_init())
 		return -EFAULT;
 
-	/* Get address boundaries from DTB */
+	/* Get address boundaries, etc. from DTB */
 	if (rio_parse_dtb(dev, &law_start, &law_size, &regs,
 			  &numObDmes[0], &outbDmes[0],
 			  &numIbDmes[0], &inbDmes[0],
-			  &irq, &linkdown_reset, &ds_dtb_info))
+			  &irq, &linkdown_reset))
 		return -EFAULT;
+
+	rc = axxia_parse_dtb_ds(dev, &ds_dtb_info);
+	if (rc != 0)
+		return rc;
 
 	/* Alloc and Initialize driver SW data structure */
 	ops = rio_ops_setup();
@@ -1639,6 +1603,14 @@ static int axxia_rio_setup(struct platform_device *dev)
 	axxia_rio_init_sysfs(dev);
 #endif
 
+	/* Data_streaming */
+	if (ds_dtb_info.ds_enabled == 1) {
+		rc = axxia_cfg_ds(mport, &ds_dtb_info);
+		if (rc)
+			goto err_mport;
+		axxia_rio_ds_port_irq_init(mport);
+	}
+
 	/* Register port with core driver
 	 */
 	if (rio_register_mport(mport)) {
@@ -1668,12 +1640,6 @@ static int axxia_rio_setup(struct platform_device *dev)
 		mport->enum_host = 0;
 
 	axxia_rio_set_mport_disc_mode(mport);
-
-	/* Data_streaming */
-	if (ds_dtb_info.ds_enabled == 1) {
-		rc = axxia_cfg_ds(mport, &ds_dtb_info);
-		return rc;
-	}
 
 	IODP("rio: mport=%p priv=%p enum_host=%d\n", mport, priv,
 		mport->enum_host);
