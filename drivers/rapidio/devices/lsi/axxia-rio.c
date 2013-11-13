@@ -1073,43 +1073,6 @@ static int rio_parse_dtb_ds(
 	}
 	dev_dbg(&dev->dev, "enable_ds: %d\n", ptr_ds_dtb_info->ds_enabled);
 
-	/* data streaming is not enabled */
-	if (ptr_ds_dtb_info->ds_enabled == 0)
-		return( 0 );
-
-	/* inbound data descriptors, data buffers */
-	cell = of_get_property(dev->dev.of_node, "inb-dse", &rlen);
-	if (!cell) {
-		ptr_ds_dtb_info->num_inb_virtaul_m = 2;
-		ptr_ds_dtb_info->inb_num_data_descs = 512;
-	} else {
-		ptr_ds_dtb_info->num_inb_virtaul_m = of_read_number(cell, 1);
-		ptr_ds_dtb_info->inb_num_data_descs = of_read_number(cell+1, 1);
-	}
-
-	/* outbound header descriptpr, data descritpor, data buffers */
-	cell = of_get_property(dev->dev.of_node, "outb-dse", &rlen);
-	if (!cell) {
-		ptr_ds_dtb_info->num_outb_dses = 2;
-		ptr_ds_dtb_info->outb_num_hdr_descs = 512;
-		ptr_ds_dtb_info->outb_num_data_descs = 512;
-	} else {
-		ptr_ds_dtb_info->num_outb_dses = of_read_number(cell, 1);;
-		ptr_ds_dtb_info->outb_num_hdr_descs = of_read_number(cell+1, 1);;
-		ptr_ds_dtb_info->outb_num_data_descs = of_read_number(cell+2, 1);
-	}
-
-	dev_dbg(&dev->dev, "inb-num-virt_m = %d\n",
-		ptr_ds_dtb_info->num_inb_virtaul_m);
-	dev_dbg(&dev->dev, "inb-ds-num-data-descriptors: %d\n",
-		ptr_ds_dtb_info->inb_num_data_descs );
-	dev_dbg(&dev->dev, "outb-num-dses = %d\n",
-		ptr_ds_dtb_info->num_outb_dses);
-	dev_dbg(&dev->dev, "outb-ds-num-header-descriptors: %d\n",
-		ptr_ds_dtb_info->outb_num_hdr_descs );
-	dev_dbg(&dev->dev, "outb-ds-num-data-descriptors: %d\n",
-		ptr_ds_dtb_info->outb_num_data_descs );
-
 	return 0;
 }
 
@@ -1424,8 +1387,7 @@ static struct rio_priv *rio_priv_dtb_setup(
 	int *numInbDmes,
 	int *inbDmes,
 	int irq,
-	struct event_regs      *linkdown_reset,
-	struct rio_ds_dtb_info *ptr_ds_dtb_info)
+	struct event_regs      *linkdown_reset)
 {
 	struct rio_priv *priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	int i, rc;
@@ -1477,13 +1439,6 @@ static struct rio_priv *rio_priv_dtb_setup(
 		priv->inbDmes[1] = inbDmes[1];
 	}
     
-	/* Data_streaming */
-	if (ptr_ds_dtb_info->ds_enabled == 1) {
-		rc = axxia_cfg_ds(mport, ptr_ds_dtb_info); 
-		if (rc != 0)
-			goto err_fixed;
-	}
-
 	/* Interrupt handling */
 	priv->irq_line = irq;
 	axxia_rio_port_irq_init(mport);
@@ -1654,7 +1609,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 	priv = rio_priv_dtb_setup(dev, &regs, mport,
 				  &numObDmes[0], &outbDmes[0],
 				  &numIbDmes[0], &inbDmes[0],
-				  irq, &linkdown_reset, &ds_dtb_info);
+				  irq, &linkdown_reset);
 	if (IS_ERR(priv)) {
 		rc = PTR_ERR(priv);
 		goto err_priv;
@@ -1713,6 +1668,12 @@ static int axxia_rio_setup(struct platform_device *dev)
 		mport->enum_host = 0;
 
 	axxia_rio_set_mport_disc_mode(mport);
+
+	/* Data_streaming */
+	if (ds_dtb_info.ds_enabled == 1) {
+		rc = axxia_cfg_ds(mport, &ds_dtb_info);
+		return rc;
+	}
 
 	IODP("rio: mport=%p priv=%p enum_host=%d\n", mport, priv,
 		mport->enum_host);
