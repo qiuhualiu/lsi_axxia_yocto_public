@@ -30,12 +30,15 @@
 /******************************************************************************
     #defines
 ******************************************************************************/
-#define RIO_DS_DATA_BUF_1K                  (1<<10)
-#define RIO_DS_DATA_BUF_2K                  (1<<11)
-#define RIO_DS_DATA_BUF_4K                  (1<<12)
-#define RIO_DS_DATA_BUF_8K                  (1<<13)
-#define RIO_DS_DATA_BUF_16K                 (1<<14)
-#define RIO_DS_DATA_BUF_32K                 (1<<15)
+#define RIO_IBDS_DATA_BUF_1K                  (1<<10)
+#define RIO_IBDS_DATA_BUF_2K                  (1<<11)
+#define RIO_IBDS_DATA_BUF_4K                  (1<<12)
+#define RIO_IBDS_DATA_BUF_8K                  (1<<13)
+#define RIO_IBDS_DATA_BUF_16K                 (1<<14)
+#define RIO_IBDS_DATA_BUF_32K                 (1<<15)
+#define RIO_IBDS_DATA_BUF_64K                 (1<<16)
+
+
 #define RIO_DS_DATA_BUF_64K                 (0) /* HW uses 0 for 64K */
 
 #define RIO_MAX_NUM_OBDS_DSE                16
@@ -53,8 +56,15 @@
 /*
 ** Data Streaming registers
 */
-#define DSE_WAKEUP                   (2)
-#define DSE_ENABLE                   (1)
+#define IB_DS_INT_EN					(1<<7)
+#define OB_DS_INT_EN					(1<<8)
+#define OB_DSE_WAKEUP                   (2)
+#define OB_DSE_ENABLE                   (1)
+#define OB_DSE_PREFETCH				 (4)
+
+#define IB_VSID_M_PREFETCH_ENABLE		(2)
+#define IB_VSID_M_PREFETCH_WAKEUP		(4)
+
 #define RAB_OBDSE_CTRL(n)            (RAB_REG_BASE + (0x2d28 + (0x10*(n))))
 #define RAB_OBDSE_STAT(n)            (RAB_REG_BASE + (0x2d28 + (0x10*(n)))+0x4)
 #define RAB_OBDSE_DESC_ADDR(n)       (RAB_REG_BASE + (0x2d28 + (0x10*(n)))+0x8)
@@ -70,8 +80,8 @@
 #define RAB_IBDS_VSID_ADDR_HI(n)     (RAB_REG_BASE + (0x2b28 + (0x8*(n)))+0x4)
 
 #define RAB_IBDS_VSID_ALIAS          (RAB_REG_BASE + 0x2a1c)
-#define GRIO_DSI_CAR				 (RAB_REG_BASE + 0x3c)
-#define GRIO_DSLL_CCSR				 (RAB_REG_BASE + 0x48)
+#define GRIO_DSI_CAR				 (0x3c)
+#define GRIO_DSLL_CCSR				 (0x48)
 
 #define RIO_DS_DESC_ALIGNMENT        (1 << 5)
 
@@ -164,14 +174,8 @@ struct rio_ds_hdr_desc{
 
     /* SW usage */
     u32 virt_data_buf;
-
-#ifdef USE_IOCTRL
-    u32 remaining_data_len;  /* TO_BE_REMOVED */
-    u32 offset;
-#else
-    u32 sw1;
-    u32 sw2;
-#endif
+	u32	sw1;
+	u32	sw2;
 };
 
 /*
@@ -224,10 +228,11 @@ struct ibds_virt_m_cfg {
     u16        data_write_ptr;
 
 	struct rio_ids_data_desc    *ptr_ibds_data_desc;
-	u8			desc_dbuf_size;
+	u32			desc_dbuf_size;
 	u32			buf_add_ptr;
 	u32			num_hw_written_bufs;
 
+	u32			alias_reg_value;
 };
 
 /* Outbound data stream stats */
@@ -270,13 +275,10 @@ struct rio_ds_priv {
 	u32				ibds_avsid_mapping;
     u16                         num_ibds_dses;/* TBR */
     u16                         num_ibds_virtual_m;/* TBR */
-    u16                         num_ibds_data_desc;/* TBR */
     struct ibds_virt_m_cfg	ibds_vsid_m_cfg[RIO_MAX_NUM_IBDS_VSID_M];
 
     /* OBDS */
     u16                         num_obds_dses; /* TBR */
-    u16                         num_obds_hdr_desc; /* TBR */
-    u16                         num_obds_data_desc; /* TBR */
     struct rio_obds_dse_cfg     obds_dse_cfg[RIO_MAX_NUM_OBDS_DSE];
 
     struct rio_irq_handler      ob_dse_irq[RIO_MAX_NUM_OBDS_DSE];
