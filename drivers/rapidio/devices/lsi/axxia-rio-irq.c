@@ -446,7 +446,7 @@ int alloc_irq_handler(struct rio_irq_handler *h,
  * Caller must hold RAB lock
  */
 
-static void release_irq_handler(struct rio_irq_handler *h)
+void release_irq_handler(struct rio_irq_handler *h)
 {
 	struct rio_mport *mport = h->mport;
 	struct rio_priv *priv = mport->priv;
@@ -2607,7 +2607,7 @@ void axxia_rio_port_irq_init(struct rio_mport *mport)
         for (i = 0; i < RIO_MAX_NUM_IBDS_VSID_M; i++) {
 		clear_bit(RIO_IRQ_ENABLED, &(ptr_ds_priv->ib_dse_vsid_irq[i].state));
 		ptr_ds_priv->ib_dse_vsid_irq[i].mport = mport;
-		ptr_ds_priv->ib_dse_vsid_irq[i].irq_enab_reg_addr = RAB_INTR_STAT_ODSE;
+		ptr_ds_priv->ib_dse_vsid_irq[i].irq_enab_reg_addr = RAB_INTR_ENAB_IBDS;
 		ptr_ds_priv->ib_dse_vsid_irq[i].irq_state_reg_addr = RAB_INTR_STAT_IBSE_VSID_M;
 		ptr_ds_priv->ib_dse_vsid_irq[i].irq_state_mask = (1 << i);
 		ptr_ds_priv->ib_dse_vsid_irq[i].thrd_irq_fn = ib_dse_vsid_m_irq_handler;
