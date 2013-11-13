@@ -319,6 +319,8 @@ int alloc_irq_handler(
         void *data,
         const char *name);
 
+void release_irq_handler(struct rio_irq_handler *h);
+
 #ifdef CONFIG_AXXIA_RIO_STAT
 
 extern int axxia_rio_init_sysfs(struct platform_device *dev);
