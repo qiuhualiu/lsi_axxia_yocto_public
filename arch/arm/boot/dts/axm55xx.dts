@@ -437,6 +437,7 @@
                 linkdown-reset = <0x0200 0x100 0x0020 0x10000000 0x0 0x000010000>;
                 interrupts = <0 89 4>;
                 outb-dmes = <2 0x00000003 1 0x00000000>;
+		enable_ds = <0>;
         };
 
 };
