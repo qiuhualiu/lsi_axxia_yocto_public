@@ -145,10 +145,6 @@ static inline void __ib_dse_dw_dbg(
  *	registers.
  *
  * @mport:	pointer to the master port
- * @max_pdu_length:   Maximum PDU in size supported by the destination
- *			endpoint. It is a 16-bit field, 0 indicates 64KB.
- * @seg_support:      Number of segmentation context supported by
- *			the destination endpoint. It is a 16-bit field.
  * @mtu:	Maximum Transmission Unit - controls the data payload size for
  *			segments of an encapsulated PDU.
  * @ibds_avsid_mapping:	this field definesmapping from incoming VSID
@@ -159,8 +155,6 @@ static inline void __ib_dse_dw_dbg(
  ****************************************************************************/
 int axxia_data_stream_global_cfg(
 	struct rio_mport    *mport,
-	int			max_pdu_length,
-	int			seg_support,
 	int			mtu,
 	int			ibds_avsid_mapping)
 {
@@ -169,12 +163,11 @@ int axxia_data_stream_global_cfg(
 	struct ibds_virt_m_cfg  *ptr_virt_m_cfg;
 	struct rio_obds_dse_cfg *ptr_dse_cfg;
 	int		reg_val;
-	u32		max_pdu_len = 0;
+	u32		mtu_value = 0;
 	int	i;
 
 	/* sanity check */
-	if ((max_pdu_length > (1<<16))	||
-		(mtu < 32)		||
+	if ((mtu < 32)		||
 		(mtu > 256)) {
 		return -EINVAL;
 	}
@@ -194,41 +187,22 @@ int axxia_data_stream_global_cfg(
 			return -EINVAL;
 	}
 
-	/* TBD - The __rio_local_read_config_32( ) does not return proper
-	**	value for GRIO registers
-	*/
-#ifdef FUTURE
-	/* Data Streaming Information Capability Register */
-	/* max_pdu_len is a 16-bit field in HW, thus 0 indicates 64KB */
-	reg_val = 0;
-	reg_val |= ((seg_support << 16) & 0xFFFF0000);
-	if (max_pdu_length == (1<<16))
-		max_pdu_len = 0;
-	else
-		max_pdu_len =  max_pdu_length;
-
-	reg_val |= (max_pdu_len & 0xFFFF);
-	__rio_local_write_config_32(mport, GRIO_DSI_CAR, reg_val);
-
 	/*
 	** Data Streaming Logical Layer Control Command and Status Register
 	**	MTU bits [31:24] 8 - 32 bytes, 9 - 36 bytes etc.
 	*/
 	reg_val = 0;
 	mtu_value = mtu / 4;
-	reg_val |= ((mtu_value << 24) & 0xFF000000);
-	__rio_local_write_config_32(mport, GRIO_DSLL_CCSR, reg_val);
+	reg_val |= (mtu_value  & 0xFF);
 
-#endif /* FUTURE */
+	__rio_local_write_config_32(mport, GRIO_DSLL_CCSR, reg_val);
 
 	/* IBDS alias mapping register */
 	reg_val = 0;
-	reg_val |= (ibds_avsid_mapping & 0xFFFFFFF);
+	reg_val |= (ibds_avsid_mapping & 0xFFFFF);
 	__rio_local_write_config_32(mport, RAB_IBDS_VSID_ALIAS, reg_val);
 
 	/* save information in the system */
-	ptr_ds_priv->max_pdu_len = max_pdu_len;
-	ptr_ds_priv->seg_support = seg_support;
 	ptr_ds_priv->mtu = mtu;
 	ptr_ds_priv->ibds_avsid_mapping = ibds_avsid_mapping;
 
@@ -239,27 +213,34 @@ EXPORT_SYMBOL(axxia_data_stream_global_cfg);
 /*****************************************************************************
  * axxia_open_ob_data_stream -
  *
- *  This function sets up the descriptor chain to an available OBDS engine.
- *  It programs each header and data descriptors associated with the stream.
+ *  This function sets up a descriptor chain to an outbound data streaming
+ *  engine (DSE).
  *
- * @mport:	pointer to the master port
- * @destId:	destination ID of the data stream
- * @streamId:   traffic stream ID
- * @cos:	class of service of the stream
- * @numPDUs:	number of PDUs in the stream
- * @pduLen:	PDU length in bytes of the segmented PDU
- * @isEnableEngine: if to enable the DS engine after setting up the chain
+ *	There are two types of descriptor usage:
+ *	1. Single header descriptors. Each descriptor points to a data buffer
+ *	   that is a full PDU length.
+ *	2. Header and data descriptor combination. Each header descriptor
+ *	   points to a data descriptor, each data descriptor points to a
+ *	   4KB data buffer.
+ *
+ *  Under current implementation, only single descriptor is supported.
+ *
+ * @mport:		Pointer to the master port
+ * @dev_id: 		Device specific pointer to pass on event
+ * @dse_id:		DSE ID in the range of [0, 15]
+ * @num_header_entries:	Number of header descriptors in the descriptor chain
+ * @num_data_entries:	Number of data descriptors in the descriptor chain
  *
  * Returns %0 on success
  ****************************************************************************/
 int axxia_open_ob_data_stream(
-	struct rio_mport    *mport,
-	void		*dev_id,
+	struct rio_mport    	*mport,
+	void			*dev_id,
 	int			dse_id,
 	int			num_header_entries,
 	int			num_data_entries)
 {
-	int		 rc = 0;
+	int		 	rc = 0;
 
 	axxia_api_lock();
 
@@ -278,21 +259,14 @@ EXPORT_SYMBOL(axxia_open_ob_data_stream);
 /*****************************************************************************
  * open_ob_data_stream -
  *
- *  This function sets up the descriptor chain to an available OBDS engine.
- *  It programs each header and data descriptors associated with the stream.
+ *  This function sets up a descriptor chain to an outbound data streaming
+ *  engine (DSE). It is called by axxia_open_ob_data_stream( ).
  *
- * @mport:	pointer to the master port
- * @dev_id:	device specific pointer to pass on event
- * @dest_id:	destination ID of the data stream
- * @stream_id:  traffic stream ID
- * @cos:	class of service of the stream
- * @num_pdus:   number of PDUs in the stream
- * @pdu_length: PDU length in bytes of the segmented PDU
- *
- *  To keep the correct order of the stream, it is recommended that same
- *  stream_id goes to the same DSE descriptor chain.  However, different
- *  stream_ids can go to the same descriptor chain.  To make it simple,
- *  we make stream_id goes to the (stream_id % 16) descriptor chain.
+ * @mport:		Pointer to the master port
+ * @dev_id: 		Device specific pointer to pass on event
+ * @dse_id:		DSE ID in the range of [0, 15]
+ * @num_header_entries:	Number of header descriptors in the descriptor chain
+ * @num_data_entries:	Number of data descriptors in the descriptor chain
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -413,10 +387,13 @@ int open_ob_data_stream(
 	if (rc == 0) {
 		ptr_dse_cfg->max_num_hdr_desc = num_header_entries;
 		ptr_dse_cfg->num_hdr_desc_free = num_header_entries;
+		ptr_dse_cfg->hdr_read_ptr = 0;
+		ptr_dse_cfg->hdr_write_ptr = 0;
 
 		ptr_dse_cfg->max_num_data_desc = num_data_entries;
 		ptr_dse_cfg->num_data_desc_free = num_data_entries;
-
+		ptr_dse_cfg->data_read_ptr = 0;
+		ptr_dse_cfg->data_write_ptr = 0;
 
 #if 0
 		/* enable the DSE */
@@ -437,14 +414,28 @@ int open_ob_data_stream(
 /*****************************************************************************
  * axxia_add_ob_data_stream -
  *
- *  This function copies data to an OBDS data buffer.
+ *  This function adds a descriptor and a data buffer to a descriptor chain.
  *
- * @mport:	  pointer to the master port
- * @dest_id:	 destination ID of the data stream
- * @stream_id:       traffic stream ID
- * @cos:	    class of service of the stream
- * @buffer:	 pointer to where the data is stored
- * @dataLength:     data length in bytes to be copied
+ *	To keep the correct order of a data stream, data descripors of the same
+ *	stream ID goes to the same DSE descriptor chain. However, each DSE can
+ *	handle multiple data streams. To make it simple, a data stream with
+ *	stream ID goes to (stream ID % (totoal number of DSEs)) descriptor
+ *	chain.
+ *
+ *	Under the current implementation, only header descriptor is supported.
+ *
+ *	The buffer will be freed when the associated descriptor is processed
+ *	in the ob_dse_irq_handler( ) routine.
+ *
+ * @mport:	  	Pointer to the master port
+ * @dest_id:	 	Destination ID of the data stream
+ * @stream_id:		Data stream ID
+ * @cos:	    	Class of service of the stream
+ * @priority:		Priority of the data stream
+ * @is_hdr_desc:	Indicate if the descriptor a header descriptor
+ *			or data descriptor
+ * @buffer:	 	Pointer to where the data is stored
+ * @data_len:     	Data buffer length associated with the descriptor
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -488,7 +479,6 @@ int axxia_add_ob_data_stream(
 
 	/* check if there is a space for the new data */
 	if (is_hdr_desc) {
-
 		if (ptr_dse_cfg->num_hdr_desc_free == 0)
 			return -ENOMEM;
 
@@ -547,8 +537,10 @@ int axxia_add_ob_data_stream(
 		if (ptr_dse_cfg->hdr_write_ptr ==
 			(ptr_dse_cfg->max_num_hdr_desc - 1)) {
 			next_desc_index = 0;
+			ptr_dse_cfg->hdr_write_ptr = 0;
 		} else {
 			next_desc_index = ptr_dse_cfg->hdr_write_ptr + 1;
+			ptr_dse_cfg->hdr_write_ptr++;
 		}
 
 		next_desc_ptr_phy = virt_to_phys((void *)
@@ -584,7 +576,7 @@ int axxia_add_ob_data_stream(
 
 		ptr_hdr_desc->virt_data_buf = (u32)buffer;
 
-		ptr_dse_cfg->hdr_write_ptr++;
+		ptr_hdr_desc->buf_status = DS_DBUF_ALLOC;
 
 		ptr_dse_cfg->num_hdr_desc_free--;
 
@@ -592,15 +584,6 @@ int axxia_add_ob_data_stream(
 		/* header and data descriptor combination support TBD */
 		return -EINVAL;
 	}
-
-#ifdef DS_DEBUG
-	printk("OBDS HEADER DESC [%08x %08x %08x %08x %08x]\n",
-		ptr_hdr_desc->dw0,
-		ptr_hdr_desc->dw1,
-		ptr_hdr_desc->dw2,
-		ptr_hdr_desc->dw3,
-		ptr_hdr_desc->dw4);
-#endif
 
 	/* check if the DSE is in sleep mode, if it is, wake up */
 	/* find out DSE stats */
@@ -654,7 +637,10 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state)
 	struct rio_ds_hdr_desc  *ptr_hdr_desc = h->data;
 	u32 dse_stat, dse_id;
 	u16 hdr_read_ptr;
+	u32	is_hdr_desc_done = 1;
 	unsigned long flags;
+
+	u32 num_desc_processed = 0;
 
 	/* find the DSE that gets interrupted, CNTLZW found the upper
 	** bit first */
@@ -663,9 +649,14 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state)
 	/* find out DSE stats */
 	__rio_local_read_config_32(mport, RAB_OBDSE_STAT(dse_id), &dse_stat);
 
-#ifdef DS_DEBUG
-	printk("dse_id = %d, dse_stat = 0x%x\n", dse_id, dse_stat);
-#endif
+
+	/*
+	** The ARM could also got interrupted with dse_stat sticky status
+	**	bits not being set. TBD
+	*/
+	if (!(dse_stat & 0x3F))
+		return;
+
 	ptr_ds_priv = &(priv->ds_priv_data);
 
 	/**
@@ -674,8 +665,6 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state)
 	 */
 	ptr_dse_cfg = &(ptr_ds_priv->obds_dse_cfg[dse_id]);
 	spin_lock_irqsave(&ptr_dse_cfg->lock, flags);
-
-	/* disable interrupt NING - TBD */
 
 	/*
 	** It is possible that one DSE handles multiple data streams,
@@ -686,66 +675,54 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state)
 	/* check DSE registers for error reports */
 	__ob_dse_dbg(&(ptr_ds_priv->ob_dse_stats[dse_id]), dse_stat);
 
+
 	/* process all completed transactions - bit 1 - descriptor transaction
 	** completed */
+	hdr_read_ptr = ptr_dse_cfg->hdr_read_ptr;
+
+	ptr_hdr_desc =
+		&(ptr_dse_cfg->ptr_obds_hdr_desc[hdr_read_ptr]);
+
 	if (dse_stat & 0x2) {
-		if (ptr_dse_cfg->hdr_read_ptr == ptr_dse_cfg->hdr_write_ptr) {
-			spin_unlock_irqrestore(&ptr_dse_cfg->lock, flags);
-			return;
-		}
 
-		while (ptr_dse_cfg->hdr_read_ptr !=
-			ptr_dse_cfg->hdr_write_ptr) {
+		is_hdr_desc_done = (ptr_hdr_desc->dw0 & OB_HDR_DESC_DONE);
 
-			hdr_read_ptr = ptr_dse_cfg->hdr_write_ptr;
-			ptr_hdr_desc =
-			&(ptr_dse_cfg->ptr_obds_hdr_desc[hdr_read_ptr]);
-
+		while (is_hdr_desc_done) {
+			num_desc_processed++;
 			__ob_dse_dw_dbg(&(ptr_ds_priv->ob_dse_stats[dse_id]),
 				ptr_hdr_desc->dw0);
 
-			/*
-			** check if the descriptor is done - bit 8
-			**
-			**  Since the IRQ process the descriptor one-by-one,
-			**  if the descriptor pointed by tail is not processed,
-			**  the following ones are not processed either.
-			**
-			**	Only header descriptors are supported now.
-			**	The combination of header descriptor and data
-			**		descriptor are TBD.
-			*/
-			if ((ptr_hdr_desc->dw0 & OB_HDR_DESC_DONE) == 0)
-				break;
-
-			/* set the valid bit to be zero */
-			ptr_hdr_desc->dw0 &= 0xFFFFFFFE;
-
 			/* free the buffer */
 			kfree((void *)ptr_hdr_desc->virt_data_buf);
+			ptr_hdr_desc->buf_status = DS_DBUF_FREED;
 
-			ptr_dse_cfg->data_read_ptr++;
-
-			if (ptr_dse_cfg->data_read_ptr ==
+			if (ptr_dse_cfg->hdr_read_ptr ==
 				(ptr_dse_cfg->max_num_hdr_desc - 1)) {
-				ptr_dse_cfg->data_read_ptr = 0;
+				ptr_dse_cfg->hdr_read_ptr = 0;
+			} else {
+				ptr_dse_cfg->hdr_read_ptr++;
 			}
-
-			/* the descriptor has been processed, but there is
-			** error occurred */
-			if ((ptr_hdr_desc->dw0 & OB_HDR_DESC_AXI_ERR)) {
-				__ob_dse_dw_dbg(
-					&(ptr_ds_priv->ob_dse_stats[dse_id]),
-					ptr_hdr_desc->dw0);
-				/* callback function - TBD */
-			}
-
+			/* free the buffer */
 			ptr_dse_cfg->num_hdr_desc_free++;
-		}
-	}
 
-	/* clear the interrupt bit - NING-TBD */
-	__rio_local_write_config_32(mport, RAB_OBDSE_STAT(dse_id), 0xFFFF);
+			/* set the valid bit, done bit to be zero */
+			ptr_hdr_desc->dw0 &= 0xFFFFFEFE;
+
+			hdr_read_ptr = ptr_dse_cfg->hdr_read_ptr;
+
+			ptr_hdr_desc =
+				&(ptr_dse_cfg->ptr_obds_hdr_desc[hdr_read_ptr]);
+
+			is_hdr_desc_done =
+				(ptr_hdr_desc->dw0 & OB_HDR_DESC_DONE);
+		}
+	} else {
+		/* TBD when HW gets AXI error, it will stop and not go further*/
+	}
+	/* clear the interrupt bit */
+	__rio_local_write_config_32(mport,
+					RAB_OBDSE_STAT(dse_id),
+					(dse_stat & 0x3F));
 
 	spin_unlock_irqrestore(&ptr_dse_cfg->lock, flags);
 	return;
@@ -754,12 +731,10 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state)
 /*****************************************************************************
  * axxia_close_ob_data_stream -
  *
- *  This function resets variables associated with a OBDS.
+ *  This function closes an outbound data streaming associated with the DSE.
  *
- * @mport:	 pointer to the master port
- * @destId:	 destination ID of the data stream
- * @streamId:    traffic stream ID
- * @cos:	 class of service of the stream
+ * @mport:	 Pointer to the master port
+ * @dse_id:	 DSE ID
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -770,7 +745,8 @@ int axxia_close_ob_data_stream(
 	struct rio_priv *priv = mport->priv;
 	struct rio_ds_priv      *ptr_ds_priv = &(priv->ds_priv_data);
 	struct rio_obds_dse_cfg *ptr_dse_cfg;
-	u32    dse_ctrl;
+	struct rio_ds_hdr_desc  *ptr_hdr_desc;
+	u32    dse_ctrl, i;
 
 	axxia_api_lock();
 
@@ -789,6 +765,17 @@ int axxia_close_ob_data_stream(
 	ptr_dse_cfg->hdr_write_ptr = 0;
 	ptr_dse_cfg->num_hdr_desc_free = 0;
 	ptr_dse_cfg->num_data_desc_free = 0;
+
+	/* clear OBDS data buffers */
+	for (i = 0; i < (ptr_dse_cfg->max_num_data_desc); i++) {
+		ptr_hdr_desc = ptr_dse_cfg->ptr_obds_hdr_desc;
+
+		/* if an application has not yet retrieve the data */
+		if (((ptr_hdr_desc->buf_status == DS_DBUF_ALLOC)) &&
+			(ptr_hdr_desc->virt_data_buf)) {
+			kfree((void *)ptr_hdr_desc->virt_data_buf);
+		}
+	}
 
 	/* free header and data descriptor */
 	if (ptr_dse_cfg->ptr_obds_hdr_desc != NULL)
@@ -814,21 +801,25 @@ EXPORT_SYMBOL(axxia_close_ob_data_stream);
 /*****************************************************************************
  * axxia_open_ib_data_stream -
  *
- *  This function sets up the descriptor chain to an internal VSID M.
- *  The internal VSID is calculated through sourceId, cos and
- *  RAB_IBDS_VSID_ALIAS register.
+ *  This function sets up a descriptor chain to an internal alias VSID (AVSID).
+ *  The internal VSID is calculated through source_id, class of service (cos)
+ *  and the RAB_IBDS_VSID_ALIAS register.
  *
- * @mport:	pointer to the master port
- * @sourceId:   source ID of the data stream
- * @cos:	class of service of the stream
- * @numPDUs:	number of PDUs in the stream
- * @desc_dbuf_size:   PDU size this descriptor can handle.
- *		If the PDU size exceeds
- *		descriptor size (but less than maximum PDU size), appropriate
- *		error bit is set and interrupt is generated if enabled.
- *		PDU data beyond descriptor size is not written in the AXI
- *		memory to ensure that there is no corruption of data under
- *		this error case.
+ *	Please refer to the data sheet of RAB_IBDS_VSID_ALIAS register for
+ *	detail mapping information.
+ *
+ *	In the IBDS, there are only 7 buffer sizes
+ *	(1KB, 2KB, 4KB, 8KB, 16KB, 32KB, 64KB) can be programmed in the
+ *	hardware.
+ *	If the incoming PDU length is larger than the programmed buffer size,
+ *	data error will occur. Thus, an application must program desc_dbuf_size
+ *	larger than or equal to the expected PDU.
+ *
+ * @mport:			Pointer to the master port
+ * @source_id:   	Source ID of the data stream
+ * @cos:			Class of service of the stream
+ * @desc_dbuf_size: Data buffer size the descriptor can handle
+ * @num_entries:	Number of descriptors in this descriptor chain
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -859,22 +850,14 @@ EXPORT_SYMBOL(axxia_open_ib_data_stream);
 /*****************************************************************************
  * open_ib_data_stream -
  *
- *  This function sets up the descriptor chain to an internal VSID M.
- *  The internal VSID is calculated through sourceId, cos and
- *  RAB_IBDS_VSID_ALIAS register.
+ *  This function sets up a descriptor chain to an internal alias VSID (AVSID).
+ *  It is called by axxia_open_ib_data_stream( ).
  *
- * @mport:	pointer to the master port
- * @dev_id: Device specific pointer to pass on event
- * @source_id:   source ID of the data stream
- * @cos:	class of service of the stream
- * @desc_dbuf_size:   PDU size this descriptor can handle.
- *		If the PDU size exceeds
- *		descriptor size (but less than maximum PDU size), appropriate
- *		error bit is set and interrupt is generated if enabled.
- *		PDU data beyond descriptor size is not written in the AXI
- *		memory to ensure that there is no corruption of data under
- *		this error case.
- * @num_entries: number of entries in this descriptor chain
+ * @mport:		Pointer to the master port
+ * @source_id:   	Source ID of the data stream
+ * @cos:		Class of service of the stream
+ * @desc_dbuf_size: Data buffer size the descriptor can handle
+ * @num_entries:	Number of descriptors in this descriptor chain
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -892,15 +875,15 @@ int open_ib_data_stream(
 	struct rio_ids_data_desc *ptr_data_desc;
 	struct rio_irq_handler *h;
 	void	*ptr;
-	u32		temp;
+	u32	temp;
 	u32     alias_reg;
 	u32     vsid, i, next_desc_offset;
 	u16     virt_vsid;
-	u8		hw_desc_size;
-	unsigned long     	desc_chain_start_addr_phy, next_desc_addr_phy;
+	u8	hw_desc_size;
+	unsigned long     desc_chain_start_addr_phy, next_desc_addr_phy;
 
 	u32     next_desc_addr_hi, vsid_addr_reg;
-
+	u32	num_int_entries;
 	int rc = 0;
 
 	/*
@@ -953,7 +936,7 @@ int open_ib_data_stream(
 	(void)axxio_virt_vsid_convert(vsid, alias_reg, &virt_vsid);
 
 	if (virt_vsid >= RIO_MAX_NUM_IBDS_VSID_M)
-		return RC_TBD;
+		return -EINVAL;
 
 	/*
 	** In the IBDS, the descriptor size allocated must be greater than
@@ -963,16 +946,26 @@ int open_ib_data_stream(
 	/* get a internal VSID M based on virt_vsid */
 	ptr_virt_m_cfg = &(ptr_ds_priv->ibds_vsid_m_cfg[virt_vsid]);
 
+	/*
+	** If the descriptor chain is already opened, return OK
+	*/
 	if (ptr_virt_m_cfg->in_use == RIO_DS_TRUE)
-		return -EINVAL;
+		return 0;
 
 	ptr_virt_m_cfg->alias_reg_value = alias_reg;
 
+	/*
+	** If the end of chain bit is not set, it is required that there is
+	** 	one invalid entry left in the system.
+	*/
+	num_int_entries = num_entries + 1;
+
 	/* allocate data descriptor buffers */
-	ptr = kzalloc(num_entries * sizeof(struct rio_ids_data_desc) +
-					sizeof(struct rio_ids_data_desc) +
-					RIO_DS_DESC_ALIGNMENT,
-					GFP_KERNEL);
+	ptr = kzalloc((num_int_entries) *
+			sizeof(struct rio_ids_data_desc) +
+			sizeof(struct rio_ids_data_desc) +
+			RIO_DS_DESC_ALIGNMENT,
+			GFP_KERNEL);
 	if (ptr == NULL) {
 		return -ENOMEM;
 	} else {
@@ -992,10 +985,8 @@ int open_ib_data_stream(
 
 	ptr_virt_m_cfg->in_use = RIO_DS_TRUE;
 
-	ptr_virt_m_cfg->num_desc_free = num_entries;
-
 	/* chain the data descriptors */
-	for (i = 0; i < num_entries; i++) {
+	for (i = 0; i < num_int_entries; i++) {
 		ptr_data_desc = &(ptr_virt_m_cfg->ptr_ibds_data_desc[i]);
 
 		/* init the data descriptor */
@@ -1032,7 +1023,7 @@ int open_ib_data_stream(
 		**ptr_data_desc->dw0 |= 4;
 		*/
 
-		if (i == (num_entries-1))
+		if (i == (num_int_entries-1))
 			next_desc_offset = 0;
 		else
 			next_desc_offset = i + 1;
@@ -1088,19 +1079,34 @@ int open_ib_data_stream(
 
 	rc = alloc_irq_handler(h, (void *)ptr_virt_m_cfg, ptr_virt_m_cfg->name);
 
+	if (rc == 0) {
+		ptr_virt_m_cfg->data_read_ptr = 0;
+		ptr_virt_m_cfg->data_write_ptr = 0;
+		ptr_virt_m_cfg->buf_add_ptr = 0;
+
+		ptr_virt_m_cfg->num_desc_free = num_int_entries;
+
+		ptr_virt_m_cfg->max_num_data_desc = num_int_entries;
+
+	}
+
 	return rc;
 }
 
 /*****************************************************************************
  * axxia_add_ibds_buffer -
  *
- *  This function adds buffer to the AXXIA inbound data stream queue.
+ *  This function adds a data buffer to a descriptor chain determined by
+ *  source ID, class of service and RAB_IBDS_VSID_ALIAS register.
+ *  When the hardware receives a PDU, it writes into the data buffer.
+ *  Since we don't know the incoming PDU length, the buf_size must be
+ *  large enough.
  *
- * @mport:	pointer to the master port
- * @source_id:	source ID of the data stream
- * @cos:	class of service of the stream
- * @buf:	pointer to where the data is copied to
- * @buf_size: buffer size of the added buffer
+ * @mport:	Pointer to the master port
+ * @source_id:	Source ID of the data stream
+ * @cos:	Class of service of the stream
+ * @buf:	Pointer to where the data is stored
+ * @buf_size: 	Size of the buffer
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -1109,7 +1115,7 @@ int axxia_add_ibds_buffer(
 	int		   source_id,
 	int		   cos,
 	void		  *buf,
-	int			buf_size)
+	int		   buf_size)
 {
 	struct rio_priv *priv = mport->priv;
 	struct rio_ds_priv      *ptr_ds_priv = &(priv->ds_priv_data);
@@ -1117,10 +1123,12 @@ int axxia_add_ibds_buffer(
 	struct rio_ids_data_desc *ptr_data_desc;
 	u32		     	m_id;
 	u8		      	found_one = RIO_DS_FALSE;
-	u32				vsid_addr_reg;
+	u32			vsid_addr_reg;
 
 	unsigned long   data_addr_phy;
 	u32 data_addr_hi;
+
+	unsigned long iflags;
 
 	if (buf == NULL)
 		return -EINVAL;
@@ -1142,13 +1150,10 @@ int axxia_add_ibds_buffer(
 		return RC_TBD;
 
 
-	/* check if the buf_size is smaller than the desc_dbuf_size */
+#if 0
+	/* check if the buf_size is smaller than the desc_dbuf_size - TBD */
 	if (buf_size > ptr_virt_m_cfg->desc_dbuf_size)
 		return -EINVAL;
-
-#ifdef DS_DEBUG
-	printk("num_desc_free = %d\n",
-		ptr_virt_m_cfg->num_desc_free);
 #endif
 
 	/*
@@ -1164,6 +1169,8 @@ int axxia_add_ibds_buffer(
 	*/
 	if (ptr_virt_m_cfg->num_desc_free == 1)
 		return -ENOMEM;
+
+     spin_lock_irqsave(&ptr_virt_m_cfg->lock, iflags);
 
 	/* put user's buffer into the corresponding descriptors */
 	ptr_data_desc =
@@ -1189,14 +1196,8 @@ int axxia_add_ibds_buffer(
 	*/
 	ptr_data_desc->dw0 |= 0x1;
 
-#ifdef DS_DEBUG
-	printk("IBDS DESC [%08x %08x %08x %08x %08x]\n",
-		ptr_data_desc->dw0,
-		ptr_data_desc->dw1,
-		ptr_data_desc->dw2,
-		ptr_data_desc->dw3,
-		ptr_data_desc->dw4);
-#endif
+	ptr_data_desc->buf_status = DS_DBUF_ALLOC;
+
 	/*
 	** For the first descriptor, the VSID M Descriptor Chain Prefetch Enable
 	**needs to be set to 1. After that, only VSID M Descriptor Chain
@@ -1205,6 +1206,7 @@ int axxia_add_ibds_buffer(
 	__rio_local_read_config_32(mport,
 				RAB_IBDS_VSID_ADDR_HI(m_id),
 				&vsid_addr_reg);
+
 	/* if the prefetch enable is not set */
 	if (!(vsid_addr_reg & IB_VSID_M_PREFETCH_ENABLE))
 		vsid_addr_reg |= IB_VSID_M_PREFETCH_ENABLE;
@@ -1216,13 +1218,16 @@ int axxia_add_ibds_buffer(
 				vsid_addr_reg);
 
 	/* the buf_add_ptr is determined by number of free descriptors */
-	ptr_virt_m_cfg->buf_add_ptr++;
+	if (ptr_virt_m_cfg->buf_add_ptr ==
+		(ptr_virt_m_cfg->max_num_data_desc - 1)) {
+		ptr_virt_m_cfg->buf_add_ptr = 0;
+	} else {
+		ptr_virt_m_cfg->buf_add_ptr++;
+	}
 
 	ptr_virt_m_cfg->num_desc_free--;
 
-#ifdef DS_DEBUG
-	printk("buf_add_ptr = %d\n", ptr_virt_m_cfg->buf_add_ptr);
-#endif
+    spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, iflags);
 
 	return 0;
 }
@@ -1233,8 +1238,8 @@ EXPORT_SYMBOL(axxia_add_ibds_buffer);
  * --- Called in threaded irq handler ---
  * @h: Pointer to interrupt-specific data
  *
- * Handles outbound data streaming interrupts.  Executes a callback,
- * if available, on each successfully sent data stream
+ * Handles inbound data streaming interrupts.  Executes a callback,
+ * if available, on each successfully received data stream
  *
 */
 void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state)
@@ -1249,20 +1254,20 @@ void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state)
 	u16 data_write_ptr;
 	u8  found_dse = RIO_DS_FALSE;
 	unsigned long flags;
+	u32	is_desc_done = 1;
 
 	virt_vsid = 31 - CNTLZW(state);
-
-#ifdef DS_DEBUG
-	printk("IBDS: interrupt virt_vsid = %d\n", virt_vsid);
-#endif
 
 	__rio_local_read_config_32(mport,
 				RAB_IBVIRT_M_STAT(virt_vsid),
 				&vsid_m_stats);
 
-#ifdef DS_DEBUG
-	printk("vsid_m_stats = 0x%x\n", vsid_m_stats);
-#endif
+	/*
+	** The ARM could also got interrupted with vsid_m_stats sticky status
+	**	bits not being set. TBD
+	*/
+	if (!(vsid_m_stats & 0x1FF))
+		return;
 
 	/* check if the chain transfer complete */
 	ptr_virt_m_cfg = &(ptr_ds_priv->ibds_vsid_m_cfg[virt_vsid]);
@@ -1340,42 +1345,32 @@ if (vsid_m_stats & IB_VIRT_M_STAT_FETCH_ERR) {
 	/* process maximum number of MAX_NUM_PROC_IBDS_DESC transactions */
 	data_write_ptr = ptr_virt_m_cfg->data_write_ptr;
 
-#ifdef DS_DEBUG
-	printk("data_write_ptr = %d\n", data_write_ptr);
-#endif
+	ptr_data_desc =
+			&(ptr_virt_m_cfg->ptr_ibds_data_desc[data_write_ptr]);
 
-#if 0
-	for (i = 0; i < MAX_NUM_PROC_IBDS_DESC; i++) {
-#endif
-		/* check if the done bit is set */
+	/* get the done bit of the data descriptor */
+	is_desc_done = (ptr_data_desc->dw0 & IB_DSE_DESC_DONE);
+
+	while (is_desc_done) {
+		ptr_virt_m_cfg->num_hw_written_bufs++;
+
+		__ib_dse_dw_dbg(
+				&(ptr_ds_priv->ib_vsid_m_stats[virt_vsid]),
+				ptr_data_desc->dw0);
+
+		if (data_write_ptr ==
+			(ptr_virt_m_cfg->max_num_data_desc-1))
+			data_write_ptr = 0;
+		else
+			data_write_ptr++;
+
+		/* set the valid bit to be invalid */
+		ptr_data_desc->dw0 &= 0xFFFFFFFE;
+
 		ptr_data_desc =
-		&(ptr_virt_m_cfg->ptr_ibds_data_desc[data_write_ptr]);
+			&(ptr_virt_m_cfg->ptr_ibds_data_desc[data_write_ptr]);
 
-		if ((ptr_data_desc->dw0 & IB_DSE_DESC_DONE) != 0) {
-			ptr_virt_m_cfg->num_hw_written_bufs++;
-
-#ifdef DS_DEBUG
-	printk("num_hw_written_bufs = %d\n",
-		ptr_virt_m_cfg->num_hw_written_bufs);
-#endif
-
-			if (data_write_ptr ==
-				(ptr_virt_m_cfg->max_num_data_desc-1))
-				data_write_ptr = 0;
-			else
-				data_write_ptr++;
-
-			__ib_dse_dw_dbg(
-			&(ptr_ds_priv->ib_vsid_m_stats[virt_vsid]),
-			ptr_data_desc->dw0);
-
-			/* set the valid bit to be invalid */
-			ptr_data_desc->dw0 &= 0xFFFFFFFE;
-#if 0	/* only used if MAX_NUM_PROC_IBDS_DESC is used */
-		} else {
-			break;
-		}
-#endif
+		is_desc_done = (ptr_data_desc->dw0 & IB_DSE_DESC_DONE);
 	}
 
 	ptr_virt_m_cfg->data_write_ptr = data_write_ptr;
@@ -1401,21 +1396,15 @@ if (vsid_m_stats & IB_VIRT_M_STAT_FETCH_ERR) {
 /*****************************************************************************
  * axxia_get_ibds_data -
  *
- *  This function gets IBDS data from data buffer. The ioctl() can only
- *  transfer up to 4KB each time, thus, if a PDU length is larger than
- *  4KB, an application must call this API multiple times.
+ *  This function gets an IBDS data from a descriptor chain. This function
+ *  also returns the PDU length and stream ID associated with data.
+ *  If there is no data available, a NULL pointer is returned.
  *
- *  The maximum PDU length data is copied to the pre-allocated 64K buffer
- *  in init time.
- *
- * @mport:	pointer to the master port
- * @sourceId:	source ID of the data stream
- * @cos:	class of service of the stream
- * @buffer:	pointer to where the data is copied to
- * @streamId:	pointer to where the streamID is saved
- * @pPduLength:	PDU length of the data stream
- * @pDataLenth:	data length in this transfer
- * @pRemainingDataSize: remaining data in bytes to be expected
+ * @mport:		Pointer to the master port
+ * @source_id:		Source ID of the data stream
+ * @cos:		Class of service of the stream
+ * @ptr_pdu_length:	Pointer to where the PDU length is stored
+ * @ptr_stream_id:	Pointer to where the stream ID is stored
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -1434,6 +1423,7 @@ void *axxia_get_ibds_data(
 	u8		    found_one = RIO_DS_FALSE;
 	void		    *user_buf;
 	u32		pdu_length;
+	unsigned long iflags;
 
 	/* search through the virtual M table to find the one that
 	** has the same source_id and cos */
@@ -1455,13 +1445,10 @@ void *axxia_get_ibds_data(
 	if (ptr_virt_m_cfg->num_hw_written_bufs < 1)
 		return NULL;
 
-	data_read_ptr = ptr_virt_m_cfg->data_read_ptr;
 
-#ifdef DS_DEBUG
-	printk("num_hw_written_bufs = %d\n",
-		ptr_virt_m_cfg->num_hw_written_bufs);
-	printk("data_read_ptr = %d\n", data_read_ptr);
-#endif
+	spin_lock_irqsave(&ptr_virt_m_cfg->lock, iflags);
+
+	data_read_ptr = ptr_virt_m_cfg->data_read_ptr;
 
 	/* get the data descriptor */
 	ptr_data_desc =
@@ -1470,31 +1457,25 @@ void *axxia_get_ibds_data(
 	/* check if the source_id and cos matches */
 	if ((((ptr_data_desc->dw0 >> 16) & 0xFFFF) != source_id) ||
 		((ptr_data_desc->dw2 & 0xFF0000) >> 16) != cos) {
+		spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, iflags);
 		return NULL;
 	}
-
-#ifdef DS_DEBUG
-	printk("data desc: [%08x %08x %08x %08x %08x]\n",
-			ptr_data_desc->dw0,
-			ptr_data_desc->dw1,
-			ptr_data_desc->dw2,
-			ptr_data_desc->dw3,
-			ptr_data_desc->dw4);
-#endif
 
 	user_buf = (void *)ptr_data_desc->virt_data_buf;
 
 	if (user_buf == NULL) {
 		*ptr_pdu_length = 0;
+		spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, iflags);
 		return NULL;
 	} else {
 		pdu_length = ((ptr_data_desc->dw1 & 0xFFFF0000) >> 16);
+
 		/* the pdu_length 0 in the HW indicates 64KB */
 		if (pdu_length == 0)
 			*ptr_pdu_length = 65536;
 		else
 			*ptr_pdu_length = pdu_length;
-		*ptr_stream_id = (ptr_data_desc->dw1) & 0xFFFF;
+		*ptr_stream_id = (ptr_data_desc->dw2) & 0xFFFF;
 
 		if (ptr_virt_m_cfg->data_read_ptr ==
 			(ptr_virt_m_cfg->max_num_data_desc - 1)) {
@@ -1506,6 +1487,10 @@ void *axxia_get_ibds_data(
 		ptr_virt_m_cfg->num_hw_written_bufs--;
 		ptr_virt_m_cfg->num_desc_free++;
 
+		ptr_data_desc->buf_status = DS_DBUF_FREED;
+
+		spin_unlock_irqrestore(&ptr_virt_m_cfg->lock, iflags);
+
 		return user_buf;
 	}
 }
@@ -1514,11 +1499,11 @@ EXPORT_SYMBOL(axxia_get_ibds_data);
 /*****************************************************************************
  * axxia_close_ib_data_stream -
  *
- *  This function resets variables associated with a IBDS data stream.
+ *  This function closes an inbound data streaming.
  *
- * @mport:	  pointer to the master port
- * @sourceId:     source ID of the data stream
- * @cos:	  class of service of the stream
+ * @mport:	  	Pointer to the master port
+ * @source_id:     	Source ID of the data stream
+ * @cos:	  	Class of service of the stream
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -1532,6 +1517,7 @@ int axxia_close_ib_data_stream(
 	struct ibds_virt_m_cfg  *ptr_virt_m_cfg;
 	u8		      find_ava_virt_m = RIO_DS_FALSE;
 	u8      i;
+	struct rio_ids_data_desc *ptr_data_desc;
 	u8 	virt_vsid;
 
 	axxia_api_lock();
@@ -1561,17 +1547,23 @@ int axxia_close_ib_data_stream(
 	ptr_virt_m_cfg->buf_add_ptr = 0;
 	ptr_virt_m_cfg->num_hw_written_bufs = 0;
 
+	/* release IRQ handler */
+	release_irq_handler(&(ptr_ds_priv->ib_dse_vsid_irq[virt_vsid]));
+
+	/* clear all the descriptors */
+	for (i = 0; i < ptr_virt_m_cfg->max_num_data_desc; i++) {
+		ptr_data_desc = &(ptr_virt_m_cfg->ptr_ibds_data_desc[i]);
+
+		/* if an application has not yet retrieve the data */
+		if (((ptr_data_desc->buf_status == DS_DBUF_ALLOC)) &&
+			(ptr_data_desc->virt_data_buf)) {
+			kfree((void *)ptr_data_desc->virt_data_buf);
+		}
+	}
+
 	/* free the data descriptor pointer */
 	if (ptr_virt_m_cfg->ptr_ibds_data_desc != NULL)
 		kfree(ptr_virt_m_cfg->ptr_ibds_data_desc);
-
-	/* disable the VSID M prefetch enable bit */
-	__rio_local_write_config_32(mport,
-				RAB_IBDS_VSID_ADDR_HI(virt_vsid),
-				0);
-
-	/* release IRQ handler */
-	release_irq_handler(&(ptr_ds_priv->ib_dse_vsid_irq[virt_vsid]));
 
 	axxia_api_unlock();
 
@@ -1583,13 +1575,13 @@ EXPORT_SYMBOL(axxia_close_ib_data_stream);
  * axxio_virt_vsid_convert -
  *
  *  This function converts the VISD {16'bSourceID, 8'b cos} to the internal
- *      virtual VSID.  Please refer to Table 133 of rio_axi_datasheet.pdf
- *      for detail information.
+ *  virtual VSID.  Please refer to Table 133 of rio_axi_datasheet.pdf
+ *  for detail information.
  *
- * @vsid:	  incoming VSID
- * @alias_reg:    incoming VSID to internal VSID mapping configuration
+ * @vsid:	  	Incoming VSID
+ * @alias_reg:  	RAB_IBDS_VSID_ALIAS register value
  *
- * @ptr_virt_vsid:pointer to where the internal VSID is stored
+ * @ptr_virt_vsid:	Pointer to where the alias VSID is stored
  *
  * Returns %0 on success
  ****************************************************************************/
@@ -1645,7 +1637,6 @@ int axxio_virt_vsid_convert(
  *
  *  This is currently a stub function to be called in axxia_rio_port_irq_init().
  *
- *
  * @h:
  *
  * Returns %0 on success
@@ -1660,7 +1651,6 @@ void release_ob_ds(struct rio_irq_handler *h)
  *
  *  This is currently a stub function to be called in axxia_rio_port_irq_init().
  *
- *
  * @h:
  *
  * Returns %0 on success
@@ -1669,17 +1659,6 @@ void release_ib_ds(struct rio_irq_handler *h)
 {
 	return;
 }
-
-/*****************************************************************************
- * release_ib_ds - TBD
- *
- *  This is currently a stub function to be called in axxia_rio_port_irq_init().
- *
- *
- * @h:
- *
- * Returns %0 on success
- ****************************************************************************/
 
 /*****************************************************************************
  * axxia_parse_dtb_ds -
@@ -1704,6 +1683,9 @@ int axxia_parse_dtb_ds(
 	u32 pval;
 
 	memset(ptr_ds_dtb_info, 0, sizeof(struct rio_ds_dtb_info));
+
+	/* set the default of ds_enable to be 1 if it is on 55XX */
+	ptr_ds_dtb_info->ds_enabled = 1;
 
 	/* Check if data streaming is enabled */
 	if (!of_property_read_u32(dev->dev.of_node,
@@ -1732,6 +1714,7 @@ int axxia_cfg_ds(
 	struct rio_ds_priv      *ptr_ds_priv = &(priv->ds_priv_data);
 	u8			dse_id;
 	u32			reg_val;
+	u8			ds_capable;
 
 	/*
 	** Check if the ASIC supports data streaming feature.
@@ -1739,13 +1722,24 @@ int axxia_cfg_ds(
 	*/
 	__rio_local_read_config_32(mport, RAB_VER, &reg_val);
 
+	if ((reg_val == AXXIA_SRIO_RAB_VER_VAL_55xx)	||
+		(reg_val == AXXIA_SRIO_RAB_VER_VAL_55xx_X7v1P1)) {
+		ds_capable = 1;
+	} else {
+		ds_capable = 0;
+		return -EINVAL;
+	}
+
+	if ((ds_capable == 1) &&
+		(ptr_ds_dtb_info->ds_enabled == 1)) {
+		ptr_ds_priv->is_use_ds_feature = 1;
+	} else {
+		ptr_ds_priv->is_use_ds_feature = 0;
+	}
+
 	ptr_ds_priv->num_obds_dses = RIO_MAX_NUM_OBDS_DSE;
 	ptr_ds_priv->num_ibds_virtual_m = RIO_MAX_NUM_IBDS_VSID_M;
 	ptr_ds_priv->num_ibds_dses = RIO_MAX_NUM_IBDS_DSE;
-
-	/* Set some default values - Can be configured later through
-	**                           user's API */
-	ptr_ds_priv->max_pdu_len = RIO_DS_DATA_BUF_64K;
 
 	/* Enable all DSEs */
 	for (dse_id = 0; dse_id < ptr_ds_priv->num_ibds_dses; dse_id++) {
@@ -1784,26 +1778,32 @@ void axxia_rio_ds_port_irq_init(
 	for (i = 0; i < RIO_MAX_NUM_OBDS_DSE; i++) {
 		clear_bit(RIO_IRQ_ENABLED, &(ptr_ds_priv->ob_dse_irq[i].state));
 		ptr_ds_priv->ob_dse_irq[i].mport = mport;
-		ptr_ds_priv->ob_dse_irq[i].irq_enab_reg_addr = RAB_INTR_ENAB_ODSE;
-		ptr_ds_priv->ob_dse_irq[i].irq_state_reg_addr = RAB_INTR_STAT_ODSE;
+		ptr_ds_priv->ob_dse_irq[i].irq_enab_reg_addr =
+				RAB_INTR_ENAB_ODSE;
+		ptr_ds_priv->ob_dse_irq[i].irq_state_reg_addr =
+				RAB_INTR_STAT_ODSE;
 		ptr_ds_priv->ob_dse_irq[i].irq_state_mask = (1 << i);
 		ptr_ds_priv->ob_dse_irq[i].thrd_irq_fn = ob_dse_irq_handler;
 		ptr_ds_priv->ob_dse_irq[i].data = NULL;
 		ptr_ds_priv->ob_dse_irq[i].release_fn = release_ob_ds;
 	}
 
-        /*
-        ** Inbound Data Streaming
-        */
-        ptr_ds_priv = &(priv->ds_priv_data);
+	/*
+	** Inbound Data Streaming
+	*/
+	ptr_ds_priv = &(priv->ds_priv_data);
 
-        for (i = 0; i < RIO_MAX_NUM_IBDS_VSID_M; i++) {
-		clear_bit(RIO_IRQ_ENABLED, &(ptr_ds_priv->ib_dse_vsid_irq[i].state));
+	for (i = 0; i < RIO_MAX_NUM_IBDS_VSID_M; i++) {
+		clear_bit(RIO_IRQ_ENABLED,
+				&(ptr_ds_priv->ib_dse_vsid_irq[i].state));
 		ptr_ds_priv->ib_dse_vsid_irq[i].mport = mport;
-		ptr_ds_priv->ib_dse_vsid_irq[i].irq_enab_reg_addr = RAB_INTR_ENAB_IBDS;
-		ptr_ds_priv->ib_dse_vsid_irq[i].irq_state_reg_addr = RAB_INTR_STAT_IBSE_VSID_M;
+		ptr_ds_priv->ib_dse_vsid_irq[i].irq_enab_reg_addr =
+				RAB_INTR_ENAB_IBDS;
+		ptr_ds_priv->ib_dse_vsid_irq[i].irq_state_reg_addr =
+				RAB_INTR_STAT_IBSE_VSID_M;
 		ptr_ds_priv->ib_dse_vsid_irq[i].irq_state_mask = (1 << i);
-		ptr_ds_priv->ib_dse_vsid_irq[i].thrd_irq_fn = ib_dse_vsid_m_irq_handler;
+		ptr_ds_priv->ib_dse_vsid_irq[i].thrd_irq_fn =
+				ib_dse_vsid_m_irq_handler;
 		ptr_ds_priv->ib_dse_vsid_irq[i].data = NULL;
 		ptr_ds_priv->ob_dse_irq[i].release_fn = release_ib_ds;
 	}

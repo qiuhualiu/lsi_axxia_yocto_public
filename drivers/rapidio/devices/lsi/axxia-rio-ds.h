@@ -24,7 +24,7 @@
 #include <linux/interrupt.h>
 #include <linux/kfifo.h>
 
-#define DS_DEBUG 1
+/* #define DS_DEBUG 1  */
 #define USE_IOCTRL 1
 
 /******************************************************************************
@@ -41,17 +41,25 @@
 
 #define RIO_DS_DATA_BUF_64K                 (0) /* HW uses 0 for 64K */
 
-#define RIO_MAX_NUM_OBDS_DSE                16
-#define RIO_MAX_NUM_IBDS_DSE				16
-#define RIO_MAX_NUM_IBDS_VSID_M             32
+#define RIO_MAX_NUM_OBDS_DSE                (16)
+#define RIO_MAX_NUM_IBDS_DSE				(16)
+#define RIO_MAX_NUM_IBDS_VSID_M             (32)
 
 #define RC_TBD                              (-1)
 
-#define RIO_DS_TRUE                         1
-#define RIO_DS_FALSE                        0
+#define RIO_DS_TRUE                         (1)
+#define RIO_DS_FALSE                        (0)
 
-#define IOCTL_BUF_SIZE                      4096
-#define MAX_NUM_PROC_IBDS_DESC				10
+#define IOCTL_BUF_SIZE                      (4096)
+#define MAX_NUM_PROC_IBDS_DESC				(10)
+
+#define DS_DBUF_FREED					    (0)
+#define DS_DBUF_ALLOC						(1)
+#define DS_DBUF_RETRIEVED					(2)
+
+#define     AXXIA_SRIO_RAB_VER_VAL_55xx           (0x00211021)
+#define     AXXIA_SRIO_RAB_VER_VAL_55xx_X7v1P1    (0x00221013)
+
 
 /*
 ** Data Streaming registers
@@ -120,11 +128,13 @@
 /* data streaming dtb related information */
 struct rio_ds_dtb_info{
 	int ds_enabled;
+	#if 0
 	int num_inb_virtaul_m;      /* number of inbound virtual M */
 	int num_outb_dses;          /* number of outbound DSEs */
 	int inb_num_data_descs;     /* number of inbound data descriptors */
 	int outb_num_hdr_descs;     /* number of outbound header descriptors */
 	int outb_num_data_descs;    /* number of outbound data descriptors */
+	#endif
 };
 
 /*
@@ -157,7 +167,7 @@ struct rio_ids_data_desc{
 
 	/* SW usage */
 	u32 virt_data_buf;
-	u32 usr_virt_data_buf;
+	u32 buf_status;
 	u32 sw2;
 };
 
@@ -174,7 +184,7 @@ struct rio_ds_hdr_desc{
 
 	/* SW usage */
 	u32     virt_data_buf;
-	u32	sw1;
+	u32		buf_status;
 	u32	sw2;
 };
 
@@ -232,6 +242,7 @@ struct ibds_virt_m_cfg {
 	u32			num_hw_written_bufs;
 
 	u32			alias_reg_value;
+
 };
 
 /* Outbound data stream stats */
@@ -268,9 +279,7 @@ struct rio_ds_ibds_vsid_m_stats {
 */
 struct rio_ds_priv {
 	/* IBDS */
-	u16			max_pdu_len;
 	u16			mtu;
-	u16			seg_support;
 	u32			ibds_avsid_mapping;
 	u16                     num_ibds_dses;/* TBR */
 	u16                     num_ibds_virtual_m;/* TBR */
@@ -285,6 +294,8 @@ struct rio_ds_priv {
 
 	struct rio_ds_ibds_vsid_m_stats ib_vsid_m_stats[RIO_MAX_NUM_IBDS_VSID_M];
 	struct rio_ds_obds_dse_stats        ob_dse_stats[RIO_MAX_NUM_OBDS_DSE];
+
+	u8		is_use_ds_feature;
 };
 
 /* Platform driver initialization */
@@ -334,8 +345,6 @@ void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state);
 /* data streaming global configuration */
 extern int axxia_data_stream_global_cfg(
 	struct rio_mport       *mport,
-	int			max_pdu_length,
-	int			seg_support,
 	int			mtu,
 	int			ibds_avsid_mapping);
 

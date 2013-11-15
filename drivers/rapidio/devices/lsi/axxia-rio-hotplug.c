@@ -105,25 +105,26 @@ static int get_input_status(struct rio_mport *mport, u32 *rsp)
 	u32 sts_csr, rsp_csr;
 
 	/* Debug: Show current state */
-	__rio_local_read_config_32(mport, RIO_ACK_STS_CSR, &sts_csr);
+	__rio_local_read_config_32(mport, RIO_ACK_STS_CSR(priv->portNdx), &sts_csr);
 
-	dev_dbg(priv->dev, "RIO_ACK_STS_CSR %8.8x, IA %x, OUTA %x, OBA %x\n",
+	dev_dbg(priv->dev, "RIO_ACK_STS_CSR(%d) %8.8x, IA %x, OUTA %x, OBA %x\n",
+		priv->portNdx,
 		sts_csr, (sts_csr & RIO_ACK_STS_IA) >> 24,
 		(sts_csr & RIO_ACK_STS_OUTA) >> 8,
 		(sts_csr) & RIO_ACK_STS_OBA);
 
 	/* Read to clear valid bit... */
-	__rio_local_read_config_32(mport, RIO_MNT_RSP_CSR, &rsp_csr);
+	__rio_local_read_config_32(mport, RIO_MNT_RSP_CSR(priv->portNdx), &rsp_csr);
 	udelay(50);
 
 	/* Issue Input-status command */
-	__rio_local_write_config_32(mport, RIO_MNT_REQ_CSR, RIO_MNT_REQ_CMD_IS);
+	__rio_local_write_config_32(mport, RIO_MNT_REQ_CSR(priv->portNdx), RIO_MNT_REQ_CMD_IS);
 
 	/* Wait for reply */
 	checkcount = 3;
 	while (checkcount--) {
 		udelay(50);
-		__rio_local_read_config_32(mport, RIO_MNT_RSP_CSR, &rsp_csr);
+		__rio_local_read_config_32(mport, RIO_MNT_RSP_CSR(priv->portNdx), &rsp_csr);
 
 		if (rsp_csr & RIO_PORT_N_MNT_RSP_RVAL) {
 			*rsp = rsp_csr;
@@ -146,7 +147,7 @@ static int clr_sync_err(struct rio_mport *mport)
 	dev_dbg(priv->dev, "Input-status response=0x%08x\n", linkstate);
 	far_ackid = (linkstate & RIO_PORT_N_MNT_RSP_ASTAT) >> 5;
 	far_linkstat = linkstate & RIO_PORT_N_MNT_RSP_LSTAT;
-	__rio_local_read_config_32(mport, RIO_ACK_STS_CSR, &sts_csr);
+	__rio_local_read_config_32(mport, RIO_ACK_STS_CSR(priv->portNdx), &sts_csr);
 	near_ackid = (sts_csr & RIO_ACK_STS_IA) >> 24;
 	dev_dbg(priv->dev,
 		"far_ackID=0x%02x far_linkstat=0x%02x near_ackID=0x%02x\n",
@@ -160,18 +161,19 @@ static int clr_sync_err(struct rio_mport *mport)
 		 * unacknowledge packets.
 		 * Should be cleande up after reset though, it may work.
 		 */
-		__rio_local_write_config_32(mport, RIO_ACK_STS_CSR,
+		__rio_local_write_config_32(mport, RIO_ACK_STS_CSR(priv->portNdx),
 			(near_ackid << 24) | (far_ackid << 8) | far_ackid);
 	}
 	/* Debug: Show current state */
-	__rio_local_read_config_32(mport, RIO_ACK_STS_CSR, &sts_csr);
+	__rio_local_read_config_32(mport, RIO_ACK_STS_CSR(priv->portNdx), &sts_csr);
 
-	dev_dbg(priv->dev, "RIO_ACK_STS_CSR %8.8x, IA %x, OUTA %x, OBA %x\n",
+	dev_dbg(priv->dev, "RIO_ACK_STS_CSR(%d) %8.8x, IA %x, OUTA %x, OBA %x\n",
+		priv->portNdx,
 		sts_csr, (sts_csr & RIO_ACK_STS_IA) >> 24,
 		(sts_csr & RIO_ACK_STS_OUTA) >> 8,
 		(sts_csr) & RIO_ACK_STS_OBA);
 
-	__rio_local_read_config_32(mport, RIO_ESCSR, &escsr);
+	__rio_local_read_config_32(mport, RIO_ESCSR(priv->portNdx), &escsr);
 	return escsr & (RIO_ESCSR_OES | RIO_ESCSR_IES) ? -EFAULT : 0;
 }
 
@@ -179,14 +181,14 @@ static int rio_port_stopped(struct rio_mport *mport)
 {
 	u32 escsr;
 
-	__rio_local_read_config_32(mport, RIO_ESCSR, &escsr);
+	__rio_local_read_config_32(mport, RIO_ESCSR(priv->portNdx), &escsr);
 	return escsr & RIO_ESCSR_PU;
 }
 static int rio_port_started(struct rio_mport *mport)
 {
 	u32 escsr;
 
-	__rio_local_read_config_32(mport, RIO_ESCSR, &escsr);
+	__rio_local_read_config_32(mport, RIO_ESCSR(priv->portNdx), &escsr);
 	return escsr & RIO_ESCSR_PO;
 }
 
@@ -195,9 +197,9 @@ static void rio_lp_extract(struct rio_mport *mport)
 	u32 ccsr;
 
 	/* Set port lockout */
-	__rio_local_read_config_32(mport, RIO_CCSR, &ccsr);
+	__rio_local_read_config_32(mport, RIO_CCSR(priv->portNdx), &ccsr);
 	ccsr |= RIO_PORT_N_CTL_LOCKOUT;
-	__rio_local_write_config_32(mport, RIO_CCSR, ccsr);
+	__rio_local_write_config_32(mport, RIO_CCSR(priv->portNdx), ccsr);
 
 	/* Drain output/input buffers:
 	 * Is there a way of doing this other than
@@ -210,17 +212,17 @@ static void rio_lp_extract(struct rio_mport *mport)
 
 	/* Force input state to normal */
 	ccsr |= RIO_PORT_N_CTL_PORT_DIS;
-	__rio_local_write_config_32(mport, RIO_CCSR, ccsr);
+	__rio_local_write_config_32(mport, RIO_CCSR(priv->portNdx), ccsr);
 
 	/* Clear in and outbound ACK IDs */
-	__rio_local_write_config_32(mport, RIO_ACK_STS_CSR, 0);
+	__rio_local_write_config_32(mport, RIO_ACK_STS_CSR(priv->portNdx), 0);
 
 	/* Enable input port and leave drain mode */
 	ccsr &= ~RIO_PORT_N_CTL_PORT_DIS;
-	__rio_local_write_config_32(mport, RIO_CCSR, ccsr);
+	__rio_local_write_config_32(mport, RIO_CCSR(priv->portNdx), ccsr);
 	__rio_rab_pio_enable(mport);
 	ccsr &= ~RIO_PORT_N_CTL_LOCKOUT;
-	__rio_local_write_config_32(mport, RIO_CCSR, ccsr);
+	__rio_local_write_config_32(mport, RIO_CCSR(priv->portNdx), ccsr);
 	axxia_rio_start_port(mport);
 }
 
@@ -244,14 +246,14 @@ static void rio_mp_insert(struct rio_mport *mport)
 	u32 ccsr;
 
 	/* Set port lockout */
-	__rio_local_read_config_32(mport, RIO_CCSR, &ccsr);
+	__rio_local_read_config_32(mport, RIO_CCSR(priv->portNdx), &ccsr);
 	ccsr |= RIO_PORT_N_CTL_LOCKOUT;
-	__rio_local_write_config_32(mport, RIO_CCSR, ccsr);
+	__rio_local_write_config_32(mport, RIO_CCSR(priv->portNdx), ccsr);
 	/* sync ACK IDs */
 	clr_sync_err(mport);
 	/* Clear port lockout */
 	ccsr &= ~RIO_PORT_N_CTL_LOCKOUT;
-	__rio_local_write_config_32(mport, RIO_CCSR, ccsr);
+	__rio_local_write_config_32(mport, RIO_CCSR(priv->portNdx), ccsr);
 }
 
 static void acp_rio_hotswap_work(struct work_struct *work)

@@ -56,12 +56,12 @@
 
 /* End Point Controller Specific Registers (0x1_0000-0x1_FFFC) */
 #define EPC_REG_BASE            0x10000
-#define EPC_PNADIDCSR	        (EPC_REG_BASE + 0x100)
+#define EPC_PNADIDCSR(x)        (EPC_REG_BASE + (0x100+((x)*0x80)))
 #define  EPC_PNADIDCSR_ADE	(1 << 31)
 #define  EPC_PNADIDCSR_ADID_SMALL(id)	((u32)((id) & 0x00ff) << 16)
 #define  EPC_PNADIDCSR_ADID_LARGE(id)	((u32)((id) & 0xffff) <<  0)
-#define EPC_PNPTAACR	        (EPC_REG_BASE + 0x120)
-#define EPC_IECSR               (EPC_REG_BASE + 0x130)
+#define EPC_PNPTAACR(x)	        (EPC_REG_BASE + (0x120+((x)*0x80)))
+#define EPC_IECSR(x)            (EPC_REG_BASE + (0x130+((x)*0x80)))
 #define  EPC_IECSR_RETE         0x80000000   /*WOCL*/
 
 /* Peripheral Bus Bridge Specific Registers (0x2_0000-0x3_FFFC) */
@@ -247,7 +247,7 @@
 
 #define MISC_ERROR_INDICATION (MISC_FATAL | GRIO_INT | LL_TL_INT | \
 			       UNEXP_MSG_LOG | UNSP_RIO_REQ_INT | \
-			       RIO_MISC_UNEXP)
+			       UNEXP_MSG_INT)
 #define MISC_DB_EVENT (OB_DB_DONE_INT | IB_DB_RCV_INT)
 
 #else
@@ -394,22 +394,22 @@
 #define RIO_PRTOCCSR            0x124
 #define RIO_GCCSR		0x13c
 
-#define RIO_MNT_REQ_CSR         0x140
+#define RIO_MNT_REQ_CSR(x)      (0x140+((x)*0x20))
 #define  RIO_MNT_REQ_MASK       0x00000007
 #define  RIO_MNT_REQ_RST        0x00000003
 #define  RIO_MNT_REQ_STAT       0x00000004
 
-#define RIO_MNT_RSP_CSR         0x144
+#define RIO_MNT_RSP_CSR(x)      (0x144+((x)*0x20))
 #define  RIO_MNT_RSP_LS         0x0000001f
 #define  RIO_MNT_RSP_AS         0x000003e0
 #define  RIO_MNT_RSP_RV         0x80000000
 
-#define RIO_ACK_STS_CSR         0x148
+#define RIO_ACK_STS_CSR(x)      (0x148+((x)*0x20))
 #define  RIO_ACK_STS_IA         0x1f000000
 #define  RIO_ACK_STS_OUTA       0x00001f00
 #define  RIO_ACK_STS_OBA        0x0000001f
 
-#define RIO_ESCSR		0x158
+#define RIO_ESCSR(x)            (0x158+((x)*0x20))
 #define  RIO_ESCSR_OPD           0x04000000   /*WOCL*/
 #define  RIO_ESCSR_OFE           0x02000000   /*WOCL*/
 #define  RIO_ESCSR_ODE           0x01000000   /*WOCL*/
@@ -435,7 +435,7 @@
 		     RIO_ESCSR_ORS |		\
 		     RIO_ESCSR_OES)
 
-#define RIO_CCSR		0x15c
+#define RIO_CCSR(x)		(0x15c+((x)*0x20))
 #define  RIO_CCSR_PW             0xc0000000   /*R*/
 #define  RIO_CCSR_IPW            0x38000000   /*R*/
 #define  RIO_CCSR_PW_MASK        0x7
@@ -452,12 +452,12 @@
 
 #define RIO_PNPTAACR		0x10120
 
-#define RIO_OUTB_ATMU_WINDOWS   16
-
 
 /*************************************/
 /* *********** Constants *********** */
 /*************************************/
+
+#define RIO_OUTB_ATMU_WINDOWS   16
 
 
 /***********************************/
@@ -490,6 +490,7 @@ struct rio_priv {
 	spinlock_t rio_lock;
 	struct rio_mport *mport;
 	struct device *dev;
+	int  portNdx;
 
 	void __iomem *regs_win_fixed;
 	void __iomem *regs_win_paged;
