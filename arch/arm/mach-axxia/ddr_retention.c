@@ -32,7 +32,7 @@
 
 #include <asm/io.h>
 #include <asm/cacheflush.h>
-#include <../../../drivers/misc/lsi-ncr.h>
+#include <mach/ncr.h>
 
 extern void flush_l3(void);
 static void __iomem *nca_address = NULL;
@@ -190,7 +190,7 @@ void initiate_retention_reset(void)
     unsigned long value;
 
 	if (NULL == nca_address)
-		nca_address = ioremap(0x002020100000ULL, 0x20000);
+		BUG();
 
     /* send stop message to other CPUs */
     local_irq_disable();
@@ -219,8 +219,7 @@ void initiate_retention_reset(void)
 
 
     /* unlock reset register for later */
-	apb_base = ioremap(0x2010000000, 0x40000);
-	writel(0x000000ab, apb_base + 0x31000); /* Access Key */
+    writel(0x000000ab, apb_base + 0x31000); /* Access Key */
 
     /* prepare to put DDR in self refresh power-down mode */
     /* first read the CTL_244 register and OR in the LP_CMD value */
@@ -274,6 +273,11 @@ void axxia_ddr_retention_init(void)
             &axxia_ddr_retention_proc_ops))
         printk("Failed to register DDR retention proc interface\n");
 #endif
+
+    apb_base = ioremap(0x2010000000, 0x40000);
+    nca_address = ioremap(0x002020100000ULL, 0x20000);
+
+    printk("ddr_retention: ready\n");
 }
 
 EXPORT_SYMBOL(initiate_retention_reset);
