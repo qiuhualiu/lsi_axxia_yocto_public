@@ -32,6 +32,8 @@
 #include "ehci-ci13612.h"
 
 
+static int ci13612_ehci_halt (struct ehci_hcd *ehci);
+
 #ifdef CONFIG_LSI_USB_SW_WORKAROUND
 static void ci13612_usb_setup(struct usb_hcd *hcd)
 {
@@ -104,7 +106,7 @@ static int ci13612_ehci_init(struct usb_hcd *hcd)
 	ehci->sbrn = 0x20;
 
 	/* Reset is only allowed on a stopped controller */
-	ehci_halt(ehci);
+	ci13612_ehci_halt(ehci);
 
 	/* reset controller */
 	ehci_reset(ehci);
@@ -184,8 +186,11 @@ static int ci13612_ehci_run(struct usb_hcd *hcd)
 	if (retval)
 		return retval;
 
+
+#ifndef CONFIG_LSI_USB_SW_WORKAROUND
 	/* Setup AMBA interface to force INCR16 busts when possible */
 	writel(3, USB_SBUSCFG);
+#endif
 
 	retval = ehci_run(hcd);
 	if (retval)
@@ -193,10 +198,12 @@ static int ci13612_ehci_run(struct usb_hcd *hcd)
 
 	ci13612_fixup_txpburst(ehci);
 
+#ifndef CONFIG_LSI_USB_SW_WORKAROUND
 	/* Set ITC (bits [23:16]) to zero for interrupt on every micro-frame */
 	tmp = ehci_readl(ehci, &ehci->regs->command);
 	tmp &= 0xFFFF;
 	ehci_writel(ehci, tmp & 0xFFFF, &ehci->regs->command);
+#endif
 
 	return retval;
 }
@@ -257,9 +264,12 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+
+#ifndef CONFIG_LSI_USB_SW_WORKAROUND
 	/* Device using 32-bit addressing */
 	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
 	pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
+#endif
 
 	hcd = usb_create_hcd(&ci13612_hc_driver, &pdev->dev, dev_name(&pdev->dev));
 	if (!hcd) {
@@ -317,12 +327,28 @@ static int ci13612_ehci_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int ci13612_ehci_halt (struct ehci_hcd *ehci)
+{
+	u32     temp;
+
+	temp = ehci_readl(ehci, &ehci->regs->command);
+	temp &= ~CMD_RUN;
+	ehci_writel(ehci, temp, &ehci->regs->command);
+
+	return handshake(ehci, &ehci->regs->status,
+		STS_HALT, STS_HALT, 16 * 125);
+}
+
 MODULE_ALIAS("platform:ci13612-ehci");
 
 static struct of_device_id ci13612_match[] = {
 	{
 		.type	= "usb",
 		.compatible = "lsi,acp-usb",
+	},
+	{
+		.type	= "usb",
+		.compatible = "acp-usb",
 	},
 	{},
 };
@@ -334,4 +360,5 @@ static struct platform_driver ci13612_ehci_driver = {
 		.name = "ci13612-ehci",
 		.of_match_table = ci13612_match,
 	},
+
 };
