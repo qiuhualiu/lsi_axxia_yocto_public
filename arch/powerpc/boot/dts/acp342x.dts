@@ -113,8 +113,9 @@
                         USB0: usb@004a4000 {
                                 device_type = "usb";
                                 compatible = "lsi,acp-usb";
-                                enabled = <0>;
-                                reg = <0x004a4000 0x00020000>;
+                                enabled = <1>;
+				reg = <0x20 0x004A0000 0x0 0020000>,
+                      		      <0x20 0x0040C000 0x0 0001000>;
                                 interrupt-parent = <&MPIC>;
                                 interrupts = <31>;
                         };
