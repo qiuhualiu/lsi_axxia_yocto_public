@@ -32,6 +32,8 @@
 #include "ehci-ci13612.h"
 
 
+static int ci13612_ehci_halt (struct ehci_hcd *ehci);
+
 #ifdef CONFIG_LSI_USB_SW_WORKAROUND
 static void ci13612_usb_setup(struct usb_hcd *hcd)
 {
@@ -104,7 +106,7 @@ static int ci13612_ehci_init(struct usb_hcd *hcd)
 	ehci->sbrn = 0x20;
 
 	/* Reset is only allowed on a stopped controller */
-	ehci_halt(ehci);
+	ci13612_ehci_halt(ehci);
 
 	/* reset controller */
 	ehci_reset(ehci);
@@ -325,6 +327,18 @@ static int ci13612_ehci_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int ci13612_ehci_halt (struct ehci_hcd *ehci)
+{
+	u32     temp;
+
+	temp = ehci_readl(ehci, &ehci->regs->command);
+	temp &= ~CMD_RUN;
+	ehci_writel(ehci, temp, &ehci->regs->command);
+
+	return handshake(ehci, &ehci->regs->status,
+		STS_HALT, STS_HALT, 16 * 125);
+}
+
 MODULE_ALIAS("platform:ci13612-ehci");
 
 static struct of_device_id ci13612_match[] = {
@@ -332,7 +346,10 @@ static struct of_device_id ci13612_match[] = {
 		.type	= "usb",
 		.compatible = "lsi,acp-usb",
 	},
-	{ .compatible = "acp-usb", },
+	{
+		.type	= "usb",
+		.compatible = "acp-usb",
+	},
 	{},
 };
 
