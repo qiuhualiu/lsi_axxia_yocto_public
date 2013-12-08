@@ -549,7 +549,7 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 
 	/*
 	 * First time through, make sure local device is rionet
-	 * capable, setup netdev,  and set flags so this is skipped
+	 * capable, setup netdev, and set flags so this is skipped
 	 * on later probes
 	 */
 	if (!rionet_check) {
@@ -587,6 +587,7 @@ static int rionet_probe(struct rio_dev *rdev, const struct rio_device_id *id)
 	}
 
 	rio_set_drvdata(rdev, ndev);
+	rc = 0;
 
 out:
 	return rc;

@@ -34,7 +34,7 @@ extern int axxia_rio_apio_disable(struct rio_mport *mport);
 extern int axxia_rio_rpio_enable(struct rio_mport *mport, u32 mask, u32 bits);
 extern int axxia_rio_rpio_disable(struct rio_mport *mport);
 
-extern int axxia_rapidio_board_init(void);
+extern int axxia_rapidio_board_init(int devNum, int *portNdx);
 
 
 /*****************************/

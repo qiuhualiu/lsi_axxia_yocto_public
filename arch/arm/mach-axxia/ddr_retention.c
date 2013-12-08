@@ -27,14 +27,13 @@
 #include <linux/cpu.h>
 #include <linux/reboot.h>
 #include <linux/syscore_ops.h>
-
 #include <linux/proc_fs.h>
+#include <linux/delay.h>
 
 #include <asm/io.h>
 #include <asm/cacheflush.h>
 #include <mach/ncr.h>
 
-extern void flush_l3(void);
 static void __iomem *nca_address = NULL;
 static void __iomem *apb_base = NULL;
 
@@ -73,6 +72,64 @@ ncp_caal_regions_acp55xx[] =
     NCP_REGION_ID(0xff, 0xff)
 };
 
+/*
+  flush_l3
+*/
+
+static void
+flush_l3(void)
+{
+
+	unsigned long hnf_offsets[] = {
+		 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27
+	};
+	int i;
+        unsigned long status;
+	int retries;
+	void __iomem *dickens;
+
+	preempt_disable();
+	dickens = ioremap(0x2000000000, 0x1000000);
+
+	for (i = 0; i < (sizeof(hnf_offsets) / sizeof(unsigned long)); ++i) {
+		writel(0x0, dickens + (0x10000 * hnf_offsets[i]) + 0x10);
+	}
+
+	for (i = 0; i < (sizeof(hnf_offsets) / sizeof(unsigned long)); ++i) {
+		retries = 10000;
+
+		do {
+			status = readl(dickens +
+				       (0x10000 * hnf_offsets[i]) + 0x18);
+			udelay(1);
+		} while ((0 < --retries) && (0x0 != (status & 0xf)));
+
+		if (0 == retries)
+			BUG();
+	}
+
+	for (i = 0; i < (sizeof(hnf_offsets) / sizeof(unsigned long)); ++i) {
+		writel(0x3, dickens + (0x10000 * hnf_offsets[i]) + 0x10);
+	}
+
+	for (i = 0; i < (sizeof(hnf_offsets) / sizeof(unsigned long)); ++i) {
+		retries = 10000;
+
+		do {
+			status = readl(dickens +
+				       (0x10000 * hnf_offsets[i]) + 0x18);
+			udelay(1);
+		} while ((0 < --retries) && (0xc != (status & 0xf)));
+
+		if (0 == retries)
+			BUG();
+	}
+
+	iounmap(dickens);
+	preempt_enable();
+
+	return;
+}
 
 static void quiesce_vp_engine(void)
 {
@@ -201,6 +258,7 @@ void initiate_retention_reset(void)
 
     kill_time(1000000);
 
+    flush_l3();
 
     /* TODO - quiesce VP engines */
     quiesce_vp_engine();
@@ -210,13 +268,6 @@ void initiate_retention_reset(void)
     value = 0;
     ncr_write(NCP_REGION_ID(34,0), 0x414, 4, &value);
     ncr_write(NCP_REGION_ID(15,0), 0x414, 4, &value);
-
-    /* flush L3 */
-#if 0
-    flush_cache_all();
-    flush_l3();
-#endif
-
 
     /* unlock reset register for later */
     writel(0x000000ab, apb_base + 0x31000); /* Access Key */

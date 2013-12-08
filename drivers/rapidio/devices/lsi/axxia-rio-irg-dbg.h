@@ -47,6 +47,7 @@ enum rio_irq_dbg {
 	RIO_MISC_OB_DB_PENDING,
 	RIO_MISC_IB_DB,
 	RIO_MISC_IB_DB_SPURIOUS,
+	RIO_LINKDOWN,
 	RIO_OB_DME_STAT_RESP_TO,
 	RIO_OB_DME_STAT_RESP_ERR,
 	RIO_OB_DME_STAT_DATA_TRANS_ERR,
@@ -167,7 +168,7 @@ static inline void __misc_info_dbg(struct rio_priv *priv, u32 misc_state)
 	/* Log only - no enable bit or state to clear */
 	if (misc_state & (UNEXP_MSG_LOG |
 			  LL_TL_INT | GRIO_INT |
-			  UNSP_RIO_REQ_INT | RIO_MISC_UNEXP)) {
+			  UNSP_RIO_REQ_INT | UNEXP_MSG_INT)) {
 		if (misc_state & UNEXP_MSG_LOG)
 			__irq_dbg(priv, RIO_MISC_LOG);
 		if (misc_state & LL_TL_INT)

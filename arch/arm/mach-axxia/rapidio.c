@@ -29,16 +29,38 @@
 #include <linux/err.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <asm/io.h>
+
+#include <../../../drivers/misc/lsi-ncr.h>
 
 
 /**
  * axxia_rapidio_board_init -
  *   Perform board-specific initialization to support use of RapidIO busses
  *
+ * @ndx:     [IN] Which instance of SRIOC driver needs support
+ * @portNdx: [OUT] Which port to use for the specified controller
+ *
  * Returns 0 on success or an error code.
  */
 int
-axxia_rapidio_board_init(void)
+axxia_rapidio_board_init(
+	int devNum,
+	int *portNdx)
 {
+	void __iomem *gpregBase = ioremap(0x2010094000, 0x1000);
+	unsigned long srioCfg = 0;
+
+	if (gpregBase == NULL)
+		return -EFAULT;
+
+	srioCfg = inl((long unsigned int)(gpregBase + 0x60));
+
+	(*portNdx) = (srioCfg >> (devNum * 4)) & 0xf;
+
+	printk("rio: ARM board_init - portNdx=%d\n", (*portNdx));
+
+	iounmap(gpregBase);
+
 	return 0;
 }
