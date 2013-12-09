@@ -58,8 +58,6 @@ axxia_rapidio_board_init(
 
 	(*portNdx) = (srioCfg >> (devNum * 4)) & 0xf;
 
-	printk("rio: ARM board_init - portNdx=%d\n", (*portNdx));
-
 	iounmap(gpregBase);
 
 	return 0;
