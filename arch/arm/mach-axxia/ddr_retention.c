@@ -36,6 +36,7 @@
 
 static void __iomem *nca_address = NULL;
 static void __iomem *apb_base = NULL;
+static void __iomem *dickens = NULL;
 
 static inline void kill_time(int cnt)
 {
@@ -86,10 +87,8 @@ flush_l3(void)
 	int i;
         unsigned long status;
 	int retries;
-	void __iomem *dickens;
 
 	preempt_disable();
-	dickens = ioremap(0x2000000000, 0x1000000);
 
 	for (i = 0; i < (sizeof(hnf_offsets) / sizeof(unsigned long)); ++i) {
 		writel(0x0, dickens + (0x10000 * hnf_offsets[i]) + 0x10);
@@ -125,7 +124,6 @@ flush_l3(void)
 			BUG();
 	}
 
-	iounmap(dickens);
 	preempt_enable();
 
 	return;
@@ -327,6 +325,7 @@ void axxia_ddr_retention_init(void)
 
     apb_base = ioremap(0x2010000000, 0x40000);
     nca_address = ioremap(0x002020100000ULL, 0x20000);
+    dickens = ioremap(0x2000000000, 0x1000000);
 
     printk("ddr_retention: ready\n");
 }
