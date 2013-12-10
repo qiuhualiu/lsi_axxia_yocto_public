@@ -46,6 +46,7 @@
 #include <asm/mach/time.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
+#include <asm/pmu.h>
 #include <mach/hardware.h>
 #include <mach/timers.h>
 #include <mach/axxia-gic.h>
@@ -178,6 +179,58 @@ static struct of_dev_auxdata axxia_auxdata_lookup[] __initdata = {
 	{}
 };
 
+static struct resource axxia_pmu_resources[] = {
+	[0] = {
+		.start  = IRQ_PMU,
+		.end    = IRQ_PMU,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+/*
+ * The PMU IRQ lines of four cores are wired together into a single interrupt.
+ * Bounce the interrupt to other cores if it's not ours.
+ */
+#define CORES_PER_CLUSTER  4
+static irqreturn_t axxia_pmu_handler(int irq, void *dev, irq_handler_t handler)
+{
+	irqreturn_t ret = handler(irq, dev);
+	int cpu = smp_processor_id();
+	int cluster = cpu / CORES_PER_CLUSTER;
+	int other;
+
+	if (ret == IRQ_NONE) {
+
+		/* Look until we find another cpu that's online. */
+		do {
+			other = (++cpu % CORES_PER_CLUSTER) +
+				(cluster * CORES_PER_CLUSTER);
+		} while (!cpu_online(other));
+
+		irq_set_affinity(irq, cpumask_of(other));
+	}
+
+	/*
+	 * We should be able to get away with the amount of IRQ_NONEs we give,
+	 * while still having the spurious IRQ detection code kick in if the
+	 * interrupt really starts hitting spuriously.
+	 */
+	return ret;
+}
+
+static struct arm_pmu_platdata axxia_pmu_platdata = {
+	.handle_irq		= axxia_pmu_handler,
+};
+
+
+static struct platform_device pmu_device = {
+	.name			= "arm-pmu",
+	.id			= ARM_PMU_DEVICE_CPU,
+	.num_resources		= ARRAY_SIZE(axxia_pmu_resources),
+	.resource		= axxia_pmu_resources,
+	.dev.platform_data	= &axxia_pmu_platdata,
+};
+
 static inline void
 spidev_chip_select(u32 control, unsigned n)
 {
@@ -306,6 +359,8 @@ void __init axxia_dt_init(void)
 	axxia_pcie_init();
 
 	axxia_ddr_retention_init();
+
+	platform_device_register(&pmu_device);
 }
 
 static void axxia_restart(char str, const char *cmd)
