@@ -405,6 +405,7 @@ static ssize_t axxia_rio_tmo_show(struct device *dev,
 				char *buf)
 {
 	struct rio_mport *mport = dev_get_drvdata(dev);
+	struct rio_priv *priv = mport->priv;
 	u32 stat;
 	char *str = buf;
 
@@ -421,9 +422,9 @@ static ssize_t axxia_rio_tmo_show(struct device *dev,
 	__rio_local_read_config_32(mport, RAB_APIO_STAT, &stat);
 	str += sprintf(str, "RAB_APIO_STAT (%p)\t%8.8x\n",
 		       (void *)RAB_APIO_STAT, stat);
-	__rio_local_read_config_32(mport, RIO_ESCSR, &stat);
+	__rio_local_read_config_32(mport, RIO_ESCSR(priv->portNdx), &stat);
 	str += sprintf(str, "PNESCSR (%p)\t%8.8x\n",
-		       (void *)RIO_ESCSR, stat);
+		       (void *)RIO_ESCSR(priv->portNdx), stat);
 
 	return str - buf;
 }
