@@ -490,6 +490,7 @@ struct rio_priv {
 	spinlock_t rio_lock;
 	struct rio_mport *mport;
 	struct device *dev;
+	int  ndx;	/* From FDT description */
 	int  portNdx;
 
 	void __iomem *regs_win_fixed;

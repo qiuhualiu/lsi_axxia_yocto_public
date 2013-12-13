@@ -9,7 +9,8 @@
 
 #define AXXIA_RIO_SMALL_SYSTEM
 
-#define AXXIA_RIO_SYSMEM_BARRIER()
+#define AXXIA_RIO_SYSMEM_BARRIER() \
+    __asm__ __volatile__ ("dmb" : : : "memory")
 
 #define AXXIA_RIO_DISABLE_MACHINE_CHECK()
 #define AXXIA_RIO_ENABLE_MACHINE_CHECK()
