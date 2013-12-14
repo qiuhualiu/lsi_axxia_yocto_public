@@ -195,12 +195,7 @@ int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 #endif
 
 	/* Wait for so long, then give up if nothing happens ... */
-#ifdef CONFIG_ARCH_AXXIA_SIM
 	timeout = jiffies + (1 * HZ);
-#else
-	timeout = jiffies + (10 * HZ);
-#endif
-
 	while (time_before(jiffies, timeout)) {
 		smp_rmb();
 		if (pen_release == -1)
@@ -249,24 +244,6 @@ void __init smp_init_cpus(void)
 void __init
 platform_smp_prepare_cpus(unsigned int max_cpus)
 {
-#ifdef CONFIG_ARCH_AXXIA_SIM
-	int i;
-
-	/*
-	 * Initialise the present map, which describes the set of CPUs
-	 * actually populated at the present time.
-	 */
-	for (i = 0; i < max_cpus; i++)
-		set_cpu_present(i, true);
-
-	/*
-	 * This is the entry point of the routine that the secondary
-	 * cores will execute once they are released from their
-	 * "holding pen".
-	 */
-	*(u32 *)phys_to_virt(0x10000020) =
-		virt_to_phys(axxia_secondary_startup);
-#else
 	int i;
 	void __iomem *apb2_ser3_base;
 	unsigned long resetVal;
@@ -355,7 +332,4 @@ platform_smp_prepare_cpus(unsigned int max_cpus)
 		__cpuc_flush_dcache_area((void *)phys_to_virt(0x10000020),
 					 sizeof(u32));
 	}
-
-	return;
-#endif
 }

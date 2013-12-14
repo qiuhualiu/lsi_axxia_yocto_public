@@ -58,7 +58,8 @@
 extern void axxia_ddr_retention_init(void);
 
 static const char *axxia_dt_match[] __initconst = {
-	"lsi,axm5516",		/* AXM5516 */
+	"lsi,axm5516",
+	"lsi,axm5516-sim",
 	NULL
 };
 
@@ -275,69 +276,8 @@ static struct spi_board_info spi_devs[] __initdata = {
 };
 
 
-static int
-l3_set_pstate(void __iomem *l3ctrl, unsigned int req, unsigned int act)
-{
-	static const u8 hn_f[] = {
-		0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27
-	};
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(hn_f); ++i) {
-		/* set state NOL3 */
-		writel(req, l3ctrl + (hn_f[i] << 16) + 0x10);
-	}
-
-	for (i = 0; i < ARRAY_SIZE(hn_f); ++i) {
-		unsigned long status;
-		int retries = 10000;
-
-		do {
-			status = readl(l3ctrl + (hn_f[i] << 16) + 0x18);
-			udelay(1);
-		} while ((0 < --retries) && (act != (status & 0xf)));
-
-		if (0 == retries)
-			return -ENODEV;
-	}
-
-	return 0;
-}
-
 void __init axxia_dt_init(void)
 {
-	void __iomem *l3ctrl;
-	void __iomem *apb2ser3_base;
-	int rc;
-
-	/* Enable L3-cache */
-#ifndef CONFIG_ARCH_AXXIA_SIM
-	l3ctrl = ioremap(0x2000000000ULL, SZ_4M);
-	if (l3ctrl) {
-		rc = l3_set_pstate(l3ctrl, 0x3, 0xc);
-		if (rc < 0)
-			pr_warn("axxia: Failed to intialize L3-cache\n");
-		iounmap(l3ctrl);
-	} else {
-		pr_warn("axxia: Failed to map L3-cache control regs\n");
-	}
-#endif
-
-#if 0 /* FIXME - this works well enough to get the machine to boot,
-       * but still seeing stall failures in LTP testing. If we remove
-       * the use of wfe/sev in arch/arm/include/asm/spinlock.h instead,
-       * the machine boots -and- we don't see LTP failure. So for now,
-       * disable this and go with the other solution.
-       */
-
-	/* Enable wfe/sev across clusters. */
-	apb2ser3_base = ioremap(0x2010030000ULL, SZ_64K);
-	if (apb2ser3_base)
-		writel(0x0000ffff, apb2ser3_base + 0x14);
-	else
-		pr_warn("axxia: Failed to enable multi-cluster wfe/sev!\n");
-#endif
-
 	of_platform_populate(NULL, of_default_bus_match_table,
 			     axxia_auxdata_lookup, NULL);
 	pm_power_off = NULL; /* TBD */
