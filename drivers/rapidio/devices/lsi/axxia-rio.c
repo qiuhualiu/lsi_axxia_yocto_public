@@ -729,12 +729,20 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 					    RIO_PORT_GEN_MASTER |
 					    RIO_PORT_GEN_DISCOVERED);
 	} else {
-		__rio_local_write_config_32(mport, RIO_GCCSR, 0x00000000);
+		__rio_local_write_config_32(mport, RIO_GCCSR,
+					    RIO_PORT_GEN_MASTER);
 		__rio_local_write_config_32(mport, RIO_DID_CSR,
 					    RIO_SET_DID(mport->sys_size,
 					    RIO_ANY_DESTID(mport->sys_size)));
 	}
+
+#ifdef SRIO_IODEBUG
 	__rio_local_read_config_32(mport, RIO_GCCSR, &result);
+	dev_dbg(priv->dev, "%d RIO_GEN_CTL_CSR set to 0x%X for main port\n",
+		mport->id, result);
+#endif
+
+	__rio_local_write_config_32(mport, RIO_COMPONENT_TAG_CSR, 0xFFFF);
 
 #ifdef	NOT_SUPPORTED
 	/* Use the reset default setting of (0x00000000).  RAB does not
@@ -743,7 +751,9 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 
 	/* Set to receive any dist ID for serial RapidIO controller. */
 	if (mport->phy_type == RIO_PHY_SERIAL)
-		__rio_local_write_config_32(mport, EPC_PNPTAACR(mport->portNdx), 0x00000000);
+		__rio_local_write_config_32(mport,
+					    EPC_PNPTAACR(mport->portNdx),
+					    0x00000000);
 #endif
 
 #ifdef CONFIG_RAPIDIO_HOTPLUG
@@ -753,7 +763,9 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 		result = EPC_PNADIDCSR_ADE;
 		result |= EPC_PNADIDCSR_ADID_SMALL(
 				CONFIG_RAPIDIO_SECOND_DEST_ID);
-		__rio_local_write_config_32(mport, EPC_PNADIDCSR(priv->portNdx), result);
+		__rio_local_write_config_32(mport,
+					    EPC_PNADIDCSR(priv->portNdx),
+					    result);
 		dev_dbg(priv->dev, "Port%dAltDevIdmCSR set to 0x%X for "
 			"main port\n",
 			priv->portNdx, CONFIG_RAPIDIO_SECOND_DEST_ID);
@@ -770,7 +782,9 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 			result |= EPC_PNADIDCSR_ADID_LARGE(~0);
 		else
 			result |= EPC_PNADIDCSR_ADID_SMALL(~0);
-		__rio_local_write_config_32(mport, EPC_PNADIDCSR(priv->portNdx), result);
+		__rio_local_write_config_32(mport,
+					    EPC_PNADIDCSR(priv->portNdx),
+					    result);
 		dev_dbg(priv->dev, "Port%dAltDevIdmCSR set to 0x%X for "
 			"main port\n",
 			priv->portNdx, result);

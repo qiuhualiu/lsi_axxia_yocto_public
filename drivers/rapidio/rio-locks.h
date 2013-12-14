@@ -1,6 +1,8 @@
 #ifndef _RIO_LOCK_H
 #define _RIO_LOCK_H
 
+#include <linux/sched.h>
+
 /*
  * RapidIO job support
  *

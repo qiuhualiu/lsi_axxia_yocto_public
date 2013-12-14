@@ -19,6 +19,7 @@
  */
 
 /* #define DEBUG */
+/* #define RIO_LOCK_DEBUG */
 
 #include <linux/types.h>
 #include <linux/kernel.h>
