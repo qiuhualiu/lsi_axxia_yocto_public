@@ -10,11 +10,15 @@
  * option) any later version.
  */
 
+#ifndef DRIVERS_RAPIDIO_RIO_H
+#define DRIVERS_RAPIDIO_RIO_H
+
 #include <linux/device.h>
 #include <linux/export.h>
 #include <linux/rwsem.h>
 #include <linux/list.h>
 #include <linux/rio.h>
+#include <asm/rio.h>
 
 #include "rio-hotplug.h"
 #include "rio-multicast.h"
@@ -105,3 +109,27 @@ extern struct rio_dev_fixup __end_rio_dev_fixup_enable[];
 					((x & 0x00ff0000) >> 16))
 #define RIO_SET_DID(size, x)	(size ? (x & 0xffff) : \
 					((x & 0x000000ff) << 16))
+
+/* ------------------------------------------------------------------------- */
+/*
+ * Patch Mechanism
+ *
+ * The following macros may be defined in the processor- or board-specific
+ * patch files to modify the operation of the generic RapidIO driver
+ * software.  If they are not defined, then the default operation will be
+ * performed.
+ */
+
+#ifndef RAPIDIO_REDUNDANT_PATH_LOCK_FAULT
+	#define RAPIDIO_REDUNDANT_PATH_LOCK_FAULT()
+#endif
+#ifndef RAPIDIO_HW_LOCK_LOCK_ERR
+	#define RAPIDIO_HW_LOCK_LOCK_ERR()
+#endif
+#ifndef RAPIDIO_HW_UNLOCK_LOCK_ERR
+	#define RAPIDIO_HW_UNLOCK_LOCK_ERR()
+#endif
+
+/* ------------------------------------------------------------------------- */
+
+#endif /* DRIVERS_RAPIDIO_RIO_H */
