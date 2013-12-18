@@ -20,6 +20,8 @@
 
 /dts-v1/;
 
+/memreserve/ 0x00000000 0x00400000;
+
 / {
 	model = "AXM5516";
 	compatible = "arm", "lsi,axm5516-sim";
@@ -161,7 +163,7 @@
 		};
 
 		peripheral {
-			frequency = <24000000>;
+			frequency = <400000000>;
 		};
 
 		emmc {

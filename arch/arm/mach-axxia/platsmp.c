@@ -252,84 +252,67 @@ platform_smp_prepare_cpus(unsigned int max_cpus)
 	unsigned long release_addr[NR_CPUS] = {0};
 	u32 release;
 
-	if (of_find_compatible_node(NULL, NULL, "lsi,axm5516")) {
-		for_each_node_by_name(np, "cpu") {
-			if (of_property_read_u32(np, "reg", &phys_cpu))
-				continue;
+	for_each_node_by_name(np, "cpu") {
+		if (of_property_read_u32(np, "reg", &phys_cpu))
+			continue;
 
-			if (0 == phys_cpu)
-				continue;
+		if (0 == phys_cpu)
+			continue;
 
-			if (of_property_read_u32(np, "cpu-release-addr",
-						 &release))
-				continue;
+		if (of_property_read_u32(np, "cpu-release-addr",
+					 &release))
+			continue;
 
-			release_addr[phys_cpu] = release;
+		release_addr[phys_cpu] = release;
+	}
+
+	/*
+	 * Initialise the present map, which describes the set of CPUs
+	 * actually populated at the present time.
+	 */
+
+	apb2_ser3_base = ioremap(APB2_SER3_PHY_ADDR, APB2_SER3_ADDR_SIZE);
+
+	for (i = 0; i < NR_CPUS; i++) {	
+		/* check if this is a possible CPU and
+		   it is within max_cpus range */
+		if ((cpu_possible(i)) &&
+		    (cpu_count < max_cpus) &&
+		    (0 != release_addr[i])) {
+			set_cpu_present(cpu_count, true);
+			cpu_count++;
 		}
 
-		/*
-		 * Initialise the present map, which describes the set of CPUs
-		 * actually populated at the present time.
+		/* Release all physical cpu:s since we might want to
+		 * bring them online later. Also we need to get the
+		 * execution into kernel code (it's currently executing
+		 * in u-boot).
 		 */
+		phys_cpu = cpu_logical_map(i);
 
-		apb2_ser3_base = ioremap(APB2_SER3_PHY_ADDR, APB2_SER3_ADDR_SIZE);
-
-		for (i = 0; i < NR_CPUS; i++) {	
-			/* check if this is a possible CPU and
-			   it is within max_cpus range */
-			if ((cpu_possible(i)) &&
-			    (cpu_count < max_cpus) &&
-			    (0 != release_addr[i])) {
-				set_cpu_present(cpu_count, true);
-				cpu_count++;
-			}
-
-			/* Release all physical cpu:s since we might want to
-			 * bring them online later. Also we need to get the
-			 * execution into kernel code (it's currently executing
-			 * in u-boot).
-			 */
-			phys_cpu = cpu_logical_map(i);
-
-			if (phys_cpu != 0) {
-				resetVal = readl(apb2_ser3_base + 0x1010);
-				writel(0xab, apb2_ser3_base+0x1000);
-				resetVal &= ~(1 << phys_cpu);
-				writel(resetVal, apb2_ser3_base+0x1010);
-				udelay(1000);
-			}
- 		}
-
-		iounmap(apb2_ser3_base);
-
-		/*
-		 * This is the entry point of the routine that the secondary
-		 * cores will execute once they are released from their
-		 * "holding pen".
-		 */
-		for(i = 0; i < NR_CPUS; i++) {
-			if(release_addr[i] != 0) {
-				u32* vrel_addr =
-					(u32 *)phys_to_virt(release_addr[i]);
-				*vrel_addr =
-					virt_to_phys(axxia_secondary_startup);
-				smp_wmb();
-				__cpuc_flush_dcache_area(vrel_addr, sizeof(u32));
-			}
-		} 
-	} else if (of_find_compatible_node(NULL, NULL, "lsi,axm5516-sim")) {
-		for (i = 0; i < max_cpus; i++)
-                	set_cpu_present(i, true);
-
-		/*
-		 * This is the entry point of the routine that the secondary
-		 * cores will execute once they are released from their
-		 * "holding pen".
-		 */
-		*(u32 *)phys_to_virt(0x10000020) =
-			virt_to_phys(axxia_secondary_startup);
-		smp_wmb();
-		__cpuc_flush_dcache_area((void *)phys_to_virt(0x10000020),
-					 sizeof(u32));
+		if (phys_cpu != 0) {
+			resetVal = readl(apb2_ser3_base + 0x1010);
+			writel(0xab, apb2_ser3_base+0x1000);
+			resetVal &= ~(1 << phys_cpu);
+			writel(resetVal, apb2_ser3_base+0x1010);
+		}
 	}
+
+	iounmap(apb2_ser3_base);
+
+	/*
+	 * This is the entry point of the routine that the secondary
+	 * cores will execute once they are released from their
+	 * "holding pen".
+	 */
+	for(i = 0; i < NR_CPUS; i++) {
+		if(release_addr[i] != 0) {
+			u32* vrel_addr =
+				(u32 *)phys_to_virt(release_addr[i]);
+			*vrel_addr =
+				virt_to_phys(axxia_secondary_startup);
+			smp_wmb();
+			__cpuc_flush_dcache_area(vrel_addr, sizeof(u32));
+		}
+	} 
 }

@@ -105,8 +105,11 @@ void __init axxia_dt_timer_init(void)
 	const char *path;
 	struct device_node *node;
 	void __iomem *base;
+	int is_sim;
 
-	axxia_init_clocks();
+	is_sim = of_find_compatible_node(NULL, NULL, "lsi,axm5516-sim") != NULL;
+
+	axxia_init_clocks(is_sim);
 
 #ifdef CONFIG_ARM_ARCH_TIMER
 	{
