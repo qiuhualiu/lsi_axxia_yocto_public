@@ -459,6 +459,7 @@
 
 #define RIO_OUTB_ATMU_WINDOWS   16
 
+#define LSI_AXXIA_RIO_COOKIE	0x41734230	/* aka 'AsR0' */
 
 /***********************************/
 /* *********** STRUCTS *********** */
@@ -487,7 +488,10 @@ struct rio_desc {
 };
 
 struct rio_priv {
+	u32     cookie;
+
 	spinlock_t rio_lock;
+
 	struct rio_mport *mport;
 	struct device *dev;
 	int  ndx;	/* From FDT description */

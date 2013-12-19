@@ -956,6 +956,47 @@ static inline void dme_put(struct rio_msg_dme *me)
 		kref_put(&me->kref, release_dme);
 }
 
+static inline int check_dme(int dme_no,
+			    int *numDmes,
+			    int *dmesInUse,
+			    int *dmes)
+{
+	int i;
+	for (i=0; i < 2; i++) {
+		if (dme_no < numDmes[i]) {
+			if (dmes[i] & (1 << dme_no)) {
+				if (dmesInUse[i] & (1 << dme_no))
+					return -EBUSY;	/* Already allocated */
+				return 0;
+			}
+		} else {
+			dme_no -= numDmes[i];
+		}
+	}
+
+	return -ENXIO;	/* Not available */
+}
+
+static inline int select_dme(int dme_no,
+			     int *numDmes,
+			     int *dmesInUse,
+			     int *dmes,
+			     int value)
+{
+	int i;
+	for (i=0; i < 2; i++) {
+		if (dme_no < numDmes[i]) {
+			dmesInUse[i] &= ~(1 << dme_no);
+			dmesInUse[i] |= (value << dme_no);
+			return 0;
+		} else {
+			dme_no -= numDmes[i];
+		}
+	}
+
+	return -ENXIO;	/* Not available */
+}
+
 static inline int choose_ob_dme(
 	struct rio_priv	*priv,
 	int len,
@@ -995,14 +1036,21 @@ static void release_mbox(struct kref *kref)
 	struct rio_priv *priv = mb->mport->priv;
 	int letter;
 
+	/* Quickly disable the engines */
 	for (letter = 0; letter < RIO_MSG_MAX_LETTER; letter++) {
-		int i = mb->me[letter]->dme_no / 32;
-		int j = mb->me[letter]->dme_no % 32;
-		if (mb->me[letter]) {
+		if (mb->me[letter])
 			__rio_local_write_config_32(mb->mport,
 				   RAB_IB_DME_CTRL(mb->me[letter]->dme_no), 0);
+	}
+
+	/* And then release the remaining resources */
+	for (letter = 0; letter < RIO_MSG_MAX_LETTER; letter++) {
+		if (mb->me[letter]) {
 			dme_put(mb->me[letter]);
-			priv->inbDmesInUse[i] &= ~(1 << j);
+			select_dme(mb->me[letter]->dme_no,
+					&priv->numInbDmes[0],
+					&priv->inbDmesInUse[0],
+					&priv->inbDmes[0], 0);
 		}
 	}
 
@@ -1317,7 +1365,7 @@ static void ob_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 static int open_outb_mbox(struct rio_mport *mport, void *dev_id, int dme_no,
 			  int entries, int prio)
 {
-	int i, di, dj, rc = -ENOMEM;
+	int i, rc = -ENOMEM;
 	struct rio_priv *priv = mport->priv;
 	struct rio_irq_handler *h = &priv->ob_dme_irq[dme_no];
 	struct rio_msg_desc *desc;
@@ -1333,16 +1381,10 @@ static int open_outb_mbox(struct rio_mport *mport, void *dev_id, int dme_no,
 		return -EBUSY;
 
 	/* Is the requested DME present & available? */
-	di = dme_no / 32;
-	dj = dme_no % 32;
-
-	if (priv->outbDmes[di] & (1 << dj)) {
-		if (priv->outbDmesInUse[di] & (1 << dj)) {
-			return -EBUSY;	/* Already allocated! */
-		}
-	} else {
-		return -ENXIO;	/* Not available! */
-	}
+	rc = check_dme(dme_no, &priv->numOutbDmes[0],
+			&priv->outbDmesInUse[0], &priv->outbDmes[0]);
+	if (rc < 0)
+		return rc;
 
 	buf_sz = RIO_OUTB_DME_TO_BUF_SIZE(priv, dme_no);
 
@@ -1448,7 +1490,8 @@ static int open_outb_mbox(struct rio_mport *mport, void *dev_id, int dme_no,
 	/**
 	 * And finally update the state to reflect the DME is in use
 	 */
-	priv->outbDmesInUse[di] |= (1 << dj);
+	rc = select_dme(dme_no, &priv->numOutbDmes[0],
+			&priv->outbDmesInUse[0], &priv->outbDmes[0], 1);
 
 	atomic_inc(&priv->api_user);
 	return 0;
@@ -1473,13 +1516,10 @@ static void release_outb_mbox(struct rio_irq_handler *h)
 	struct rio_priv *priv = mport->priv;
 	struct rio_msg_dme *me = h->data;
 
-	{
-		int	i = me->dme_no / 32;
-		int	j = me->dme_no % 32;
-		priv->outbDmesInUse[i] &= ~(1 << j);
-	}
-
 	__rio_local_write_config_32(mport, RAB_OB_DME_CTRL(me->dme_no), 0);
+
+	select_dme(me->dme_no, &priv->numOutbDmes[0],
+		   &priv->outbDmesInUse[0], &priv->outbDmes[0], 0);
 
 	if (me->entries_in_use) {
 		dev_warn(priv->dev,
@@ -1728,8 +1768,6 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 	 */
 	for (letter = 0; letter < RIO_MSG_MAX_LETTER; ++letter) {
 		int dme_no = (mbox * RIO_MSG_MAX_LETTER) + letter;
-		int di = dme_no / 32;
-		int dj = dme_no % 32;
 		struct rio_msg_dme *me = NULL;
 		struct rio_msg_desc *desc;
 		u32 dw0, dw1, dw2, dw3;
@@ -1737,12 +1775,10 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 		u32 dme_stat, wait = 0;
 		u32 buffer_size = (buf_sz > 256 ? 3 : 0);
 
-		if (priv->inbDmes[di] & (1 << dj)) {
-			if (priv->inbDmesInUse[di] & (1 << dj))
-				return -EBUSY;	/* Already allocated! */
-		} else {
-			return -ENXIO;	/* Not available! */
-		}
+		rc = check_dme(dme_no, &priv->numInbDmes[0],
+				&priv->inbDmesInUse[0], &priv->inbDmes[0]);
+		if (rc < 0)
+			return rc;
 
 		me = alloc_message_engine(mport,
 					  dme_no,
@@ -1855,7 +1891,8 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 		__rio_local_write_config_32(mport,
 					RAB_IB_DME_CTRL(dme_no), dme_ctrl);
 
-		priv->inbDmesInUse[di] |= (1 << dj);
+		select_dme(dme_no, &priv->numInbDmes[0],
+			&priv->inbDmesInUse[0], &priv->inbDmes[0], 1);
 	}
 
 	/**

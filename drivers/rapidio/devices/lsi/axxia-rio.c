@@ -235,6 +235,9 @@ static int axxia_local_config_read(struct rio_mport *mport,
 {
 	struct rio_priv *priv = mport->priv;
 
+	if ((priv == NULL) || (priv->cookie != LSI_AXXIA_RIO_COOKIE))
+		return -ENODEV;
+
 	return __axxia_local_config_read(priv, offset, data);
 }
 
@@ -253,6 +256,9 @@ static int axxia_local_config_write(struct rio_mport *mport,
 				  int index, u32 offset, int len, u32 data)
 {
 	struct rio_priv *priv = mport->priv;
+
+	if ((priv == NULL) || (priv->cookie != LSI_AXXIA_RIO_COOKIE))
+		return -ENODEV;
 
 	return __axxia_local_config_write(priv, offset, data);
 }
@@ -276,12 +282,20 @@ static int axxia_rio_config_read(struct rio_mport *mport, int index,
 				 int len, u32 *val)
 {
 	struct rio_priv *priv = mport->priv;
-	struct atmu_outb *aoutb = &priv->outb_atmu[priv->maint_win_id];
+	struct atmu_outb *aoutb = NULL;
 	u8 *addr;
 	u32 rval = 0;
 	u32 rbar = 0, ctrl;
 	int rc = 0;
 	int mcsr = 0;
+
+	/* Argument validation */
+	if ((priv == NULL) || (priv->cookie != LSI_AXXIA_RIO_COOKIE))
+		return -ENODEV;
+
+	aoutb = &priv->outb_atmu[priv->maint_win_id];
+	if (aoutb == NULL)
+		return -EINVAL;
 
 	/* 16MB maintenance windows possible */
 	/* Allow only aligned access to maintenance registers */
@@ -381,7 +395,7 @@ static int axxia_rio_config_write(struct rio_mport *mport, int index,
 				  int len, u32 val)
 {
 	struct rio_priv *priv = mport->priv;
-	struct atmu_outb *aoutb = &priv->outb_atmu[priv->maint_win_id];
+	struct atmu_outb *aoutb = NULL;
 	u8 *data;
 	u32 rbar = 0, ctrl, rval;
 	int rc = 0;
@@ -389,7 +403,18 @@ static int axxia_rio_config_write(struct rio_mport *mport, int index,
 
 	IODP("rio[%d]: RCW(did=%x, hc=%02x, %08x, >%08x)\n", mport->id, destid, hopcount, offset, val);
 
+	/* Argument validation */
+	if ((priv == NULL) || (priv->cookie != LSI_AXXIA_RIO_COOKIE))
+		return -ENODEV;
+
+	aoutb = &priv->outb_atmu[priv->maint_win_id];
+	if (aoutb == NULL)
+		return -EINVAL;
+
 	/* 16MB maintenance windows possible */
+	if (aoutb == NULL)
+		return -EINVAL;
+
 	/* Allow only aligned access to maintenance registers */
 	if (offset > (0x1000000 - len) || !IS_ALIGNED(offset, len))
 		return -EINVAL;
@@ -1395,6 +1420,7 @@ static struct rio_priv *rio_priv_dtb_setup(
 
 	/* mport port driver handle (bidirectional reference supported) */
 	mport->priv = priv;
+	priv->cookie = LSI_AXXIA_RIO_COOKIE;
 	priv->mport = mport;
 	priv->ndx = ndx;
 	priv->portNdx = portNdx;
