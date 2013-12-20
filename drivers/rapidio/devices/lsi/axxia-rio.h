@@ -490,7 +490,8 @@ struct rio_desc {
 struct rio_priv {
 	u32     cookie;
 
-	spinlock_t rio_lock;
+	struct mutex api_mutex;
+	spinlock_t port_lock;
 
 	struct rio_mport *mport;
 	struct device *dev;
@@ -545,6 +546,19 @@ struct rio_priv {
 	struct rio_ds_priv     ds_priv_data;
 };
 
+
+/**********************************************/
+/* *********** External Functions *********** */
+/**********************************************/
+
+static inline void axxia_api_lock(struct rio_priv *priv)
+{
+	mutex_lock(&priv->api_mutex);
+}
+static inline void axxia_api_unlock(struct rio_priv *priv)
+{
+	mutex_unlock(&priv->api_mutex);
+}
 
 extern int axxia_rio_start_port(struct rio_mport *mport);
 extern void axxia_rio_set_mport_disc_mode(struct rio_mport *mport);

@@ -44,8 +44,6 @@
 ** Local State
 */
 
-DEFINE_MUTEX(axxia_rio_api_mutex);
-
 atomic_t thrd_handler_calls = ATOMIC_INIT(0);
 atomic_t hw_handler_calls = ATOMIC_INIT(0);
 atomic_t port_irq_disabled = ATOMIC_INIT(0);
@@ -476,11 +474,11 @@ static void rio_port_down_notify(struct rio_mport *mport)
 	unsigned long flags;
 	struct rio_priv *priv = mport->priv;
 
-	spin_lock_irqsave(&priv->rio_lock, flags);
+	spin_lock_irqsave(&priv->port_lock, flags);
 	if (priv->port_notify_cb)
 		priv->port_notify_cb(mport);
 
-	spin_unlock_irqrestore(&priv->rio_lock, flags);
+	spin_unlock_irqrestore(&priv->port_lock, flags);
 }
 #else
 #define rio_port_down_notify(mport)
@@ -1018,7 +1016,7 @@ static inline int choose_ob_dme(
 			if (len > sz)
 				continue;
 
-			if (dme->entries > dme->entries_in_use) {
+			if (dme->entries >= (dme->entries_in_use+1)) {
 				(*ob_dme) = dme;
 				(*buf_sz) = sz;
 				return ret + i;
@@ -1208,11 +1206,9 @@ static void ob_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 	struct rio_mport *mport = h->mport;
 	struct rio_priv *priv = mport->priv;
 	struct rio_msg_dme *mbox = h->data;
-	int i, pending = 0, ack_id = 0;
+	int i, ack_id = 0;
 	u32 dme_stat, dw0, dme_no = 31 - CNTLZW(state);
-	u64 start, curr;
 	u32 dme_ctrl;
-	u32 debug = 0;
 	unsigned long flags;
 
 	/**
@@ -1222,79 +1218,14 @@ static void ob_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 	__rio_local_write_config_32(mport, RAB_OB_DME_STAT(dme_no), dme_stat);
 	__ob_dme_dbg(priv, dme_stat);
 
-	/**
-	 * Wait for all pending transactions to finish before doing descriptor
-	 * updates
-	 */
 	spin_lock_irqsave(&mbox->lock, flags);
-
-	start = get_tb();
-	do {
-		pending = 0;
-		for (i = 0; i < mbox->entries; i++) {
-			struct rio_msg_desc *desc = &mbox->desc[i];
-
-			if (!priv->internalDesc) {
-				dw0 = *((u32 *)DESC_TABLE_W0_MEM(mbox,
-								desc->desc_no));
-			} else {
-				__rio_local_read_config_32(mport,
-					DESC_TABLE_W0(desc->desc_no), &dw0);
-			}
-			if ((dw0 & DME_DESC_DW0_VALID) &&
-			    !(dw0 & DME_DESC_DW0_READY_MASK))
-				pending++;
-		}
-		if (!pending) {
-			mbox->tx_dme_tmo = 0;
-			break;
-		}
-
-		/**
-		 * Don't wait indefinitely - if something is broken
-		 */
-		curr = get_tb();
-		if ((curr - start) > 200000) {
-	                dev_dbg(priv->dev,
-				"RIO-IRQ: TO waiting for %d ob desc "
-				"transaction to finish\n",
-				pending);
-		}
-	} while (pending);
 
 	/**
 	 * Try to kick back some life in the HW if it is un-responsive
 	 */
-	if (pending) {
-		mbox->tx_dme_tmo++;
-		if (dme_stat & RIO_OB_DME_STAT_SLEEPING)
-			debug |= 1 << RIO_OB_DME_TX_SLEEP;
-		debug |= 1 << RIO_OB_DME_TX_PENDING;
-
-		__rio_local_read_config_32(mport, RAB_OB_DME_CTRL(dme_no),
-					   &dme_ctrl);
-		if (mbox->tx_dme_tmo > 100) {
-			/**
-			 * Must be in serious trouble now, don't burn more
-			 * CPU cycles.
-			 * FIXME! Notify someone that we're broken, report
-			 * state event through RIO maybe?
-			 */
-	                dev_dbg(priv->dev,
-				"RIO-IRQ: OB DME %d disabled due to "
-				"excessive TO events\n",
-				dme_no);
-			dme_ctrl &= ~(DME_WAKEUP | DME_ENABLE);
-		} else {
-			debug |= 1 << RIO_OB_DME_TX_WAKEUP;
-			dme_ctrl |= DME_WAKEUP | DME_ENABLE;
-		}
-		__rio_local_write_config_32(mport, RAB_OB_DME_CTRL(dme_no),
-					    dme_ctrl);
-		__ob_dme_event_dbg(priv, dme_no, debug);
-		spin_unlock_irqrestore(&mbox->lock, flags);
-		return;
-	}
+	__rio_local_read_config_32(mport, RAB_OB_DME_CTRL(dme_no), &dme_ctrl);
+	dme_ctrl |= DME_WAKEUP | DME_ENABLE;
+	__rio_local_write_config_32(mport, RAB_OB_DME_CTRL(dme_no), dme_ctrl);
 
 	/**
 	 * Process all completed transactions
@@ -1325,8 +1256,8 @@ static void ob_dme_irq_handler(struct rio_irq_handler *h, u32 state)
 					dw0 & DME_DESC_DW0_NXT_DESC_VALID);
 			}
 			__ob_dme_dw_dbg(priv, dw0);
-			if (dw0 & DME_DESC_DW0_DONE)
-				mbox->entries_in_use--;
+
+			mbox->entries_in_use--;
 		}
 	}
 	spin_unlock_irqrestore(&mbox->lock, flags);
@@ -2067,12 +1998,12 @@ int axxia_rio_pw_enable(struct rio_mport *mport, int enable)
 	struct rio_priv *priv = mport->priv;
 	int rc = 0;
 
-	axxia_api_lock();
+	axxia_api_lock(priv);
 	if (enable)
 		rc = enable_pw(&priv->pw_irq);
 	else
 		release_irq_handler(&priv->pw_irq);
-	axxia_api_unlock();
+	axxia_api_unlock(priv);
 
 	return rc;
 }
@@ -2153,11 +2084,12 @@ int axxia_open_outb_mbox(
 	int entries,
 	int prio)
 {
+	struct rio_priv *priv = mport->priv;
 	int rc = 0;
 
-	axxia_api_lock();
+	axxia_api_lock(priv);
 	rc = open_outb_mbox(mport, dev_id, mboxDme, entries, prio);
-	axxia_api_unlock();
+	axxia_api_unlock(priv);
 
 	return rc;
 }
@@ -2178,9 +2110,9 @@ void axxia_close_outb_mbox(struct rio_mport *mport, int mboxDme)
 	    (mboxDme > (priv->numOutbDmes[0]+priv->numOutbDmes[0])))
 		return;
 
-	axxia_api_lock();
+	axxia_api_lock(priv);
 	release_irq_handler(&priv->ob_dme_irq[mboxDme]);
-	axxia_api_unlock();
+	axxia_api_unlock(priv);
 
 	return;
 }
@@ -2208,13 +2140,12 @@ static struct rio_msg_desc *get_ob_desc(struct rio_mport *mport,
 					   DESC_TABLE_W0(desc->desc_no),
 					   &dw0);
 		}
-		if (!(dw0 & DME_DESC_DW0_VALID)) {
+		if (!(dw0 & DME_DESC_DW0_VALID) ||
+		    (dw0 & DME_DESC_DW0_ERROR_MASK)) {
 			if (desc_num != mb->write_idx)
-				dev_dbg(priv->dev,
-					"RIO: Adding buffer descriptors "
-					"out of order to TX DME\n");
+				return NULL;
 			if (desc_num == mb->write_idx)
-				mb->write_idx = (mb->write_idx +  1) %
+				mb->write_idx = (mb->write_idx + 1) %
 						 mb->entries;
 			return desc;
 		}
@@ -2242,7 +2173,7 @@ int axxia_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev,
 			     int mbox_dest, int letter, int flags,
 			     void *buffer, size_t len, void *cookie)
 {
-	int rc = 0;
+	int rc = 0, dme;
 	u32 dw0, dw1, dme_ctrl;
 	u16 destid = (rdev ? rdev->destid : mport->host_deviceid);
 	struct rio_priv *priv = mport->priv;
@@ -2255,9 +2186,11 @@ int axxia_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev,
 	    (mbox_dest >= RIO_MAX_TX_MBOX))
 		return -EINVAL;
 
-        rc = choose_ob_dme(priv, len, &mb, &buf_sz);
-	if (rc < 0)
-	    return rc;
+        dme = choose_ob_dme(priv, len, &mb, &buf_sz);
+	if (dme < 0) {
+		rc = dme;
+		return rc;
+	}
 
 	if ((len < 8) || (len > buf_sz))
 		return -EINVAL;
@@ -2337,11 +2270,12 @@ done:
 int axxia_open_inb_mbox(struct rio_mport *mport, void *dev_id,
 			int mbox, int entries)
 {
+	struct rio_priv *priv = mport->priv;
 	int rc = 0;
 
-	axxia_api_lock();
+	axxia_api_lock(priv);
 	rc = open_inb_mbox(mport, dev_id, mbox, entries);
-	axxia_api_unlock();
+	axxia_api_unlock(priv);
 
 	return rc;
 }
@@ -2361,9 +2295,9 @@ void axxia_close_inb_mbox(struct rio_mport *mport, int mbox)
 	if ((mbox < 0) || (mbox >= RIO_MAX_RX_MBOX))
 		return;
 
-	axxia_api_lock();
+	axxia_api_lock(priv);
 	release_irq_handler(&priv->ib_dme_irq[mbox]);
-	axxia_api_unlock();
+	axxia_api_unlock(priv);
 
 	return;
 }
@@ -2663,7 +2597,7 @@ int axxia_rio_port_notify_cb(struct rio_mport *mport,
 	unsigned long flags;
 	int rc = 0;
 
-	spin_lock_irqsave(&priv->rio_lock, flags);
+	spin_lock_irqsave(&priv->port_lock, flags);
 	if (enable) {
 		if (priv->port_notify_cb)
 			rc = -EBUSY;
@@ -2675,7 +2609,7 @@ int axxia_rio_port_notify_cb(struct rio_mport *mport,
 		else
 			priv->port_notify_cb = NULL;
 	}
-	spin_unlock_irqrestore(&priv->rio_lock, flags);
+	spin_unlock_irqrestore(&priv->port_lock, flags);
 
 	return rc;
 }
@@ -2698,9 +2632,9 @@ int axxia_rio_apio_enable(struct rio_mport *mport, u32 mask, u32 bits)
 	struct rio_priv *priv = mport->priv;
 	int rc;
 
-	axxia_api_lock();
+	axxia_api_lock(priv);
 	rc = enable_apio(&priv->apio_irq, mask, bits);
-	axxia_api_unlock();
+	axxia_api_unlock(priv);
 
 	return rc;
 }
@@ -2710,9 +2644,9 @@ int axxia_rio_apio_disable(struct rio_mport *mport)
 {
 	struct rio_priv *priv = mport->priv;
 
-	axxia_api_lock();
+	axxia_api_lock(priv);
 	release_irq_handler(&priv->apio_irq);
-	axxia_api_unlock();
+	axxia_api_unlock(priv);
 
 	return 0;
 }
@@ -2723,9 +2657,9 @@ int axxia_rio_rpio_enable(struct rio_mport *mport, u32 mask, u32 bits)
 	struct rio_priv *priv = mport->priv;
 	int rc = 0;
 
-	axxia_api_lock();
+	axxia_api_lock(priv);
 	rc = enable_rpio(&priv->rpio_irq, mask, bits);
-	axxia_api_unlock();
+	axxia_api_unlock(priv);
 
 	return rc;
 }
@@ -2735,9 +2669,9 @@ int axxia_rio_rpio_disable(struct rio_mport *mport)
 {
 	struct rio_priv *priv = mport->priv;
 
-	axxia_api_lock();
+	axxia_api_lock(priv);
 	release_irq_handler(&priv->rpio_irq);
-	axxia_api_unlock();
+	axxia_api_unlock(priv);
 
 	return 0;
 }

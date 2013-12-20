@@ -1418,12 +1418,13 @@ static struct rio_priv *rio_priv_dtb_setup(
 	if (!priv)
 		return ERR_PTR(-ENOMEM);
 
-	/* mport port driver handle (bidirectional reference supported) */
+	/* master port driver handle (bidirectional reference supported) */
 	mport->priv = priv;
 	priv->cookie = LSI_AXXIA_RIO_COOKIE;
 	priv->mport = mport;
 	priv->ndx = ndx;
 	priv->portNdx = portNdx;
+	mutex_init(&priv->api_mutex);
 
 	/* Max descriptors */
 	priv->desc_max_entries = RIO_MSG_MAX_ENTRIES;

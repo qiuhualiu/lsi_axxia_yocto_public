@@ -3,6 +3,7 @@
 
 /* forward declaration */
 struct rio_priv;
+struct mutex;
 
 #if !defined(CONFIG_AXXIA_RIO_STAT)
 
@@ -281,16 +282,10 @@ struct rio_irq_handler {
 #endif
 };
 
-extern struct mutex axxia_rio_api_mutex;
 
-static inline void axxia_api_lock(void)
-{
-	mutex_lock(&axxia_rio_api_mutex);
-}
-static inline void axxia_api_unlock(void)
-{
-	mutex_unlock(&axxia_rio_api_mutex);
-}
+/**********************************************/
+/* *********** External Functions *********** */
+/**********************************************/
 
 void axxia_rio_port_irq_init(struct rio_mport *mport);
 void *axxia_get_inb_message(struct rio_mport *mport, int mbox, int letter,
