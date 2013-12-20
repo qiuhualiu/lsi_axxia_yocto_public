@@ -599,6 +599,7 @@ static u8 __get_lock_mode(struct rio_mport *mport,
 	}
 	return lock_hw;
 }
+
 static int rio_enum_start(struct rio_job *job)
 {
 	int rc = -EFAULT;
@@ -720,6 +721,7 @@ static void rio_init_em(struct rio_dev *rdev)
 	if (rio_is_switch(rdev) && (rdev->em_efptr) && (rdev->rswitch->em_init))
 		rdev->rswitch->em_init(rdev);
 }
+
 static void rio_net_register_devices(struct rio_mport *mport)
 {
 	int i, num_dev = 0;
@@ -857,6 +859,7 @@ access_err:
 	goto out;
 
 lock_fault:
+	RAPIDIO_REDUNDANT_PATH_LOCK_FAULT();
 	pr_warn("RIO: %hu Unexpectedly owns lock on destid %hu hopcount %d\n",
 		lock, destid, hopcount);
 	rc = -EFAULT;
@@ -1302,6 +1305,7 @@ cleanup:
 
 	return ERR_PTR(rc);
 }
+
 static int rio_enum(struct rio_job *job,
 		    struct rio_dev *prev,
 		    u16 prev_destid, int prev_port,
@@ -1481,17 +1485,17 @@ static struct rio_dev *rio_enum_master_port(struct rio_job *job)
 		pr_warn("RIO: failed to init new net\n");
 		return ERR_PTR(rc);
 	}
+	/* Set master port destid and init destid ctr */
 	pr_debug("RIO:(%s) set master destid %hu\n",
 		 __func__, job->mport->host_deviceid);
-	/* Set master port destid and init destid ctr */
 	rio_set_master_destid(job->mport, job->mport->host_deviceid);
+	/* Set component tag for host */
 	pr_debug("RIO:(%s) set master comptag %d\n", __func__,
 		 job->mport->host_deviceid);
-	/* Set component tag for host */
 	rio_local_write_config_32(job->mport, RIO_COMPONENT_TAG_CSR,
 				  job->mport->host_deviceid);
-	pr_debug("RIO:(%s) enable master DIO\n", __func__);
 	/* Enable Input Output Port (transmitter reviever) */
+	pr_debug("RIO:(%s) enable master DIO\n", __func__);
 	rio_enable_dio(job->mport, 1, 0, 0, 0);
 	rdev = rio_setup_disc_mport(job->mport, 1);
 

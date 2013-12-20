@@ -19,6 +19,7 @@
  */
 
 /* #define DEBUG */
+/* #define RIO_LOCK_DEBUG */
 
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -127,6 +128,7 @@ static int rio_hw_lock(struct rio_mport *port, u16 destid, u8 hopcount)
 
 	if (lock == port->host_deviceid)
 		goto lock_err;
+
 	/* Attempt to acquire device lock */
 	rc = rio_set_host_lock(port, destid, hopcount);
 	if (rc)
@@ -138,11 +140,11 @@ static int rio_hw_lock(struct rio_mport *port, u16 destid, u8 hopcount)
 	if (lock != port->host_deviceid)
 		goto to_err;
 
+done:
 #if defined(RIO_LOCK_DEBUG)
 	pr_debug("RIO: Device destid 0x%x hopcount %hhu locked by 0x%x\n",
 		 destid, hopcount, lock);
 #endif
-done:
 	spin_unlock(&rio_lock_lock);
 	return rc;
 
@@ -151,12 +153,13 @@ to_err:
 		 destid, hopcount, lock);
 	rc = -ETIME;
 	goto done;
+
 lock_err:
+	RAPIDIO_HW_LOCK_LOCK_ERR();
 	pr_debug("RIO: Device destid %hx hopcount %hhu is already locked by %hx\n",
 		 destid, hopcount, port->host_deviceid);
 	rc = -EFAULT;
 	goto done;
-
 }
 
 
@@ -634,11 +637,10 @@ int rio_clear_host_lock(struct rio_mport *port, u16 destid,
 done:
 	spin_unlock(&rio_lock_lock);
 	return rc;
-
 }
 
 /**
- * rio_unlock - Releases @host_device_lock for specified device
+ * rio_hw_unlock - Releases @host_device_lock for specified device
  *
  * @port: Master port to send transaction
  * @destid: Destination ID for device/switch
@@ -675,18 +677,22 @@ int rio_hw_unlock(struct rio_mport *port, u16 destid, u8 hopcount)
 
 	if (lock != 0xffff)
 		goto unlock_err;
+
+done:
 #if defined(RIO_LOCK_DEBUG)
 	pr_debug("RIO: Device destid %hx hopcount %hhu is unlocked by %hx\n",
 		 destid, hopcount, port->host_deviceid);
 #endif
-done:
 	spin_unlock(&rio_lock_lock);
 	return rc;
+
 lock_err:
+	RAPIDIO_HW_UNLOCK_LOCK_ERR();
 	pr_debug("RIO: release lock err - lock is not taken, destid %hx, hopcount %hhu, lock 0x%x",
 		 destid, hopcount, lock);
 	rc = -EINVAL;
 	goto done;
+
 unlock_err:
 	pr_debug("RIO: badness when releasing device lock %hx:%hhu\n",
 		 destid, hopcount);

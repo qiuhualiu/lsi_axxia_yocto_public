@@ -85,14 +85,16 @@ static DEFINE_SPINLOCK(rio_io_lock);
  * Returns %0 on success or %-EINVAL on failure.
  */
 static int __axxia_local_config_read_actual(struct rio_priv *priv,
-					  u32 offset,
-					  u32 *data,
-					  int suppress)
+					    u32 offset,
+					    u32 *data,
+					    int suppress)
 {
 	u32 page_sel;
 
 	if (suppress)
 		AXXIA_RIO_DISABLE_MACHINE_CHECK();
+
+	AXXIA_RIO_SYSMEM_BARRIER();
 
 	/* Set correct page to operate on */
 	page_sel = (offset & 0x00fff800) << 5;
@@ -134,12 +136,11 @@ static int __axxia_local_config_read_actual(struct rio_priv *priv,
 				offset);
 			*data = 0;
 		}
+
+		AXXIA_RIO_ENABLE_MACHINE_CHECK();
 	}
 
-	if (suppress)
-		AXXIA_RIO_ENABLE_MACHINE_CHECK();
-
-	IODP("rio: ACR(%08x, <%08x)\n", offset, *data);
+	IODP("rio[%d]: ACR(%08x, <%08x)\n", priv->mport->id, offset, *data);
 
 	return 0;
 }
@@ -158,14 +159,16 @@ static int __axxia_local_config_read_actual(struct rio_priv *priv,
  * Returns %0 on success or %-EINVAL on failure.
  */
 static int __axxia_local_config_write_actual(struct rio_priv *priv,
-					   u32 offset,
-					   u32 data,
-					   int suppress)
+					     u32 offset,
+					     u32 data,
+					     int suppress)
 {
 	u32 page_sel;
 
 	if (suppress)
 		AXXIA_RIO_DISABLE_MACHINE_CHECK();
+
+	AXXIA_RIO_SYSMEM_BARRIER();
 
 	/* Set correct page to operate on */
 	page_sel = (offset & 0x00fff800) << 5;
@@ -195,8 +198,6 @@ static int __axxia_local_config_write_actual(struct rio_priv *priv,
 			offset);
 	}
 
-	AXXIA_RIO_SYSMEM_BARRIER();
-
 	if (suppress) {
 		int mcsr;
 		AXXIA_RIO_IF_MACHINE_CHECK(mcsr);
@@ -206,12 +207,11 @@ static int __axxia_local_config_write_actual(struct rio_priv *priv,
 				"register 0x%0x8 for AXXIA\n",
 				offset);
 		}
+
+		AXXIA_RIO_ENABLE_MACHINE_CHECK();
 	}
 
-	if (suppress)
-		AXXIA_RIO_ENABLE_MACHINE_CHECK();
-
-	IODP("rio: ACW(%08x, >%08x)\n", offset, data);
+	IODP("rio[%d]: ACW(%08x, >%08x)\n", priv->mport->id, offset, data);
 
 	return 0;
 }
@@ -235,6 +235,9 @@ static int axxia_local_config_read(struct rio_mport *mport,
 {
 	struct rio_priv *priv = mport->priv;
 
+	if ((priv == NULL) || (priv->cookie != LSI_AXXIA_RIO_COOKIE))
+		return -ENODEV;
+
 	return __axxia_local_config_read(priv, offset, data);
 }
 
@@ -254,6 +257,9 @@ static int axxia_local_config_write(struct rio_mport *mport,
 {
 	struct rio_priv *priv = mport->priv;
 
+	if ((priv == NULL) || (priv->cookie != LSI_AXXIA_RIO_COOKIE))
+		return -ENODEV;
+
 	return __axxia_local_config_write(priv, offset, data);
 }
 
@@ -271,23 +277,32 @@ static int axxia_local_config_write(struct rio_mport *mport,
  * Returns %0 on success or %-EINVAL on failure.
  */
 
-static int axxia_rio_config_read(struct rio_mport *mport, int index, u16 destid,
-			       u8 hopcount, u32 offset, int len, u32 *val)
+static int axxia_rio_config_read(struct rio_mport *mport, int index,
+				 u16 destid, u8 hopcount, u32 offset,
+				 int len, u32 *val)
 {
 	struct rio_priv *priv = mport->priv;
-	struct atmu_outb *aoutb = &priv->outb_atmu[priv->maint_win_id];
+	struct atmu_outb *aoutb = NULL;
 	u8 *addr;
 	u32 rval = 0;
 	u32 rbar = 0, ctrl;
 	int rc = 0;
 	int mcsr = 0;
 
-	AXXIA_RIO_DISABLE_MACHINE_CHECK();
+	/* Argument validation */
+	if ((priv == NULL) || (priv->cookie != LSI_AXXIA_RIO_COOKIE))
+		return -ENODEV;
+
+	aoutb = &priv->outb_atmu[priv->maint_win_id];
+	if (aoutb == NULL)
+		return -EINVAL;
 
 	/* 16MB maintenance windows possible */
 	/* Allow only aligned access to maintenance registers */
 	if (offset > (0x1000000 - len) || !IS_ALIGNED(offset, len))
 		return -EINVAL;
+
+	AXXIA_RIO_DISABLE_MACHINE_CHECK();
 
 	__axxia_local_config_read_actual(priv,
 				       RAB_APIO_AMAP_CTRL(priv->maint_win_id),
@@ -298,6 +313,7 @@ static int axxia_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 		dev_err(priv->dev, "(%s): Window is not setup for Maintenance "
 				   "operations. 0x%8.8x\n",
 			__func__, ctrl);
+		AXXIA_RIO_ENABLE_MACHINE_CHECK();
 		return -EINVAL;
 	}
 
@@ -318,8 +334,9 @@ static int axxia_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 	addr = (u8 *) aoutb->win +
 		(offset & (CONFIG_RIO_MAINT_WIN_SIZE - 1));
 
-	switch (len) {
+	AXXIA_RIO_SYSMEM_BARRIER();
 
+	switch (len) {
 	case 1:
 		IN_SRIO8(addr, rval, rc);
 		break;
@@ -355,7 +372,7 @@ static int axxia_rio_config_read(struct rio_mport *mport, int index, u16 destid,
 	} else
 		*val = rval;
 
-	IODP("rio: RCR(did=%x, hc=%02x, %08x, <%08x)\n", destid, hopcount, offset, rval);
+	IODP("rio[%d]: RCR(did=%x, hc=%02x, %08x, <%08x)\n", mport->id, destid, hopcount, offset, rval);
 
 	return rc;
 }
@@ -373,26 +390,36 @@ static int axxia_rio_config_read(struct rio_mport *mport, int index, u16 destid,
  * Generates an AXXIA write maintenance transaction.
  * Returns %0 on success or %-EINVAL on failure.
  */
-static int axxia_rio_config_write(struct rio_mport *mport, int index, u16 destid,
-				u8 hopcount, u32 offset, int len, u32 val)
+static int axxia_rio_config_write(struct rio_mport *mport, int index,
+				  u16 destid, u8 hopcount, u32 offset, 
+				  int len, u32 val)
 {
 	struct rio_priv *priv = mport->priv;
-	struct atmu_outb *aoutb = &priv->outb_atmu[priv->maint_win_id];
+	struct atmu_outb *aoutb = NULL;
 	u8 *data;
 	u32 rbar = 0, ctrl, rval;
 	int rc = 0;
 	int mcsr = 0;
 
-	IODP("rio: RCW(did=%x, hc=%02x, %08x, >%08x)\n", destid, hopcount, offset, val);
+	IODP("rio[%d]: RCW(did=%x, hc=%02x, %08x, >%08x)\n", mport->id, destid, hopcount, offset, val);
 
-	AXXIA_RIO_DISABLE_MACHINE_CHECK();
+	/* Argument validation */
+	if ((priv == NULL) || (priv->cookie != LSI_AXXIA_RIO_COOKIE))
+		return -ENODEV;
+
+	aoutb = &priv->outb_atmu[priv->maint_win_id];
+	if (aoutb == NULL)
+		return -EINVAL;
 
 	/* 16MB maintenance windows possible */
+	if (aoutb == NULL)
+		return -EINVAL;
+
 	/* Allow only aligned access to maintenance registers */
-	if (offset > (0x1000000 - len) || !IS_ALIGNED(offset, len)) {
-		rc = -EINVAL;
-		goto err;
-	}
+	if (offset > (0x1000000 - len) || !IS_ALIGNED(offset, len))
+		return -EINVAL;
+
+	AXXIA_RIO_DISABLE_MACHINE_CHECK();
 
 	__axxia_local_config_read_actual(priv,
 				RAB_APIO_AMAP_CTRL(priv->maint_win_id),
@@ -430,6 +457,8 @@ static int axxia_rio_config_write(struct rio_mport *mport, int index, u16 destid
 	data = (u8 *) aoutb->win +
 		(offset & (CONFIG_RIO_MAINT_WIN_SIZE - 1));
 
+	AXXIA_RIO_SYSMEM_BARRIER();
+
 	switch (len) {
 	case 1:
 		OUT_SRIO8(data, rval);
@@ -455,7 +484,7 @@ err:
 
 	AXXIA_RIO_ENABLE_MACHINE_CHECK();
 
-	return 0;
+	return rc;
 }
 
 static inline int __flags2rio_tr_type(u32 mflags, u32 *trans_type)
@@ -725,12 +754,20 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 					    RIO_PORT_GEN_MASTER |
 					    RIO_PORT_GEN_DISCOVERED);
 	} else {
-		__rio_local_write_config_32(mport, RIO_GCCSR, 0x00000000);
+		__rio_local_write_config_32(mport, RIO_GCCSR,
+					    RIO_PORT_GEN_MASTER);
 		__rio_local_write_config_32(mport, RIO_DID_CSR,
 					    RIO_SET_DID(mport->sys_size,
 					    RIO_ANY_DESTID(mport->sys_size)));
 	}
+
+#ifdef SRIO_IODEBUG
 	__rio_local_read_config_32(mport, RIO_GCCSR, &result);
+	dev_dbg(priv->dev, "%d RIO_GEN_CTL_CSR set to 0x%X for main port\n",
+		mport->id, result);
+#endif
+
+	__rio_local_write_config_32(mport, RIO_COMPONENT_TAG_CSR, 0xFFFF);
 
 #ifdef	NOT_SUPPORTED
 	/* Use the reset default setting of (0x00000000).  RAB does not
@@ -739,7 +776,9 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 
 	/* Set to receive any dist ID for serial RapidIO controller. */
 	if (mport->phy_type == RIO_PHY_SERIAL)
-		__rio_local_write_config_32(mport, EPC_PNPTAACR(mport->portNdx), 0x00000000);
+		__rio_local_write_config_32(mport,
+					    EPC_PNPTAACR(mport->portNdx),
+					    0x00000000);
 #endif
 
 #ifdef CONFIG_RAPIDIO_HOTPLUG
@@ -749,10 +788,12 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 		result = EPC_PNADIDCSR_ADE;
 		result |= EPC_PNADIDCSR_ADID_SMALL(
 				CONFIG_RAPIDIO_SECOND_DEST_ID);
-		__rio_local_write_config_32(mport, EPC_PNADIDCSR(priv->portNdx), result);
-		dev_dbg(priv->dev, "Second destination id set to 0x%X for "
+		__rio_local_write_config_32(mport,
+					    EPC_PNADIDCSR(priv->portNdx),
+					    result);
+		dev_dbg(priv->dev, "Port%dAltDevIdmCSR set to 0x%X for "
 			"main port\n",
-			CONFIG_RAPIDIO_SECOND_DEST_ID);
+			priv->portNdx, CONFIG_RAPIDIO_SECOND_DEST_ID);
 	}
 #else
 	/* Set the Alternate Destination ID to prevent "Machine Checks"
@@ -766,10 +807,12 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 			result |= EPC_PNADIDCSR_ADID_LARGE(~0);
 		else
 			result |= EPC_PNADIDCSR_ADID_SMALL(~0);
-		__rio_local_write_config_32(mport, EPC_PNADIDCSR(priv->portNdx), result);
-		dev_dbg(priv->dev, "Second destination id set to 0x%X for "
+		__rio_local_write_config_32(mport,
+					    EPC_PNADIDCSR(priv->portNdx),
+					    result);
+		dev_dbg(priv->dev, "Port%dAltDevIdmCSR set to 0x%X for "
 			"main port\n",
-			result);
+			priv->portNdx, result);
 	}
 #endif
 }
@@ -815,8 +858,8 @@ static void axxia_init_port_data(struct rio_mport *mport)
 			if (devid == legacyids[i])
 				priv->internalDesc = 1;
 		}
-		IODP("rio: RapidIO internal descriptors: %d (%x %x)\n",
-			priv->internalDesc, devid, data);
+		IODP("rio[%d]: RapidIO internal descriptors: %d (%x %x)\n",
+			mport->id, priv->internalDesc, devid, data);
 	}
 }
 
@@ -926,12 +969,14 @@ static int rio_start_port(struct rio_mport *mport)
 		__rio_local_read_config_32(mport, RIO_DEV_ID_CAR, &didcar);
 		__rio_local_read_config_32(mport, RAB_VER, &rabver);
 
-		printk("rio[%d]: DIDCAR[%x]=%08x RAB_VER[%x]=%08x\n",
+		printk("rio[%d]: AR[%d] DIDCAR[%x]=%08x RAB_VER[%x]=%08x\n",
+			mport->id,
 			__LINE__,
 			RIO_DEV_ID_CAR, didcar,
 			RAB_VER, rabver);
-		printk("rio[%d]: CCSR[%x]=%08x ESCSR[%x]=%08x "
+		printk("rio[%d]: AR[%d] CCSR[%x]=%08x ESCSR[%x]=%08x "
 		      "HBDIDLCSR[%x]=%08x\n",
+			mport->id,
 			__LINE__,
 			RIO_CCSR(priv->portNdx), ccsr,
 			RIO_ESCSR(priv->portNdx), escsr,
@@ -939,7 +984,7 @@ static int rio_start_port(struct rio_mport *mport)
 	}
 #endif /* defined(SRIO_IODEBUG) */
 
-	dev_dbg(priv->dev, "Port Is ready\n");
+	dev_dbg(priv->dev, "Port is Ready\n");
 	return 0;
 }
 
@@ -1086,10 +1131,10 @@ static int rio_parse_dtb(
 	}
 
 	if (!of_device_is_available(dev->dev.of_node)) {
-		IODP("AR[%d] status = not available\n", __LINE__);
+		IODP("rio[%d]: AR[%d] status = not available\n", 99, __LINE__);
 	        return -ENODEV;
 	} else {
-		IODP("AR[%d] status = available\n", __LINE__);
+		IODP("rio[%d]: AR[%d] status = available\n", 99, __LINE__);
 	}
 
         if (of_property_read_u32(dev->dev.of_node, "index", &rlen))
@@ -1214,7 +1259,8 @@ static int rio_parse_dtb(
 			linkdown_reset->reg_mask =
 				of_read_number(dt_range + 1, 1);
 			linkdown_reset->in_use = 1;
-			IODP("rio: LDR st=%llx sz=%llx RA=%x MSK=%x iu=%d\n",
+			IODP("rio[%d]: LDR st=%llx sz=%llx RA=%x MSK=%x iu=%d\n",
+				99,
 				linkdown_reset->phy_reset_start,
 				linkdown_reset->phy_reset_size,
 				linkdown_reset->reg_addr,
@@ -1275,7 +1321,7 @@ static struct rio_ops *rio_ops_setup(void)
  * Register doorbell and mbox resources with generic RIO driver
 
  * Returns:
- * ERR_PTR(-ENOMEM)        At failure
+ * -ENOMEM                 At failure
  * struct rio_mport *ptr   to initialized mport data at Success
  */
 static struct rio_mem_ops axxia_mem_ops = {
@@ -1284,17 +1330,22 @@ static struct rio_mem_ops axxia_mem_ops = {
 	.release_outb = axxia_rio_release_outb_region,
 };
 
-static struct rio_mport *rio_mport_dtb_setup(struct platform_device *dev,
-					     int ndx,
-					     u64 law_start, u64 law_size,
-					     struct rio_ops *ops)
+static int rio_mport_dtb_setup(struct platform_device *dev,
+			       int portNdx,
+			       u64 law_start,
+			       u64 law_size,
+			       struct rio_ops *ops,
+			       struct rio_mport **ptr)
 {
+	int rc = 0;
 	struct rio_mport *mport = kzalloc(sizeof(*mport), GFP_KERNEL);
 
-	if (!mport)
-		return ERR_PTR(-ENOMEM);
+	(*ptr) = NULL;
 
-	mport->index = ndx;
+	if (!mport)
+		return -ENOMEM;
+
+	mport->index = portNdx;
 
 	INIT_LIST_HEAD(&mport->dbells);
 	mport->iores.start = law_start;
@@ -1311,18 +1362,19 @@ static struct rio_mport *rio_mport_dtb_setup(struct platform_device *dev,
 			"0x%016llx-0x%016llx\n",
 			(u64)mport->iores.start, (u64)mport->iores.end);
 		kfree(mport);
-		return ERR_PTR(-ENOMEM);
+		return -ENOMEM;
 	}
 	rio_init_dbell_res(&mport->riores[RIO_DOORBELL_RESOURCE], 0, 0xffff);
 	rio_init_mbox_res(&mport->riores[RIO_INB_MBOX_RESOURCE], 0, 8);
 	rio_init_mbox_res(&mport->riores[RIO_OUTB_MBOX_RESOURCE], 0, 3);
-	sprintf(mport->name, "RIO%d mport", mport->index);
+	sprintf(mport->name, "RIO%d mport", mport->id);
 
 	mport->ops = ops;
 	mport->mops = &axxia_mem_ops;
 	mport->phys_efptr = 0x100; /* define maybe */
 
-	return mport;
+	(*ptr) = mport;
+	return rc;
 }
 
 /**
@@ -1332,6 +1384,7 @@ static struct rio_mport *rio_mport_dtb_setup(struct platform_device *dev,
  * @dev: RIO platform device
  * @regs: RapidIO registers from DTB
  * @mport: master port
+ * @ndx: Instance Id of the controller description
  * @portNdx: Port Id of the controller
  * @numObNumDmes: override num outbound DMEs available
  * @outbDmes: RapidIO outbound DMEs array available; [0] for MSeg, [1] for SSeg
@@ -1350,6 +1403,7 @@ static struct rio_priv *rio_priv_dtb_setup(
 	struct platform_device *dev,
 	struct resource *regs,
 	struct rio_mport *mport,
+	int ndx,
 	int portNdx,
 	int *numOutbDmes,
 	int *outbDmes,
@@ -1364,8 +1418,11 @@ static struct rio_priv *rio_priv_dtb_setup(
 	if (!priv)
 		return ERR_PTR(-ENOMEM);
 
-	/* mport port driver handle */
+	/* mport port driver handle (bidirectional reference supported) */
 	mport->priv = priv;
+	priv->cookie = LSI_AXXIA_RIO_COOKIE;
+	priv->mport = mport;
+	priv->ndx = ndx;
 	priv->portNdx = portNdx;
 
 	/* Max descriptors */
@@ -1444,7 +1501,7 @@ static struct rio_priv *rio_priv_dtb_setup(
 			rc = -ENOMEM;
 			goto err_linkdown;
 		}
-		IODP("rio: LDR win=%p\n", priv->linkdown_reset.win);
+		IODP("rio[%d]: LDR win=%p\n", mport->id, priv->linkdown_reset.win);
 	}
 
 	return priv;
@@ -1561,8 +1618,9 @@ static int axxia_rio_setup(struct platform_device *dev)
 			  &irq, &linkdown_reset))
 		return -EFAULT;
 
-	if (axxia_rapidio_board_init(ndx, &portNdx))
-		return -EFAULT;
+	rc = axxia_rapidio_board_init(ndx, &portNdx);
+	if (rc != 0)
+		return rc;
 
 	rc = axxia_parse_dtb_ds(dev, &ds_dtb_info);
 	if (rc != 0)
@@ -1574,12 +1632,11 @@ static int axxia_rio_setup(struct platform_device *dev)
 		rc = PTR_ERR(ops);
 		goto err_ops;
 	}
-	mport = rio_mport_dtb_setup(dev, ndx, law_start, law_size, ops);
-	if (IS_ERR(mport)) {
-		rc = PTR_ERR(mport);
+	rc = rio_mport_dtb_setup(dev, portNdx, law_start, law_size,
+				 ops, &mport);
+	if (rc != 0)
 		goto err_port;
-	}
-	priv = rio_priv_dtb_setup(dev, &regs, mport, portNdx,
+	priv = rio_priv_dtb_setup(dev, &regs, mport, ndx, portNdx,
 				  &numObDmes[0], &outbDmes[0],
 				  &numIbDmes[0], &inbDmes[0],
 				  irq, &linkdown_reset);
@@ -1593,6 +1650,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 	/* Get and set master port data:
 	 */
 	axxia_init_port_data(mport);
+
 	/* Start port and enable basic memmap access
 	 */
 	rc = axxia_rio_start_port(mport);
@@ -1630,7 +1688,8 @@ static int axxia_rio_setup(struct platform_device *dev)
 	 */
 	{
 		u16 id = rio_local_get_device_id(mport);
-		IODP("rio[%d] devid=%d hdid=%d\n", __LINE__,
+		IODP("rio[%d]: AR[%d] devid=%d hdid=%d\n",
+			mport->id, __LINE__,
 			mport->host_deviceid, rio_local_get_device_id(mport));
 		if (mport->host_deviceid < 0) {
 			if ((id != 0xFF) && (mport->sys_size == 0))
@@ -1649,8 +1708,8 @@ static int axxia_rio_setup(struct platform_device *dev)
 
 	axxia_rio_set_mport_disc_mode(mport);
 
-	IODP("rio: mport=%p priv=%p enum_host=%d\n", mport, priv,
-		mport->enum_host);
+	IODP("rio[%p:%d]: priv=%p enum_host=%d\n", mport, mport->id,
+		priv, mport->enum_host);
 	return 0;
 
 err_mport:

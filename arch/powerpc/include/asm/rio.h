@@ -62,3 +62,8 @@ DEF_RIO_IN_BE(rio_in_be32, 32, "lwz")
 
 
 #endif				/* ASM_PPC_RIO_H */
+
+
+#if defined(CONFIG_AXXIA_RIO) && defined(DRIVERS_RAPIDIO_RIO_H)
+#include <asm/axxia-rio.h>
+#endif

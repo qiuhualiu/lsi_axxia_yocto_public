@@ -9,7 +9,8 @@
 
 #define AXXIA_RIO_SMALL_SYSTEM
 
-#define AXXIA_RIO_SYSMEM_BARRIER()
+#define AXXIA_RIO_SYSMEM_BARRIER() \
+    __asm__ __volatile__ ("dmb" : : : "memory")
 
 #define AXXIA_RIO_DISABLE_MACHINE_CHECK()
 #define AXXIA_RIO_ENABLE_MACHINE_CHECK()
@@ -26,6 +27,47 @@
 #define _SWAP32(x)		((((x) & 0x000000FF) << 24) | (((x) & 0x0000FF00) <<  8) | (((x) & 0x00FF0000) >> 8) | (((x) & 0xFF000000) >> 24))
 #define CORRECT_GRIO(a)		_SWAP32(a)
 #define CORRECT_RAB(a)		(a)
+
+/* AXXIA RIO Patching Macros */
+
+#define RAPIDIO_REDUNDANT_PATH_LOCK_FAULT()				\
+	{								\
+		u32 __id;						\
+		rio_mport_read_config_32(prev->hport, destid, hopcount,	\
+					RIO_DEV_ID_CAR, &__id);		\
+		if ((lock == prev->hport->host_deviceid) &&		\
+		    (__id == 0x5120000a)) {				\
+		        pr_debug("axxia-rio: Patch 1 for HBDIDLCSR[%x:%x]\n", \
+				(__id & 0xffff), (((__id) >> 16) & 0xffff)); \
+			goto out;					\
+		    }							\
+	}
+
+#define RAPIDIO_HW_LOCK_LOCK_ERR()					\
+	{								\
+		u32 __id;						\
+		rio_mport_read_config_32(port, destid, hopcount,	\
+					RIO_DEV_ID_CAR,	&__id);		\
+		if (__id == 0x5120000a) {				\
+		        pr_debug("axxia-rio: Patch 2 for HBDIDLCSR[%x:%x]\n", \
+				(__id & 0xffff), (((__id) >> 16) & 0xffff)); \
+			goto done;					\
+		}							\
+	}
+
+#define RAPIDIO_HW_UNLOCK_LOCK_ERR()					\
+	{								\
+		u32 __id;						\
+		rio_mport_read_config_32(port, destid,			\
+					hopcount,			\
+					RIO_DEV_ID_CAR, &__id);		\
+		if ((lock == 0xffff) && (__id == 0x5120000a)) {		\
+	        	pr_debug("axxia-rio: Patch 3 for HBDIDLCSR[%x:%x]\n", \
+				(__id & 0xffff), (((__id) >> 16) & 0xffff)); \
+			goto done;					\
+		}							\
+	}
+
 
 /* ACP RIO board-specific stuff */
 

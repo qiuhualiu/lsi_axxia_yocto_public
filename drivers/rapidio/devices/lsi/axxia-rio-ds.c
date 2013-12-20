@@ -639,12 +639,22 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state)
 	u16 hdr_read_ptr;
 	u32	is_hdr_desc_done = 1;
 	unsigned long flags;
+	u8 	i;
 
 	u32 num_desc_processed = 0;
 
 	/* find the DSE that gets interrupted, CNTLZW found the upper
 	** bit first */
-	dse_id = 31 - CNTLZW(state);
+	for (i = 0; i < 32; i++) {
+		/* if the corresponding interrupt bit is set */
+		if ((state >> i) & 0x1)
+			break;
+	}
+
+	if (i == 32)
+		return;
+
+	dse_id = i;
 
 	/* find out DSE stats */
 	__rio_local_read_config_32(mport, RAB_OBDSE_STAT(dse_id), &dse_stat);
@@ -706,7 +716,7 @@ void ob_dse_irq_handler(struct rio_irq_handler *h, u32 state)
 			ptr_dse_cfg->num_hdr_desc_free++;
 
 			/* set the valid bit, done bit to be zero */
-			ptr_hdr_desc->dw0 &= 0xFFFFFEFE;
+			ptr_hdr_desc->dw0 &= 0xFFFFFFFE;
 
 			hdr_read_ptr = ptr_dse_cfg->hdr_read_ptr;
 
@@ -1255,8 +1265,18 @@ void ib_dse_vsid_m_irq_handler(struct rio_irq_handler *h, u32 state)
 	u8  found_dse = RIO_DS_FALSE;
 	unsigned long flags;
 	u32	is_desc_done = 1;
+	u8	i;
 
-	virt_vsid = 31 - CNTLZW(state);
+	for (i = 0; i < 32; i++) {
+		/* if the corresponding interrupt bit is set */
+		if ((state >> i) & 0x1)
+			break;
+	}
+
+	if (i == 32)
+		return;
+
+	virt_vsid = i;
 
 	__rio_local_read_config_32(mport,
 				RAB_IBVIRT_M_STAT(virt_vsid),
