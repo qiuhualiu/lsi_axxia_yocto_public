@@ -167,14 +167,20 @@ axxia_i2c_init(struct axxia_i2c_dev *idev)
 	u32 t_setup;
 	u32 tmo_clk;
 	u32 prescale;
+	unsigned long timeout;
 
 	dev_dbg(idev->dev, "rate=%uHz per_clk=%uMHz -> ratio=1:%u\n",
 		idev->bus_clk_rate, clk_mhz, divisor);
 
 	/* Reset controller */
 	writel(0x01, &idev->regs->soft_reset);
-	while (readl(&idev->regs->soft_reset) & 1)
-		cpu_relax();
+	timeout = jiffies + msecs_to_jiffies(100);
+	while (readl(&idev->regs->soft_reset) & 1) {
+		if (time_after(jiffies, timeout)) {
+			dev_warn(idev->dev, "Soft reset failed\n");
+			break;
+		}
+	}
 
 	/* Enable Master Mode */
 	writel(0x1, &idev->regs->global_control);
