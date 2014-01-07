@@ -37,7 +37,7 @@
 						\
 	"nop.w"					\
 )
-#elif CONFIG_ARCH_AXXIA || CONFIG_ARCH_AXXIA_SIM
+#elif defined(CONFIG_ARCH_AXXIA)
 /* Disable use of wfe/sev in Axxia. */
 #define SEV
 #define WFE(cond)

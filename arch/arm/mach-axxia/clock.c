@@ -17,9 +17,6 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 
-#define AXXIA_CPU_CLOCK 1400000000
-#define AXXIA_SYS_CLOCK  450000000
-#define AXXIA_DDR_CLOCK 1866000000
 
 #define clk_register_clkdev(_clk, _conid, _devfmt, ...) \
 	do { \
@@ -28,154 +25,85 @@
 		clkdev_add(cl); \
 	} while (0)
 
-#ifdef CONFIG_ARCH_AXXIA_SIM
-
-void __init
-axxia_init_clocks(void)
-{
-	struct clk *clk;
-	int i;
-
-	/* APB clock dummy */
-	clk = clk_register_fixed_rate(NULL, "apb_pclk", NULL,
-				      CLK_IS_ROOT, AXXIA_SYS_CLOCK/2);
-	clk_register_clkdev(clk, "apb_pclk", NULL);
-
-	/* CPU core clock (1400MHz) from CPU_PLL */
-	clk = clk_register_fixed_rate(NULL, "clk_cpu", NULL,
-				      CLK_IS_ROOT, AXXIA_CPU_CLOCK);
-
-	/* APB and System AXI clock from CPU_PLL */
-	clk = clk_register_fixed_rate(NULL, "clk_pclk", NULL,
-				      CLK_IS_ROOT, AXXIA_CPU_CLOCK/9);
-
-	/* DDR3 (interface 1) clock from SMEM1_PLL */
-	clk = clk_register_fixed_rate(NULL, "clk_smem1_2x", NULL,
-				      CLK_IS_ROOT, AXXIA_DDR_CLOCK);
-
-	/* AXIS slow peripheral clock from SMEM1_PLL. */
-	clk = clk_register_fixed_rate(NULL, "clk_per", NULL,
-				      CLK_IS_ROOT, 24000000);
-	/* PL011 UART0 */
-	clk_register_clkdev(clk, NULL, "2010080000.uart");
-	/* PL011 UART1 */
-	clk_register_clkdev(clk, NULL, "2010081000.uart");
-	/* PL011 UART2 */
-	clk_register_clkdev(clk, NULL, "2010082000.uart");
-	/* PL011 UART3 */
-	clk_register_clkdev(clk, NULL, "2010083000.uart");
-	/* I2C */
-	clk_register_clkdev(clk, NULL, "2010084000.i2c");
-	clk_register_clkdev(clk, NULL, "2010085000.i2c");
-	clk_register_clkdev(clk, NULL, "2010086000.i2c");
-	clk_register_clkdev(clk, NULL, "2010087000.i2c");
-	/* PL022 SSP */
-	clk_register_clkdev(clk, NULL, "ssp");
-
-	/* Timers 1MHz clock */
-	clk = clk_register_fixed_rate(NULL, "clk_1mhz", NULL,
-				      CLK_IS_ROOT, 1000000);
-	/* SP804 timers */
-	clk_register_clkdev(clk, NULL, "sp804");
-	for (i = 0; i < 8; i++)
-		clk_register_clkdev(clk, NULL, "axxia-timer%d", i);
-
-	/* Dummy MMC clk */
-	clk = clk_register_fixed_rate(NULL, "clk_mmci", NULL,
-				      CLK_IS_ROOT, 25000000);
-	/* PL180 MMCI */
-	clk_register_clkdev(clk, NULL, "mmci");
-}
-
-#else
-
-static struct of_device_id cpu_pll[] __initconst = {
-	{ .name = "/clocks/cpu", },
-	{},
+enum clk_ids {
+	clk_cpu,
+	clk_per,
+	clk_mmc,
+	clk_apb,
+	clk_1mhz,
+	NR_CLK_IDS
 };
 
-/*
-  -------------------------------------------------------------------------------
-  axxia_init_clocks
+static struct dt_clk_lookup {
+	const char  *path;
+	const char  *name;
+	enum clk_ids id;
+	u32          default_freq;
+} dt_clks[] = {
+	{"/clocks/cpu",        "clk_cpu", clk_cpu, 1400000000 },
+	{"/clocks/peripheral", "clk_per", clk_per,  200000000 },
+	{"/clocks/emmc",       "clk_mmc", clk_mmc,  200000000 },
+};
 
-  Clock setup for Emulation/ASIC systems.
-*/
+static struct clk *clk[NR_CLK_IDS];
 
-void __init
-axxia_init_clocks(void)
+static void axxia_register_clks(void)
 {
-	struct clk *clk;
 	int i;
-	struct device_node *np;
-	u32 frequency;
 
-	np = of_find_node_by_path("/clocks/cpu");
+	for (i = 0; i < ARRAY_SIZE(dt_clks); ++i) {
+		struct dt_clk_lookup *c = &dt_clks[i];
+		struct device_node *np = of_find_node_by_path(c->path);
+		u32 freq;
 
-	if (np) {
-		if (of_property_read_u32(np, "frequency", &frequency))
-			printk(KERN_ERR "%d - Error!", __LINE__);
+		if (!np || of_property_read_u32(np, "frequency", &freq)) {
+			pr_warn("axxia: No 'frequency' in %s\n", c->path);
+			freq = c->default_freq;
+		}
+		clk[c->id] = clk_register_fixed_rate(NULL, c->name, NULL,
+						     CLK_IS_ROOT, freq);
 	}
-
-	clk = clk_register_fixed_rate(NULL, "clk_cpu", NULL,
-				      CLK_IS_ROOT, frequency);
-
-	np = of_find_node_by_path("/clocks/peripheral");
-
-	if (np) {
-		if (of_property_read_u32(np, "frequency", &frequency))
-			printk(KERN_ERR "%d - Error!", __LINE__);
-	}
-
-	clk = clk_register_fixed_rate(NULL, "clk_per", NULL,
-				      CLK_IS_ROOT, frequency);
-
-	/* PL011 UART0 */
-	clk_register_clkdev(clk, NULL, "2010080000.uart");
-	/* PL011 UART1 */
-	clk_register_clkdev(clk, NULL, "2010081000.uart");
-	/* PL011 UART2 */
-	clk_register_clkdev(clk, NULL, "2010082000.uart");
-	/* PL011 UART3 */
-	clk_register_clkdev(clk, NULL, "2010083000.uart");
-	/* PL022 SSP */
-	clk_register_clkdev(clk, NULL, "ssp");
-	/* I2C */
-	clk_register_clkdev(clk, NULL, "2010084000.i2c");
-	clk_register_clkdev(clk, NULL, "2010085000.i2c");
-	clk_register_clkdev(clk, NULL, "2010086000.i2c");
-	clk_register_clkdev(clk, NULL, "2010087000.i2c");
-	/* SP804 timers */
-	clk_register_clkdev(clk, NULL, "sp804");
-	for (i = 0; i < 8; i++)
-		clk_register_clkdev(clk, NULL, "axxia-timer%d", i);
-
-	np = of_find_node_by_path("/clocks/emmc");
-
-	if (np) {
-		if (of_property_read_u32(np, "frequency", &frequency))
-			printk(KERN_ERR "%d - Error!", __LINE__);
-	}
-
-	clk = clk_register_fixed_rate(NULL, "clk_mmci", NULL,
-				      CLK_IS_ROOT, frequency);
-
-	/* PL180 MMCI */
-	clk_register_clkdev(clk, NULL, "mmci");
 
 	/* APB clock dummy */
-	clk = clk_register_fixed_rate(NULL, "apb_pclk", NULL,
-				      CLK_IS_ROOT, AXXIA_SYS_CLOCK/2);
-	clk_register_clkdev(clk, "apb_pclk", NULL);
+	clk[clk_apb] = clk_register_fixed_rate(NULL, "apb_pclk", NULL,
+					       CLK_IS_ROOT, 1000000);
 
-	/* APB and System AXI clock from CPU_PLL */
-	clk = clk_register_fixed_rate(NULL, "clk_pclk", NULL,
-				      CLK_IS_ROOT, AXXIA_CPU_CLOCK/9);
-
-	/* DDR3 (interface 1) clock from SMEM1_PLL */
-	clk = clk_register_fixed_rate(NULL, "clk_smem1_2x", NULL,
-				      CLK_IS_ROOT, AXXIA_DDR_CLOCK);
-
-	return;
+	clk[clk_1mhz] = clk_register_fixed_rate(NULL, "clk_1mhz", NULL,
+						CLK_IS_ROOT, 1000000);
 }
 
-#endif
+void __init
+axxia_init_clocks(int is_sim)
+{
+	int i;
+
+	pr_info("axxia: init_clocks: is_sim=%d\n", is_sim);
+
+	axxia_register_clks();
+
+	/* PL011 UARTs */
+	clk_register_clkdev(clk[clk_per], NULL, "2010080000.uart");
+	clk_register_clkdev(clk[clk_per], NULL, "2010081000.uart");
+	clk_register_clkdev(clk[clk_per], NULL, "2010082000.uart");
+	clk_register_clkdev(clk[clk_per], NULL, "2010083000.uart");
+
+	/* PL022 SSP */
+	clk_register_clkdev(clk[clk_per], NULL, "ssp");
+
+	/* I2C */
+	clk_register_clkdev(clk[clk_per], NULL, "2010084000.i2c");
+	clk_register_clkdev(clk[clk_per], NULL, "2010085000.i2c");
+	clk_register_clkdev(clk[clk_per], NULL, "2010086000.i2c");
+	clk_register_clkdev(clk[clk_per], NULL, "2010087000.i2c");
+
+	/* SP804 timers */
+	clk_register_clkdev(clk[is_sim ? clk_1mhz : clk_per], NULL, "sp804");
+	for (i = 0; i < 8; i++)
+		clk_register_clkdev(clk[is_sim ? clk_1mhz : clk_per],
+				    NULL, "axxia-timer%d", i);
+
+	/* PL180 MMCI */
+	clk_register_clkdev(clk[clk_mmc], NULL, "mmci");
+
+	clk_register_clkdev(clk[clk_apb], "apb_pclk", NULL);
+}
