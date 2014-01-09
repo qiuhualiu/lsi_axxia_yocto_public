@@ -1568,6 +1568,7 @@ struct rio_dev *rio_get_asm(u16 vid, u16 did,
 		}
 		kfree(nptr);
 		mport = rio_get_mport(RIO_ANY_ID, mport);
+		key = 0;
 	}
 	rdev = NULL;
 done:
@@ -1576,6 +1577,7 @@ done:
 	rcu_read_unlock();
 	return rdev;
 }
+
 /**
  * rio_get_device - Begin or continue searching for a RIO device by vid/did
  * @vid: RIO vid to match or %RIO_ANY_ID to match all vids
