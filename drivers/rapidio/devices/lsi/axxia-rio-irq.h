@@ -205,11 +205,6 @@ struct rio_msg_desc {
 	void *cookie;
 };
 
-struct rio_msg_tx_ack {
-	int err_state;
-	void *cookie;
-};
-
 struct rio_msg_dme {
 	spinlock_t lock;
 	char name[16];
@@ -221,13 +216,12 @@ struct rio_msg_dme {
 	int entries_in_use;
 	int write_idx;
 	int read_idx;
-	int pending;
+	atomic_t pending;
 	int tx_dme_tmo;
 	void *dev_id;
 	int dme_no;
 	struct rio_msg_desc *desc;
 	struct rio_desc *descriptors;
-	struct rio_msg_tx_ack *tx_ack;
 #ifdef CONFIG_SRIO_IRQ_TIME
 	u64 start_irq_tb;
 	u64 start_thrd_tb;
@@ -241,6 +235,7 @@ struct rio_msg_dme {
 };
 
 struct rio_rx_mbox {
+	spinlock_t lock;
 	int mbox_no;
 	char name[16];
 	struct kref kref;
@@ -272,6 +267,7 @@ struct rio_irq_handler {
 	u32 irq_enab_reg_addr;
 	u32 irq_state_reg_addr;
 	u32 irq_state_mask;
+	u32 irq_state;
 	void (*thrd_irq_fn)(struct rio_irq_handler *h, u32 state);
 	void (*release_fn)(struct rio_irq_handler *h);
 	void *data;
