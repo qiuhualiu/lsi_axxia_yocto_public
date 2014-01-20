@@ -58,8 +58,9 @@
 extern void axxia_ddr_retention_init(void);
 
 static const char *axxia_dt_match[] __initconst = {
-	"lsi,axm5516",
 	"lsi,axm5516-sim",
+	"lsi,axm5516-emu",
+	"lsi,axm5516",
 	NULL
 };
 

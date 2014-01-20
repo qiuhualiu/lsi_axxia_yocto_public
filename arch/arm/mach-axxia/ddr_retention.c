@@ -34,6 +34,7 @@
 static void __iomem *nca = NULL;
 static void __iomem *apb = NULL;
 static void __iomem *dickens = NULL;
+static int ddr_retention_enabled = 0;
 
 unsigned long ncp_caal_regions_acp55xx[] = {
 	NCP_REGION_ID(0x0b, 0x05),      /* SPPV2   */
@@ -254,6 +255,11 @@ initiate_retention_reset(void)
 	unsigned long ctl_244 = 0;
 	unsigned long value;
 	unsigned long delay;
+	
+	if (0 == ddr_retention_enabled) {
+		pr_info("DDR Retention Reset is Not Enabled\n");
+		return;
+	}
 
 	if (NULL == nca || NULL == apb || NULL == dickens)
 		BUG();
@@ -332,15 +338,26 @@ static const struct file_operations proc_ops = {
 void
 axxia_ddr_retention_init(void)
 {
-	if (!of_find_compatible_node(NULL, NULL, "lsi,axm5516"))
-		return;
+	/*
+	  Only available on ASIC systems.
+	*/
 
-	if (!proc_create(PROC_PATH, S_IWUSR, NULL, &proc_ops)) {
-		pr_err("Failed to register DDR retention proc interface\n");
-		return;
+	if (of_find_compatible_node(NULL, NULL, "lsi,axm5516")) {
+		/* Create /proc entry. */
+		if (!proc_create("driver/axxia_ddr_retention_reset",
+				 S_IWUSR, NULL,
+				 &proc_ops)) {
+			pr_info("Failed to register DDR retention proc entry\n");
+		} else {
+			apb = ioremap(0x2010000000, 0x40000);
+			nca = ioremap(0x002020100000ULL, 0x20000);
+			dickens = ioremap(0x2000000000, 0x1000000);
+			ddr_retention_enabled = 1;
+			pr_info("DDR Retention Reset Initialized\n");
+		}
+	} else {
+		pr_info("DDR Retention Reset is Not Available\n");
 	}
 
-	apb = ioremap(0x2010000000, 0x40000);
-	nca = ioremap(0x002020100000ULL, 0x20000);
-	dickens = ioremap(0x2000000000, 0x1000000);
+	return;
 }
