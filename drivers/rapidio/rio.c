@@ -344,7 +344,7 @@ int rio_release_inb_mbox(struct rio_mport *mport, int mbox)
 		mport->ops->close_inb_mbox(mport, mbox);
 
 		/* Release the mailbox resource */
-		if (mport->outb_msg[mbox].res)
+		if (mport->inb_msg[mbox].res)
 			return release_resource(mport->inb_msg[mbox].res);
 		else
 			return -ENOMEM;
