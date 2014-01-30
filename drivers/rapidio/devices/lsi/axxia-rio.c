@@ -1365,7 +1365,7 @@ static int rio_mport_dtb_setup(struct platform_device *dev,
 		return -ENOMEM;
 	}
 	rio_init_dbell_res(&mport->riores[RIO_DOORBELL_RESOURCE], 0, 0xffff);
-	rio_init_mbox_res(&mport->riores[RIO_INB_MBOX_RESOURCE], 0, 8);
+	rio_init_mbox_res(&mport->riores[RIO_INB_MBOX_RESOURCE], 0, 64);
 	rio_init_mbox_res(&mport->riores[RIO_OUTB_MBOX_RESOURCE], 0, 3);
 	sprintf(mport->name, "RIO%d mport", mport->id);
 
@@ -1738,7 +1738,7 @@ err_ops:
 /*
   The probe function for RapidIO peer-to-peer network.
 */
-static int __devinit axxia_of_rio_rpn_probe(struct platform_device *dev)
+static int axxia_of_rio_rpn_probe(struct platform_device *dev)
 {
 	IODP(KERN_INFO "Setting up RapidIO peer-to-peer network %s\n",
 	       dev->dev.of_node->full_name);
