@@ -180,16 +180,16 @@ int __irq_set_affinity_locked(struct irq_data *data, const struct cpumask *mask)
  */
 int irq_set_affinity(unsigned int irq, const struct cpumask *mask)
 {
-	struct irq_desc *desc = irq_to_desc(irq);
 	unsigned long flags;
+	struct irq_desc *desc = irq_get_desc_buslock(irq, &flags,
+						     IRQ_GET_DESC_CHECK_GLOBAL);
 	int ret;
 
 	if (!desc)
 		return -EINVAL;
 
-	raw_spin_lock_irqsave(&desc->lock, flags);
 	ret =  __irq_set_affinity_locked(irq_desc_get_irq_data(desc), mask);
-	raw_spin_unlock_irqrestore(&desc->lock, flags);
+	irq_put_desc_busunlock(desc, flags);
 	return ret;
 }
 
@@ -549,7 +549,7 @@ int can_request_irq(unsigned int irq, unsigned long irqflags)
 	if (irq_settings_can_request(desc)) {
 		if (desc->action)
 			if (irqflags & desc->action->flags & IRQF_SHARED)
-				canrequest =1;
+				canrequest = 1;
 	}
 	irq_put_desc_unlock(desc, flags);
 	return canrequest;
