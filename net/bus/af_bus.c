@@ -2331,7 +2331,7 @@ sock_put_out:
 static int bus_setsockopt(struct socket *sock, int level, int optname,
 			   char __user *optval, unsigned int optlen)
 {
-	struct bus_addr addr;
+	struct sockaddr_bus addr;
 	int res;
 	int val;
 
@@ -2341,19 +2341,24 @@ static int bus_setsockopt(struct socket *sock, int level, int optname,
 	switch (optname) {
 	case BUS_ADD_ADDR:
 	case BUS_DEL_ADDR:
-		if (optlen < sizeof(struct bus_addr))
+		if (optlen < sizeof(struct sockaddr_bus))
 			return -EINVAL;
 
 		if (!bus_sk(sock->sk)->bus_master_side)
 			return -EINVAL;
 
-		if (copy_from_user(&addr, optval, sizeof(struct bus_addr)))
+		if (copy_from_user(&addr, optval, sizeof(struct sockaddr_bus)))
 			return -EFAULT;
 
+		if (addr.sbus_family != AF_BUS)
+			return -EINVAL;
+
 		if (optname == BUS_ADD_ADDR)
-			res = bus_add_addr(bus_peer_get(sock->sk), &addr);
+			res = bus_add_addr(bus_peer_get(sock->sk),
+					   &addr.sbus_addr);
 		else
-			res = bus_del_addr(bus_peer_get(sock->sk), &addr);
+			res = bus_del_addr(bus_peer_get(sock->sk),
+					   &addr.sbus_addr);
 		break;
 	case BUS_JOIN_BUS:
 		res = bus_join_bus(sock->sk);

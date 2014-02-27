@@ -188,6 +188,26 @@ bus_match_rule_set_member(struct bus_match_rule *rule,
 }
 
 static int
+bus_match_rule_set_path(struct bus_match_rule *rule,
+			const char *path,
+			gfp_t gfp_flags)
+{
+	char *new;
+
+	WARN_ON(!path);
+
+	new = kstrdup(path, gfp_flags);
+	if (new == NULL)
+		return 0;
+
+	rule->flags |= BUS_MATCH_PATH;
+	kfree(rule->path);
+	rule->path = new;
+
+	return 1;
+}
+
+static int
 bus_match_rule_set_sender(struct bus_match_rule *rule,
 			  const char *sender,
 			  gfp_t gfp_flags)
@@ -526,6 +546,18 @@ struct bus_match_rule *bus_match_rule_parse(const char *rule_text,
 				pr_err("Out of memeory");
 				goto failed;
 			}
+		} else if (strcmp(key, "path") == 0) {
+			if (rule->flags & BUS_MATCH_PATH) {
+				pr_warn("Key %s specified twice in match rule\n",
+					key);
+				goto failed;
+			}
+
+			if (!bus_match_rule_set_path(rule, value,
+						     gfp_flags)) {
+				pr_err("Out of memory");
+				goto failed;
+			}
 		} else if (strcmp(key, "destination") == 0) {
 			if (rule->flags & BUS_MATCH_DESTINATION) {
 				pr_warn("Key %s specified twice in match rule\n",
@@ -840,16 +872,18 @@ void bus_matchmaker_remove_rule_by_value(struct bus_match_maker *matchmaker,
 			match_rule_search(&pool->rules_by_iface,
 					  rule->interface);
 
-		struct hlist_node *cur;
-		struct bus_match_rule *cur_rule;
-		hlist_for_each_entry(cur_rule, cur, &head->first, list) {
-			if (match_rule_equal(cur_rule, rule)) {
-				hlist_del(cur);
-				if (hlist_empty(&head->first))
-					rb_erase(&head->node,
-						 &pool->rules_by_iface);
-				bus_match_rule_free(cur_rule);
-				break;
+		if (head) {
+			struct hlist_node *cur;
+			struct bus_match_rule *cur_rule;
+			hlist_for_each_entry(cur_rule, cur, &head->first, list) {
+				if (match_rule_equal(cur_rule, rule)) {
+					hlist_del(cur);
+					if (hlist_empty(&head->first))
+						rb_erase(&head->node,
+							 &pool->rules_by_iface);
+					bus_match_rule_free(cur_rule);
+					break;
+				}
 			}
 		}
 	} else {
@@ -1125,6 +1159,7 @@ void bus_matchmaker_remove_name(struct bus_match_maker *matchmaker,
 			rb_erase(&data->node, &matchmaker->names);
 			kfree(data->name);
 			kfree(data);
+			node = NULL;
 		}
 	}
 

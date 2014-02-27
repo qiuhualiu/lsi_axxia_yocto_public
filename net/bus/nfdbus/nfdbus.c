@@ -171,7 +171,7 @@ static unsigned int dbus_filter(unsigned int hooknum,
 				 sendctx->recipient);
 
 			sender = find_match_maker(sendctx->sender, true, false);
-			bus_matchmaker_remove_name(sender, msg.name_acquired);
+			bus_matchmaker_remove_name(sender, msg.name_lost);
 		}
 
 		pr_debug("AF_BUS packet '%s' from the bus master. ACCEPT.\n",
@@ -191,6 +191,12 @@ static unsigned int dbus_filter(unsigned int hooknum,
 		 msg.interface ? msg.interface : "",
 		 msg.member ? msg.member : "",
 		 matchmaker);
+
+	if (sendctx->eavesdropper) {
+		pr_debug("The destination is an eavesdropper. ACCEPT.\n");
+		ret = NF_ACCEPT;
+		goto out;
+	}
 
 	if (!matchmaker) {
 		pr_debug("No match rules for this recipient. DROP.\n");
@@ -247,12 +253,14 @@ static void nfdbus_nl_send_reply(struct cn_msg *msg, int ret_code)
  * nfdbus_check_perm - check if a pid is allowed to update match rules
  * @sockaddr_bus: the socket address of the bus
  * @pid: the process id that wants to update the match rules set
+ * @creds: the credentials for the process that wants to update the match rules
  *
- * Test if a given process id is allowed to update the match rules set
- * for this bus. Only the process that owns the bus master listen socket
- * is allowed to update the match rules set for the bus.
+ * Test if a given process is allowed to update the match rules set
+ * for this bus. Only processes from the same user that owns the bus master
+ * listen socket are allowed to update the match rules set for the bus.
  */
-static bool nfdbus_check_perm(struct sockaddr_bus *sbusname, pid_t pid)
+static bool nfdbus_check_perm(struct sockaddr_bus *sbusname, pid_t pid,
+			      struct ucred *creds)
 {
 	struct net *net = get_net_ns_by_pid(pid);
 	struct sock *s;
@@ -283,7 +291,7 @@ static bool nfdbus_check_perm(struct sockaddr_bus *sbusname, pid_t pid)
 		    addr->name->sbus_family == sbusname->sbus_family &&
 		    addr->name->sbus_addr.s_addr == BUS_MASTER_ADDR &&
 		    bus_same_bus(addr->name, sbusname) &&
-		    pid_nr(s->sk_peer_pid) == pid) {
+		    s->sk_peer_cred->uid == creds->uid) {
 			spin_unlock(&bus_address_lock);
 			return true;
 		}
@@ -306,8 +314,9 @@ static void cn_cmd_cb(struct cn_msg *msg, struct netlink_skb_parms *nsp)
 
 	pr_debug("nfdbus: %s nsp->pid=%d pid=%d\n", __func__, nsp->pid, pid);
 
-	if (!nfdbus_check_perm(&nlp->addr, pid)) {
-		pr_debug(KERN_ERR "nfdbus: pid=%d is not allowed!\n", pid);
+	if (!nfdbus_check_perm(&nlp->addr, pid, &nsp->creds)) {
+		pr_debug(KERN_ERR "nfdbus: pid=%d uid=%d is not allowed!\n",
+			 pid, nsp->creds.uid);
 		retcode = EPERM;
 		goto fail;
 	}
