@@ -89,6 +89,15 @@ choice
 		bool "Kernel low-level debugging on 9263 and 9g45"
 		depends on HAVE_AT91_DBGU1
 
+	config AXXIA_DEBUG_LL_UART0
+		bool "Kernel low-level debugging via UART0"
+		depends on ARCH_AXXIA
+               help
+               This enables the low-level debugging via the UART0
+               and should be used
+               with the
+               AXXIA hardware
+
 	config DEBUG_CLPS711X_UART1
 		bool "Kernel low-level debugging messages via UART1"
 		depends on ARCH_CLPS711X

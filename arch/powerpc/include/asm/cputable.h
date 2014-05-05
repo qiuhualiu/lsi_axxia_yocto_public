@@ -45,7 +45,7 @@
  */
 struct cpu_spec;
 
-typedef	void (*cpu_setup_t)(unsigned long offset, struct cpu_spec* spec);
+typedef	void (*cpu_setup_t)(unsigned long offset, struct cpu_spec *spec);
 typedef	void (*cpu_restore_t)(void);
 
 enum powerpc_oprofile_type {
@@ -56,6 +56,7 @@ enum powerpc_oprofile_type {
 	PPC_OPROFILE_FSL_EMB = 4,
 	PPC_OPROFILE_CELL = 5,
 	PPC_OPROFILE_PA6T = 6,
+	PPC_OPROFILE_ACP_PMU = 7,
 };
 
 enum powerpc_pmc_type {
@@ -207,7 +208,7 @@ extern const char *powerpc_base_platform;
 
 #define CPU_FTR_PPCAS_ARCH_V2	(CPU_FTR_NOEXECUTE | CPU_FTR_NODSISRALIGN)
 
-#define MMU_FTR_PPCAS_ARCH_V2 	(MMU_FTR_SLB | MMU_FTR_TLBIEL | \
+#define MMU_FTR_PPCAS_ARCH_V2	(MMU_FTR_SLB | MMU_FTR_TLBIEL | \
 				 MMU_FTR_16M_PAGE)
 
 /* We only set the altivec features if the kernel was compiled with altivec
@@ -368,11 +369,12 @@ extern const char *powerpc_base_platform;
 	    CPU_FTR_USE_TB | CPU_FTR_MAYBE_CAN_NAP | \
 	    CPU_FTR_COMMON | CPU_FTR_FPU_UNAVAILABLE)
 #define CPU_FTRS_CLASSIC32	(CPU_FTR_COMMON | CPU_FTR_USE_TB)
-#define CPU_FTRS_8XX	(CPU_FTR_USE_TB)
-#define CPU_FTRS_40X	(CPU_FTR_USE_TB | CPU_FTR_NODSISRALIGN | CPU_FTR_NOEXECUTE)
-#define CPU_FTRS_44X	(CPU_FTR_USE_TB | CPU_FTR_NODSISRALIGN | CPU_FTR_NOEXECUTE)
-#define CPU_FTRS_440x6	(CPU_FTR_USE_TB | CPU_FTR_NODSISRALIGN | CPU_FTR_NOEXECUTE | \
-	    CPU_FTR_INDEXED_DCR)
+#define CPU_FTRS_8XX (CPU_FTR_USE_TB)
+#define CPU_FTRS_40X (CPU_FTR_USE_TB | CPU_FTR_NODSISRALIGN | CPU_FTR_NOEXECUTE)
+#define CPU_FTRS_44X (CPU_FTR_USE_TB | CPU_FTR_NODSISRALIGN | CPU_FTR_NOEXECUTE)
+#define CPU_FTRS_440x6 \
+	(CPU_FTR_USE_TB | CPU_FTR_NODSISRALIGN | CPU_FTR_NOEXECUTE | \
+	CPU_FTR_INDEXED_DCR)
 #define CPU_FTRS_47X	(CPU_FTRS_440x6)
 #define CPU_FTRS_E200	(CPU_FTR_USE_TB | CPU_FTR_SPE_COMP | \
 	    CPU_FTR_NODSISRALIGN | CPU_FTR_COHERENT_ICACHE | \

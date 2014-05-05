@@ -17,11 +17,11 @@
 #include <linux/init.h>
 #include <linux/smp.h>
 #include <linux/errno.h>
-#include <asm/ptrace.h>
+#include <linux/ptrace.h>
 #include <asm/pmc.h>
 #include <asm/cputable.h>
 #include <asm/oprofile_impl.h>
-#include <asm/firmware.h>
+#include <linux/firmware.h>
 
 static struct op_powerpc_model *model;
 
@@ -115,8 +115,8 @@ static void op_powerpc_stop(void)
 {
 	if (model->stop)
 		on_each_cpu(op_powerpc_cpu_stop, NULL, 1);
-        if (model->global_stop)
-                model->global_stop();
+	if (model->global_stop)
+		model->global_stop();
 }
 
 static int op_powerpc_create_files(struct super_block *sb, struct dentry *root)
@@ -176,7 +176,8 @@ static int op_powerpc_create_files(struct super_block *sb, struct dentry *root)
 		oprofilefs_create_ulong(sb, dir, "kernel", &ctr[i].kernel);
 		oprofilefs_create_ulong(sb, dir, "user", &ctr[i].user);
 
-		oprofilefs_create_ulong(sb, dir, "unit_mask", &ctr[i].unit_mask);
+		oprofilefs_create_ulong(sb, dir, "unit_mask",
+					&ctr[i].unit_mask);
 	}
 
 	oprofilefs_create_ulong(sb, root, "enable_kernel", &sys.enable_kernel);
@@ -197,36 +198,39 @@ int __init oprofile_arch_init(struct oprofile_operations *ops)
 	switch (cur_cpu_spec->oprofile_type) {
 #ifdef CONFIG_PPC_BOOK3S_64
 #ifdef CONFIG_OPROFILE_CELL
-		case PPC_OPROFILE_CELL:
-			if (firmware_has_feature(FW_FEATURE_LPAR))
-				return -ENODEV;
-			model = &op_model_cell;
-			ops->sync_start = model->sync_start;
-			ops->sync_stop = model->sync_stop;
-			break;
+	case PPC_OPROFILE_CELL:
+		if (firmware_has_feature(FW_FEATURE_LPAR))
+			return -ENODEV;
+		model = &op_model_cell;
+		ops->sync_start = model->sync_start;
+		ops->sync_stop = model->sync_stop;
+		break;
 #endif
-		case PPC_OPROFILE_RS64:
-			model = &op_model_rs64;
-			break;
-		case PPC_OPROFILE_POWER4:
-			model = &op_model_power4;
-			break;
-		case PPC_OPROFILE_PA6T:
-			model = &op_model_pa6t;
-			break;
+	case PPC_OPROFILE_RS64:
+		model = &op_model_rs64;
+		break;
+	case PPC_OPROFILE_POWER4:
+		model = &op_model_power4;
+		break;
+	case PPC_OPROFILE_PA6T:
+		model = &op_model_pa6t;
+		break;
 #endif
+	case PPC_OPROFILE_ACP_PMU:
+		model = &op_model_acp_pmu;
+		break;
 #ifdef CONFIG_6xx
-		case PPC_OPROFILE_G4:
-			model = &op_model_7450;
-			break;
+	case PPC_OPROFILE_G4:
+		model = &op_model_7450;
+		break;
 #endif
 #if defined(CONFIG_FSL_EMB_PERFMON)
-		case PPC_OPROFILE_FSL_EMB:
-			model = &op_model_fsl_emb;
-			break;
+	case PPC_OPROFILE_FSL_EMB:
+		model = &op_model_fsl_emb;
+		break;
 #endif
-		default:
-			return -ENODEV;
+	default:
+		return -ENODEV;
 	}
 
 	model->num_counters = cur_cpu_spec->num_pmcs;

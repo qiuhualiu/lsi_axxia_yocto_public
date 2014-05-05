@@ -173,14 +173,14 @@ struct tagtable {
 	int (*parse)(const struct tag *);
 };
 
-#define tag_member_present(tag,member)				\
+#define tag_member_present(tag, member)				\
 	((unsigned long)(&((struct tag *)0L)->member + 1)	\
 		<= (tag)->hdr.size * 4)
 
 #define tag_next(t)	((struct tag *)((__u32 *)(t) + (t)->hdr.size))
 #define tag_size(type)	((sizeof(struct tag_header) + sizeof(struct type)) >> 2)
 
-#define for_each_tag(t,base)		\
+#define for_each_tag(t, base)		\
 	for (t = base; t->hdr.size; t = tag_next(t))
 
 #ifdef __KERNEL__
@@ -196,7 +196,7 @@ static const struct tagtable __tagtable_##fn __tag = { tag, fn }
 
 struct membank {
 	phys_addr_t start;
-	unsigned long size;
+	phys_addr_t size;
 	unsigned int highmem;
 };
 
@@ -207,17 +207,17 @@ struct meminfo {
 
 extern struct meminfo meminfo;
 
-#define for_each_bank(iter,mi)				\
+#define for_each_bank(iter, mi)				\
 	for (iter = 0; iter < (mi)->nr_banks; iter++)
 
 #define bank_pfn_start(bank)	__phys_to_pfn((bank)->start)
 #define bank_pfn_end(bank)	__phys_to_pfn((bank)->start + (bank)->size)
 #define bank_pfn_size(bank)	((bank)->size >> PAGE_SHIFT)
-#define bank_phys_start(bank)	(bank)->start
+#define bank_phys_start(bank)	((bank)->start)
 #define bank_phys_end(bank)	((bank)->start + (bank)->size)
-#define bank_phys_size(bank)	(bank)->size
+#define bank_phys_size(bank)	((bank)->size)
 
-extern int arm_add_memory(phys_addr_t start, unsigned long size);
+extern int arm_add_memory(phys_addr_t start, phys_addr_t size);
 extern void early_print(const char *str, ...);
 extern void dump_machine_table(void);
 

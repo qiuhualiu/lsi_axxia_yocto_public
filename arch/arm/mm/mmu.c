@@ -53,12 +53,12 @@ pmd_t *top_pmd;
 #define CPOLICY_WRITEALLOC	4
 
 static unsigned int cachepolicy __initdata = CPOLICY_WRITEBACK;
-static unsigned int ecc_mask __initdata = 0;
+static unsigned int ecc_mask __initdata;
 pgprot_t pgprot_user;
-pgprot_t pgprot_kernel;
-
 EXPORT_SYMBOL(pgprot_user);
+pgprot_t pgprot_kernel;
 EXPORT_SYMBOL(pgprot_kernel);
+
 
 struct cachepolicy {
 	const char	policy[16];
@@ -194,8 +194,8 @@ void adjust_cr(unsigned long mask, unsigned long set)
 }
 #endif
 
-#define PROT_PTE_DEVICE		L_PTE_PRESENT|L_PTE_YOUNG|L_PTE_DIRTY|L_PTE_XN
-#define PROT_SECT_DEVICE	PMD_TYPE_SECT|PMD_SECT_AP_WRITE
+#define PROT_PTE_DEVICE		(L_PTE_PRESENT|L_PTE_YOUNG|L_PTE_DIRTY|L_PTE_XN)
+#define PROT_SECT_DEVICE	(PMD_TYPE_SECT|PMD_SECT_AP_WRITE)
 
 static struct mem_type mem_types[] = {
 	[MT_DEVICE] = {		  /* Strongly ordered / ARMv6 shared device */
@@ -216,7 +216,7 @@ static struct mem_type mem_types[] = {
 		.prot_l1	= PMD_TYPE_TABLE,
 		.prot_sect	= PROT_SECT_DEVICE | PMD_SECT_WB,
 		.domain		= DOMAIN_IO,
-	},	
+	},
 	[MT_DEVICE_WC] = {	/* ioremap_wc */
 		.prot_pte	= PROT_PTE_DEVICE | L_PTE_MT_DEV_WC,
 		.prot_l1	= PMD_TYPE_TABLE,
@@ -532,7 +532,7 @@ static void __init build_mem_type_table(void)
 		mem_types[MT_CACHECLEAN].prot_sect |= PMD_SECT_WB;
 		break;
 	}
-	printk("Memory policy: ECC %sabled, Data cache %s\n",
+	printk(KERN_INFO "Memory policy: ECC %sabled, Data cache %s\n",
 		ecc_mask ? "en" : "dis", cp->policy);
 
 	for (i = 0; i < ARRAY_SIZE(mem_types); i++) {
@@ -628,7 +628,7 @@ static void __init alloc_init_section(pud_t *pud, unsigned long addr,
 }
 
 static void __init alloc_init_pud(pgd_t *pgd, unsigned long addr,
-	unsigned long end, unsigned long phys, const struct mem_type *type)
+	unsigned long end, phys_addr_t phys, const struct mem_type *type)
 {
 	pud_t *pud = pud_offset(pgd, addr);
 	unsigned long next;
@@ -653,9 +653,8 @@ static void __init create_36bit_mapping(struct map_desc *md,
 	length = PAGE_ALIGN(md->length);
 
 	if (!(cpu_architecture() >= CPU_ARCH_ARMv6 || cpu_is_xsc3())) {
-		printk(KERN_ERR "MM: CPU does not support supersection "
-		       "mapping for 0x%08llx at 0x%08lx\n",
-		       (long long)__pfn_to_phys((u64)md->pfn), addr);
+		printk(KERN_ERR "MM: CPU does not support supersection mapping for 0x%08llx at 0x%08lx\n",
+				(long long)__pfn_to_phys((u64)md->pfn), addr);
 		return;
 	}
 
@@ -666,16 +665,14 @@ static void __init create_36bit_mapping(struct map_desc *md,
 	 *	of the actual domain assignments in use.
 	 */
 	if (type->domain) {
-		printk(KERN_ERR "MM: invalid domain in supersection "
-		       "mapping for 0x%08llx at 0x%08lx\n",
-		       (long long)__pfn_to_phys((u64)md->pfn), addr);
+		printk(KERN_ERR "MM: invalid domain in supersection mapping for 0x%08llx at 0x%08lx\n",
+				(long long)__pfn_to_phys((u64)md->pfn), addr);
 		return;
 	}
 
 	if ((addr | length | __pfn_to_phys(md->pfn)) & ~SUPERSECTION_MASK) {
-		printk(KERN_ERR "MM: cannot create mapping for 0x%08llx"
-		       " at 0x%08lx invalid alignment\n",
-		       (long long)__pfn_to_phys((u64)md->pfn), addr);
+		printk(KERN_ERR "MM: cannot create mapping for 0x%08llx at 0x%08lx invalid alignment\n",
+				(long long)__pfn_to_phys((u64)md->pfn), addr);
 		return;
 	}
 
@@ -717,18 +714,16 @@ static void __init create_mapping(struct map_desc *md)
 	pgd_t *pgd;
 
 	if (md->virtual != vectors_base() && md->virtual < TASK_SIZE) {
-		printk(KERN_WARNING "BUG: not creating mapping for 0x%08llx"
-		       " at 0x%08lx in user region\n",
-		       (long long)__pfn_to_phys((u64)md->pfn), md->virtual);
+		printk(KERN_WARNING "BUG: not creating mapping for 0x%08llx at 0x%08lx in user region\n",
+				(long long)__pfn_to_phys((u64)md->pfn), md->virtual);
 		return;
 	}
 
 	if ((md->type == MT_DEVICE || md->type == MT_ROM) &&
 	    md->virtual >= PAGE_OFFSET &&
 	    (md->virtual < VMALLOC_START || md->virtual >= VMALLOC_END)) {
-		printk(KERN_WARNING "BUG: mapping for 0x%08llx"
-		       " at 0x%08lx out of vmalloc space\n",
-		       (long long)__pfn_to_phys((u64)md->pfn), md->virtual);
+		printk(KERN_WARNING "BUG: mapping for 0x%08llx at 0x%08lx out of vmalloc space\n",
+				(long long)__pfn_to_phys((u64)md->pfn), md->virtual);
 	}
 
 	type = &mem_types[md->type];
@@ -748,9 +743,8 @@ static void __init create_mapping(struct map_desc *md)
 	length = PAGE_ALIGN(md->length + (md->virtual & ~PAGE_MASK));
 
 	if (type->prot_l1 == 0 && ((addr | phys | length) & ~SECTION_MASK)) {
-		printk(KERN_WARNING "BUG: map for 0x%08llx at 0x%08lx can not "
-		       "be mapped using pages, ignoring.\n",
-		       (long long)__pfn_to_phys(md->pfn), addr);
+		printk(KERN_WARNING "BUG: map for 0x%08llx at 0x%08lx can not be mapped using pages, ignoring.\n",
+				(long long)__pfn_to_phys(md->pfn), addr);
 		return;
 	}
 
@@ -783,8 +777,8 @@ void __init iotable_init(struct map_desc *io_desc, int nr)
 		create_mapping(md);
 		vm->addr = (void *)(md->virtual & PAGE_MASK);
 		vm->size = PAGE_ALIGN(md->length + (md->virtual & ~PAGE_MASK));
-		vm->phys_addr = __pfn_to_phys(md->pfn); 
-		vm->flags = VM_IOREMAP | VM_ARM_STATIC_MAPPING; 
+		vm->phys_addr = __pfn_to_phys(md->pfn);
+		vm->flags = VM_IOREMAP | VM_ARM_STATIC_MAPPING;
 		vm->flags |= VM_ARM_MTYPE(md->type);
 		vm->caller = iotable_init;
 		vm_area_add_early(vm++);
@@ -895,7 +889,7 @@ static int __init early_vmalloc(char *arg)
 }
 early_param("vmalloc", early_vmalloc);
 
-phys_addr_t arm_lowmem_limit __initdata = 0;
+phys_addr_t arm_lowmem_limit __initdata;
 
 void __init sanity_check_meminfo(void)
 {
@@ -922,8 +916,7 @@ void __init sanity_check_meminfo(void)
 		if (!highmem && __va(bank->start) < vmalloc_min &&
 		    bank->size > vmalloc_min - __va(bank->start)) {
 			if (meminfo.nr_banks >= NR_BANKS) {
-				printk(KERN_CRIT "NR_BANKS too low, "
-						 "ignoring high memory\n");
+				printk(KERN_CRIT "NR_BANKS too low, ignoring high memory\n");
 			} else {
 				memmove(bank + 1, bank,
 					(meminfo.nr_banks - i) * sizeof(*bank));
@@ -943,10 +936,9 @@ void __init sanity_check_meminfo(void)
 		 * Highmem banks not allowed with !CONFIG_HIGHMEM.
 		 */
 		if (highmem) {
-			printk(KERN_NOTICE "Ignoring RAM at %.8llx-%.8llx "
-			       "(!CONFIG_HIGHMEM).\n",
-			       (unsigned long long)bank->start,
-			       (unsigned long long)bank->start + bank->size - 1);
+			printk(KERN_NOTICE "Ignoring RAM at %.8llx-%.8llx (!CONFIG_HIGHMEM).\n",
+					(unsigned long long)bank->start,
+					(unsigned long long)bank->start + bank->size - 1);
 			continue;
 		}
 
@@ -956,10 +948,9 @@ void __init sanity_check_meminfo(void)
 		 */
 		if (__va(bank->start) >= vmalloc_min ||
 		    __va(bank->start) < (void *)PAGE_OFFSET) {
-			printk(KERN_NOTICE "Ignoring RAM at %.8llx-%.8llx "
-			       "(vmalloc region overlap).\n",
-			       (unsigned long long)bank->start,
-			       (unsigned long long)bank->start + bank->size - 1);
+			printk(KERN_NOTICE "Ignoring RAM at %.8llx-%.8llx (vmalloc region overlap).\n",
+					(unsigned long long)bank->start,
+					(unsigned long long)bank->start + bank->size - 1);
 			continue;
 		}
 
@@ -967,14 +958,13 @@ void __init sanity_check_meminfo(void)
 		 * Check whether this memory bank would partially overlap
 		 * the vmalloc area.
 		 */
-		if (__va(bank->start + bank->size) > vmalloc_min ||
-		    __va(bank->start + bank->size) < __va(bank->start)) {
+		if (__va(bank->start + bank->size - 1) >= vmalloc_min ||
+		    __va(bank->start + bank->size - 1) <= __va(bank->start)) {
 			unsigned long newsize = vmalloc_min - __va(bank->start);
-			printk(KERN_NOTICE "Truncating RAM at %.8llx-%.8llx "
-			       "to -%.8llx (vmalloc region overlap).\n",
-			       (unsigned long long)bank->start,
-			       (unsigned long long)bank->start + bank->size - 1,
-			       (unsigned long long)bank->start + newsize - 1);
+			printk(KERN_NOTICE "Truncating RAM at %.8llx-%.8llx to -%.8llx (vmalloc region overlap).\n",
+					(unsigned long long)bank->start,
+					(unsigned long long)bank->start + bank->size - 1,
+					(unsigned long long)bank->start + newsize - 1);
 			bank->size = newsize;
 		}
 #endif

@@ -328,7 +328,7 @@ static void __init cacheid_init(void)
 		cacheid = CACHEID_VIVT;
 	}
 
-	printk("CPU: %s data cache, %s instruction cache\n",
+	printk(KERN_INFO "CPU: %s data cache, %s instruction cache\n",
 		cache_is_vivt() ? "VIVT" :
 		cache_is_vipt_aliasing() ? "VIPT aliasing" :
 		cache_is_vipt_nonaliasing() ? "PIPT / VIPT nonaliasing" : "unknown",
@@ -358,7 +358,7 @@ void __init early_print(const char *str, ...)
 #ifdef CONFIG_DEBUG_LL
 	printascii(buf);
 #endif
-	printk("%s", buf);
+	printk(KERN_INFO "%s", buf);
 }
 
 static void __init feat_v6_fixup(void)
@@ -419,13 +419,13 @@ void cpu_init(void)
 	"msr	cpsr_c, %7"
 	    :
 	    : "r" (stk),
-	      PLC (PSR_F_BIT | PSR_I_BIT | IRQ_MODE),
+	      PLC(PSR_F_BIT | PSR_I_BIT | IRQ_MODE),
 	      "I" (offsetof(struct stack, irq[0])),
-	      PLC (PSR_F_BIT | PSR_I_BIT | ABT_MODE),
+	      PLC(PSR_F_BIT | PSR_I_BIT | ABT_MODE),
 	      "I" (offsetof(struct stack, abt[0])),
-	      PLC (PSR_F_BIT | PSR_I_BIT | UND_MODE),
+	      PLC(PSR_F_BIT | PSR_I_BIT | UND_MODE),
 	      "I" (offsetof(struct stack, und[0])),
-	      PLC (PSR_F_BIT | PSR_I_BIT | SVC_MODE)
+	      PLC(PSR_F_BIT | PSR_I_BIT | SVC_MODE)
 	    : "r14");
 }
 
@@ -454,9 +454,10 @@ static void __init setup_processor(void)
 	 */
 	list = lookup_processor_type(read_cpuid_id());
 	if (!list) {
-		printk("CPU configuration botched (ID %08x), unable "
-		       "to continue.\n", read_cpuid_id());
-		while (1);
+		printk(KERN_INFO "CPU configuration botched (ID %08x), unable to continue.\n",
+				read_cpuid_id());
+		while (1)
+			;
 	}
 
 	cpu_name = list->cpu_name;
@@ -475,7 +476,7 @@ static void __init setup_processor(void)
 	cpu_cache = *list->cache;
 #endif
 
-	printk("CPU: %s [%08x] revision %d (ARMv%s), cr=%08lx\n",
+	printk(KERN_INFO "CPU: %s [%08x] revision %d (ARMv%s), cr=%08lx\n",
 	       cpu_name, read_cpuid_id(), read_cpuid_id() & 15,
 	       proc_arch[cpu_architecture()], cr_alignment);
 
@@ -508,13 +509,13 @@ void __init dump_machine_table(void)
 		/* can't use cpu_relax() here as it may require MMU setup */;
 }
 
-int __init arm_add_memory(phys_addr_t start, unsigned long size)
+int __init arm_add_memory(phys_addr_t start, phys_addr_t size)
 {
 	struct membank *bank = &meminfo.bank[meminfo.nr_banks];
 
 	if (meminfo.nr_banks >= NR_BANKS) {
-		printk(KERN_CRIT "NR_BANKS too low, "
-			"ignoring memory at 0x%08llx\n", (long long)start);
+		printk(KERN_CRIT "NR_BANKS too low, ignoring memory at 0x%08llx\n",
+				(long long)start);
 		return -EINVAL;
 	}
 
@@ -527,8 +528,8 @@ int __init arm_add_memory(phys_addr_t start, unsigned long size)
 
 #ifndef CONFIG_LPAE
 	if (bank->start + size < bank->start) {
-		printk(KERN_CRIT "Truncating memory at 0x%08llx to fit in "
-			"32-bit physical address space\n", (long long)start);
+		printk(KERN_CRIT "Truncating memory at 0x%08llx to fit in 32-bit physical address space\n",
+				(long long)start);
 		/*
 		 * To ensure bank->start + bank->size is representable in
 		 * 32 bits, we use ULONG_MAX as the upper limit rather than 4GB.
@@ -538,7 +539,7 @@ int __init arm_add_memory(phys_addr_t start, unsigned long size)
 	}
 #endif
 
-	bank->size = size & PAGE_MASK;
+	bank->size = size & ~(phys_addr_t)(PAGE_SIZE-1);
 
 	/*
 	 * Check whether this memory region has non-zero size or
@@ -557,8 +558,8 @@ int __init arm_add_memory(phys_addr_t start, unsigned long size)
  */
 static int __init early_mem(char *p)
 {
-	static int usermem __initdata = 0;
-	unsigned long size;
+	static int usermem __initdata;
+	phys_addr_t size;
 	phys_addr_t start;
 	char *endp;
 
@@ -674,12 +675,12 @@ __tagtable(ATAG_MEM, parse_tag_mem32);
 
 #if defined(CONFIG_VGA_CONSOLE) || defined(CONFIG_DUMMY_CONSOLE)
 struct screen_info screen_info = {
- .orig_video_lines	= 30,
- .orig_video_cols	= 80,
- .orig_video_mode	= 0,
- .orig_video_ega_bx	= 0,
- .orig_video_isVGA	= 1,
- .orig_video_points	= 8
+		.orig_video_lines	= 30,
+		.orig_video_cols	= 80,
+		.orig_video_mode	= 0,
+		.orig_video_ega_bx	= 0,
+		.orig_video_isVGA	= 1,
+		.orig_video_points	= 8
 };
 
 static int __init parse_tag_videotext(const struct tag *tag)
@@ -839,16 +840,15 @@ static void __init reserve_crashkernel(void)
 
 	ret = reserve_bootmem(crash_base, crash_size, BOOTMEM_EXCLUSIVE);
 	if (ret < 0) {
-		printk(KERN_WARNING "crashkernel reservation failed - "
-		       "memory is in use (0x%lx)\n", (unsigned long)crash_base);
+		printk(KERN_WARNING "crashkernel reservation failed - memory is in use (0x%lx)\n",
+				(unsigned long)crash_base);
 		return;
 	}
 
-	printk(KERN_INFO "Reserving %ldMB of memory at %ldMB "
-	       "for crashkernel (System RAM: %ldMB)\n",
-	       (unsigned long)(crash_size >> 20),
-	       (unsigned long)(crash_base >> 20),
-	       (unsigned long)(total_mem >> 20));
+	printk(KERN_INFO "Reserving %ldMB of memory at %ldMB for crashkernel (System RAM: %ldMB)\n",
+			(unsigned long)(crash_size >> 20),
+			(unsigned long)(crash_base >> 20),
+			(unsigned long)(total_mem >> 20));
 
 	crashk_res.start = crash_base;
 	crashk_res.end = crash_base + crash_size - 1;
@@ -878,14 +878,13 @@ static struct machine_desc * __init setup_machine_tags(unsigned int nr)
 	 */
 	for_each_machine_desc(p)
 		if (nr == p->nr) {
-			printk("Machine: %s\n", p->name);
+			printk(KERN_INFO "Machine: %s\n", p->name);
 			mdesc = p;
 			break;
 		}
 
 	if (!mdesc) {
-		early_print("\nError: unrecognized/unsupported machine ID"
-			" (r1 = 0x%08x).\n\n", nr);
+		early_print("\nError: unrecognized/unsupported machine ID (r1 = 0x%08x).\n\n", nr);
 		dump_machine_table(); /* does not return */
 	}
 
@@ -964,7 +963,8 @@ void __init setup_arch(char **cmdline_p)
 
 	parse_early_param();
 
-	sort(&meminfo.bank, meminfo.nr_banks, sizeof(meminfo.bank[0]), meminfo_cmp, NULL);
+	sort(&meminfo.bank, meminfo.nr_banks, sizeof(meminfo.bank[0]),
+			meminfo_cmp, NULL);
 	sanity_check_meminfo();
 	arm_memblock_init(&meminfo, mdesc);
 
