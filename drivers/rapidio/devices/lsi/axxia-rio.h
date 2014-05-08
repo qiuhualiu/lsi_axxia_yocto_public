@@ -356,6 +356,7 @@
 #define DESC_TABLE_W3_MEM(me, d)        (DESC_TABLE_W0_MEM_BASE(me, d) + 0xC)
 
 #define DME_DESC_DW0_SRC_DST_ID(id)     ((id) << 16)
+#define DME_DESC_DW0_GET_DST_ID(dw0)    (((dw0) >> 16) & 0xffff)
 #define DME_DESC_DW0_RIO_ERR            (1 << 11)
 #define DME_DESC_DW0_AXI_ERR            (1 << 10)
 #define DME_DESC_DW0_TIMEOUT_ERR        (1 << 9)
@@ -543,7 +544,8 @@ struct rio_priv {
 	void (*port_notify_cb)(struct rio_mport *mport);
 
 	/* data_streaming */
-	struct rio_ds_priv     ds_priv_data;
+	struct axxia_rio_ds_priv     ds_priv_data;
+	struct axxia_rio_ds_cfg      ds_cfg_data;
 };
 
 

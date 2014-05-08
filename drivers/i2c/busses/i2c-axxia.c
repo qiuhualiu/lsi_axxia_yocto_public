@@ -14,7 +14,6 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
-#include <linux/clkdev.h>
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/io.h>
@@ -165,6 +164,7 @@ axxia_i2c_init(struct axxia_i2c_dev *idev)
 	u32 divisor = clk_get_rate(idev->i2c_clk) / idev->bus_clk_rate;
 	u32 clk_mhz = clk_get_rate(idev->i2c_clk) / 1000000;
 	u32 t_setup;
+	u32 t_high, t_low;
 	u32 tmo_clk;
 	u32 prescale;
 	unsigned long timeout;
@@ -185,15 +185,22 @@ axxia_i2c_init(struct axxia_i2c_dev *idev)
 	/* Enable Master Mode */
 	writel(0x1, &idev->regs->global_control);
 
+	if (idev->bus_clk_rate <= 100000) {
+		/* Standard mode SCL 50/50, tSU:DAT = 250 ns */
+		t_high  = divisor*1/2;
+		t_low   = divisor*1/2;
+		t_setup = ns_to_clk(250, clk_mhz);
+	} else {
+		/* Fast mode SCL 33/66, tSU:DAT = 100 ns */
+		t_high  = divisor*1/3;
+		t_low   = divisor*2/3;
+		t_setup = ns_to_clk(100, clk_mhz);
+	}
+
 	/* SCL High Time */
-	writel(divisor/2, &idev->regs->scl_high_period);
+	writel(t_high, &idev->regs->scl_high_period);
 	/* SCL Low Time */
-	writel(divisor/2, &idev->regs->scl_low_period);
-
-	t_setup = (idev->bus_clk_rate <= 100000) ?
-		ns_to_clk(250, clk_mhz) : /* Standard mode tSU:DAT = 250 ns */
-		ns_to_clk(100, clk_mhz); /* Fast mode tSU:DAT = 100 ns */
-
+	writel(t_low, &idev->regs->scl_low_period);
 	/* SDA Setup Time */
 	writel(t_setup, &idev->regs->sda_setup_time);
 	/* SDA Hold Time, 300ns */
@@ -241,6 +248,12 @@ static int
 i2c_m_rd(const struct i2c_msg *msg)
 {
 	return (msg->flags & I2C_M_RD) != 0;
+}
+
+static int
+i2c_m_ten(const struct i2c_msg *msg)
+{
+	return (msg->flags & I2C_M_TEN) != 0;
 }
 
 static int
@@ -326,33 +339,6 @@ axxia_i2c_isr(int irq, void *_dev)
 	/* Clear interrupt */
 	writel(0x01, &idev->regs->interrupt_status);
 
-	if (unlikely(status & MST_STATUS_ERR)) {
-		idev->msg_err = status & MST_STATUS_ERR;
-		i2c_int_disable(idev, ~0);
-		dev_err(idev->dev, "error %s, rx=%u/%u tx=%u/%u\n",
-			status_str(idev->msg_err),
-			readl(&idev->regs->mst_rx_bytes_xfrd),
-			readl(&idev->regs->mst_rx_xfer),
-			readl(&idev->regs->mst_tx_bytes_xfrd),
-			readl(&idev->regs->mst_tx_xfer));
-		complete(&idev->msg_complete);
-		return IRQ_HANDLED;
-	}
-
-	/* Stop completed? */
-	if (status & MST_STATUS_SCC) {
-		i2c_int_disable(idev, ~0);
-		complete(&idev->msg_complete);
-	}
-
-	/* Transfer done? */
-	if (status & (MST_STATUS_SNS | MST_STATUS_SS)) {
-		if (i2c_m_rd(idev->msg) && idev->msg_xfrd < idev->msg->len)
-			axxia_i2c_empty_rx_fifo(idev);
-		i2c_int_disable(idev, ~0);
-		complete(&idev->msg_complete);
-	}
-
 	/* RX FIFO needs service? */
 	if (i2c_m_rd(idev->msg) && (status & MST_STATUS_RFL))
 		axxia_i2c_empty_rx_fifo(idev);
@@ -365,6 +351,29 @@ axxia_i2c_isr(int irq, void *_dev)
 			i2c_int_disable(idev, MST_STATUS_TFL);
 	}
 
+	if (status & MST_STATUS_SCC) {
+		/* Stop completed? */
+		i2c_int_disable(idev, ~0);
+		complete(&idev->msg_complete);
+	} else if (status & (MST_STATUS_SNS | MST_STATUS_SS)) {
+		/* Transfer done? */
+		if (i2c_m_rd(idev->msg) && idev->msg_xfrd < idev->msg->len)
+			axxia_i2c_empty_rx_fifo(idev);
+		i2c_int_disable(idev, ~0);
+		complete(&idev->msg_complete);
+	} else if (unlikely(status & MST_STATUS_ERR)) {
+		/* Transfer error? */
+		idev->msg_err = status & MST_STATUS_ERR;
+		i2c_int_disable(idev, ~0);
+		dev_err(idev->dev, "error %s, rx=%u/%u tx=%u/%u\n",
+			status_str(status),
+			readl(&idev->regs->mst_rx_bytes_xfrd),
+			readl(&idev->regs->mst_rx_xfer),
+			readl(&idev->regs->mst_tx_bytes_xfrd),
+			readl(&idev->regs->mst_tx_xfer));
+		complete(&idev->msg_complete);
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -373,6 +382,7 @@ static int
 axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 {
 	u32 int_mask = MST_STATUS_ERR | MST_STATUS_SNS;
+	u32 addr_1, addr_2;
 	int ret;
 
 	if (msg->len == 0 || msg->len > 255)
@@ -388,17 +398,32 @@ axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 		writel(0, &idev->regs->mst_tx_xfer);
 		/* RX # bytes */
 		writel(msg->len, &idev->regs->mst_rx_xfer);
-		/* Chip address for write */
-		writel(CHIP_READ(msg->addr), &idev->regs->mst_addr_1);
 	} else {
 		/* TX # bytes */
 		writel(msg->len, &idev->regs->mst_tx_xfer);
 		/* RX 0 bytes */
 		writel(0, &idev->regs->mst_rx_xfer);
-		/* Chip address for write */
-		writel(CHIP_WRITE(msg->addr), &idev->regs->mst_addr_1);
 	}
-	writel(msg->addr >> 8, &idev->regs->mst_addr_2);
+
+	if (i2c_m_ten(msg)) {
+		/* 10-bit address
+		 *   addr_1: 5'b11110 | addr[9:8] | (R/W)
+		 *   addr_2: addr[7:0]
+		 */
+		addr_1 = 0xF0 | ((msg->addr >> 7) & 0x06);
+		addr_2 = msg->addr & 0xFF;
+	} else {
+		/* 7-bit address
+		 *   addr_1: addr[6:0] | (R/W)
+		 *   addr_2: dont care
+		 */
+		addr_1 = (msg->addr << 1) & 0xFF;
+		addr_2 = 0;
+	}
+	if (i2c_m_rd(msg))
+		addr_1 |= 1;
+	writel(addr_1, &idev->regs->mst_addr_1);
+	writel(addr_2, &idev->regs->mst_addr_2);
 
 	if (i2c_m_rd(msg)) {
 		int_mask |= MST_STATUS_RFL;
@@ -497,6 +522,10 @@ axxia_i2c_probe(struct platform_device *pdev)
 	u32 bus = pdev->id;
 	int irq = 0;
 	int ret = 0;
+	int speed_property = 0;
+
+	speed_property = of_find_compatible_node(NULL, NULL,
+		"lsi,axxia35xx") != NULL;
 
 	base = of_iomap(np, 0);
 	if (!base) {
@@ -533,7 +562,11 @@ axxia_i2c_probe(struct platform_device *pdev)
 
 	of_property_read_u32(np, "bus", &bus);
 
-	of_property_read_u32(np, "clock-frequency", &idev->bus_clk_rate);
+	if (speed_property)
+		of_property_read_u32(np, "speed", &idev->bus_clk_rate);
+	else
+		of_property_read_u32(np, "clock-frequency",
+			 &idev->bus_clk_rate);
 
 	if (idev->bus_clk_rate == 0)
 		idev->bus_clk_rate = 100000; /* default clock rate */

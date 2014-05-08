@@ -3471,6 +3471,13 @@ lsi_nand_init(void)
 	static const char *part_probe_types[]
 	= { "cmdlinepart", "ofpart", NULL };
 
+	np = of_find_compatible_node(NULL, NULL, "lsi,acp3500");
+
+	if (NULL != np) {
+		printk(KERN_ERR "NAND Support is Not Yet Available on 3500\n");
+		return -1;
+	}
+
 	memset(&ppdata, 0, sizeof(ppdata));
 
 	np = of_find_node_by_type(np, "nand");
@@ -3490,7 +3497,7 @@ lsi_nand_init(void)
 		enabled = of_get_property(np, "enabled", NULL);
 
 		if (!enabled || (enabled && (0 == *enabled))) {
-			printk("ACP NAND Controller Isn't Enabled.\n");
+			printk(KERN_INFO "ACP NAND Controller Isn't Enabled.\n");
 			return -ENODEV;
 		}
 

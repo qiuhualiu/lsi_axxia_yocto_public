@@ -765,7 +765,7 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 
 #ifdef SRIO_IODEBUG
 	__rio_local_read_config_32(mport, RIO_GCCSR, &result);
-	dev_dbg(priv->dev, "%d RIO_GEN_CTL_CSR set to 0x%X for main port\n",
+	IODP("rio[%d]: RIO_GEN_CTL_CSR set to 0x%X for main port\n",
 		mport->id, result);
 #endif
 
@@ -793,7 +793,7 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 		__rio_local_write_config_32(mport,
 				EPC_PNADIDCSR(priv->portNdx),
 				result);
-		dev_dbg(priv->dev, "Port%dAltDevIdmCSR set to 0x%X for main port\n",
+		dev_dbg(priv->dev, "Port%dAltDevIdmCSR set to 0x%X\n",
 			priv->portNdx, CONFIG_RAPIDIO_SECOND_DEST_ID);
 	}
 #else
@@ -811,7 +811,7 @@ void axxia_rio_set_mport_disc_mode(struct rio_mport *mport)
 		__rio_local_write_config_32(mport,
 				EPC_PNADIDCSR(priv->portNdx),
 				result);
-		dev_dbg(priv->dev, "Port%dAltDevIdmCSR set to 0x%X for main port\n",
+		dev_dbg(priv->dev, "Port%dAltDevIdmCSR set to 0x%X\n",
 			priv->portNdx, result);
 	}
 #endif
@@ -974,7 +974,7 @@ static int rio_start_port(struct rio_mport *mport)
 		__rio_local_read_config_32(mport, RIO_DEV_ID_CAR, &didcar);
 		__rio_local_read_config_32(mport, RAB_VER, &rabver);
 
-		printk("rio[%d]: AR[%d] DIDCAR[%x]=%08x RAB_VER[%x]=%08x\n",
+		printk(KERN_INFO "rio[%d]: AR[%d] DIDCAR[%x]=%08x RAB_VER[%x]=%08x\n",
 			mport->id,
 			__LINE__,
 			RIO_DEV_ID_CAR, didcar,
@@ -1369,7 +1369,7 @@ static int rio_mport_dtb_setup(struct platform_device *dev,
 		return -ENOMEM;
 	}
 	rio_init_dbell_res(&mport->riores[RIO_DOORBELL_RESOURCE], 0, 0xffff);
-	rio_init_mbox_res(&mport->riores[RIO_INB_MBOX_RESOURCE], 0, 8);
+	rio_init_mbox_res(&mport->riores[RIO_INB_MBOX_RESOURCE], 0, 64);
 	rio_init_mbox_res(&mport->riores[RIO_OUTB_MBOX_RESOURCE], 0, 3);
 	sprintf(mport->name, "RIO%d mport", mport->id);
 
@@ -1615,7 +1615,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 	int numObDmes[2] = { 0, }, outbDmes[2] = { 0, };
 	int numIbDmes[2] = { 0, }, inbDmes[2] = { 0, };
 	struct event_regs linkdown_reset = { 0, };
-	struct rio_ds_dtb_info ds_dtb_info; /* data_streaming */
+	struct axxia_rio_ds_dtb_info ds_dtb_info; /* data_streaming */
 
 	/* Get address boundaries, etc. from DTB */
 	if (rio_parse_dtb(dev, &ndx, &law_start, &law_size, &regs,
@@ -1624,7 +1624,7 @@ static int axxia_rio_setup(struct platform_device *dev)
 			  &irq, &linkdown_reset))
 		return -EFAULT;
 
-	rc = axxia_rapidio_board_init(ndx, &portNdx);
+	rc = axxia_rapidio_board_init(dev, ndx, &portNdx);
 	if (rc != 0)
 		return rc;
 
@@ -1743,7 +1743,7 @@ err_ops:
 /*
   The probe function for RapidIO peer-to-peer network.
 */
-static int __devinit axxia_of_rio_rpn_probe(struct platform_device *dev)
+static int axxia_of_rio_rpn_probe(struct platform_device *dev)
 {
 	IODP(KERN_INFO "Setting up RapidIO peer-to-peer network %s\n",
 	       dev->dev.of_node->full_name);

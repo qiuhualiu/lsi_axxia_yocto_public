@@ -114,8 +114,9 @@ static int __init acp_parse_dma_ranges(struct pci_controller *hose,
 		 * within 32 bits space
 		 */
 		if (cpu_addr != 0 || pci_addr > 0xffffffff) {
-			printk(KERN_WARNING "%s: Ignored unsupported dma range"
-			       " 0x%016llx...0x%016llx -> 0x%016llx\n",
+			printk(KERN_WARNING "%s: Ignored unsupported" \
+				"dma range"\
+			       " 0x%016llx...0x%016llx -> 0x%016llx\n",\
 			       hose->dn->full_name,
 			       pci_addr, pci_addr + size - 1, cpu_addr);
 			continue;
@@ -148,15 +149,14 @@ static int __init acp_parse_dma_ranges(struct pci_controller *hose,
 	 * DMA bounce buffers
 	 */
 	if (size < total_memory) {
-		printk(KERN_ERR "%s: dma-ranges too small "
-		       "(size=%llx total_memory=%llx)\n",
+		printk(KERN_ERR "%s: dma-ranges too small "\
+		       "(size=%llx total_memory=%llx)\n",\
 		       hose->dn->full_name, size, (u64)total_memory);
 		return -ENXIO;
 	}
 
-	/* Check we are a power of 2 size and that base is a multiple of size*/
-	if ((size & (size - 1)) != 0  ||
-	    (res->start & (size - 1)) != 0) {
+	/* Check that base is a multiple of size*/
+	if ((res->start & (size - 1)) != 0) {
 		printk(KERN_ERR "%s: dma-ranges unaligned\n",
 		       hose->dn->full_name);
 		return -ENXIO;
@@ -288,7 +288,7 @@ static int acp_pciex_validate_bdf(struct pciex_port *port,
 	/* Check we are within the mapped range */
 	if (bus->number > port->hose->last_busno) {
 		if (!message) {
-			printk(KERN_WARNING "Warning! Probing bus %u"
+			printk(KERN_WARNING "Warning! Probing bus %u"\
 			       " out of range !\n", bus->number);
 			message++;
 		}
