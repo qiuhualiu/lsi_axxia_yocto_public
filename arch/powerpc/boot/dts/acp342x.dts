@@ -101,7 +101,7 @@
                         };
                         UART1: serial@00405000 {
                                 device_type = "serial";
-				 compatible = "lsi,acp-uart1";
+                                compatible = "lsi,acp-uart1";
                                 enabled = <0>;
                                 reg = <0x00405000 0x1000>;
                                 clock-reg = <0x00408060 0x20>;
@@ -115,7 +115,7 @@
                                 compatible = "lsi,acp-usb";
                                 enabled = <1>;
 				reg = <0x20 0x004A0000 0x0 0020000>,
-				<0x20 0x0040C000 0x0 0001000>;
+                      		      <0x20 0x0040C000 0x0 0001000>;
                                 interrupt-parent = <&MPIC>;
                                 interrupts = <31>;
                         };
