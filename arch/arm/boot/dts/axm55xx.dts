@@ -198,13 +198,13 @@
 	sm0@00220000 {
 		compatible = "lsi,smmon";
 		reg = <0 0x00220000 0 0x1000>;
-		interrupts = <0 192 4>;
+		interrupts = <0 161 4>;
 	};
 
 	sm1@00220000 {
 		compatible = "lsi,smmon";
 		reg = <0 0x000f0000 0 0x1000>;
-		interrupts = <0 193 4>;
+		interrupts = <0 160 4>;
 	};
 
 	gpdma@2020140000 {
