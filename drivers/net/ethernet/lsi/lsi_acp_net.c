@@ -2078,7 +2078,8 @@ static int __devexit appnic_drv_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id appnic_dt_ids[] = {
-	{ .compatible = "acp-femac", }
+	{ .compatible = "lsi,acp-femac" },
+	{ .compatible = "acp-femac"     }
 };
 MODULE_DEVICE_TABLE(of, appnic_dt_ids);
 
