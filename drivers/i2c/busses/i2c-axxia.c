@@ -49,8 +49,6 @@ struct i2c_regs {
 	__le32 mst_tx_xfer;
 	__le32 mst_addr_1;
 	__le32 mst_addr_2;
-#define CHIP_READ(_chip)  (((_chip) << 1) | 1)
-#define CHIP_WRITE(_chip) (((_chip) << 1) | 0)
 	__le32 mst_data;
 	__le32 mst_tx_fifo;
 	__le32 mst_rx_fifo;
@@ -115,9 +113,7 @@ struct axxia_i2c_dev {
 	struct i2c_adapter adapter;
 	/* clock reference for i2c input clock */
 	struct clk *i2c_clk;
-	/* ioremapped registers cookie */
-	void __iomem *base;
-	/* pointer to register struct */
+	/* pointer to registers */
 	struct i2c_regs __iomem *regs;
 	/* irq number */
 	int irq;
@@ -365,7 +361,7 @@ axxia_i2c_isr(int irq, void *_dev)
 		/* Transfer error? */
 		idev->msg_err = status & MST_STATUS_ERR;
 		i2c_int_disable(idev, ~0);
-		dev_err(idev->dev, "error %s, rx=%u/%u tx=%u/%u\n",
+		dev_dbg(idev->dev, "error %s, rx=%u/%u tx=%u/%u\n",
 			status_str(status),
 			readl(&idev->regs->mst_rx_bytes_xfrd),
 			readl(&idev->regs->mst_rx_xfer),
@@ -439,13 +435,13 @@ axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 	i2c_int_enable(idev, int_mask);
 
 	ret = wait_for_completion_timeout(&idev->msg_complete,
-		I2C_XFER_TIMEOUT);
+					  I2C_XFER_TIMEOUT);
 
 	i2c_int_disable(idev, int_mask);
 
 	WARN_ON(readl(&idev->regs->mst_command) & 0x8);
 
-	if (WARN_ON(ret == 0)) {
+	if (ret == 0) {
 		dev_warn(idev->dev, "xfer timeout (%#x)\n", msg->addr);
 		axxia_i2c_init(idev);
 		return -ETIMEDOUT;
@@ -471,7 +467,7 @@ axxia_i2c_stop(struct axxia_i2c_dev *idev)
 	writel(0xb, &idev->regs->mst_command);
 	i2c_int_enable(idev, int_mask);
 	ret = wait_for_completion_timeout(&idev->msg_complete,
-		I2C_STOP_TIMEOUT);
+					  I2C_STOP_TIMEOUT);
 	i2c_int_disable(idev, int_mask);
 	if (ret == 0)
 		return -ETIMEDOUT;
@@ -500,11 +496,11 @@ axxia_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 static u32
 axxia_i2c_func(struct i2c_adapter *adap)
 {
-	return I2C_FUNC_I2C |
-		I2C_FUNC_10BIT_ADDR |
-		I2C_FUNC_SMBUS_EMUL |
-		I2C_FUNC_SMBUS_BLOCK_DATA;
-
+	u32 caps = (I2C_FUNC_I2C |
+		    I2C_FUNC_10BIT_ADDR |
+		    I2C_FUNC_SMBUS_EMUL |
+		    I2C_FUNC_SMBUS_BLOCK_DATA);
+	return caps;
 }
 
 static const struct i2c_algorithm axxia_i2c_algo = {
@@ -554,7 +550,6 @@ axxia_i2c_probe(struct platform_device *pdev)
 		goto err_cleanup;
 	}
 
-	idev->base         = base;
 	idev->regs         = (struct __iomem i2c_regs*)base;
 	idev->i2c_clk      = i2c_clk;
 	idev->dev          = &pdev->dev;
@@ -627,7 +622,7 @@ axxia_i2c_remove(struct platform_device *pdev)
 	i2c_del_adapter(&idev->adapter);
 	free_irq(idev->irq, idev);
 	clk_put(idev->i2c_clk);
-	iounmap(idev->base);
+	iounmap(idev->regs);
 	kfree(idev);
 	return 0;
 }
