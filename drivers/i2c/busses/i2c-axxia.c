@@ -332,20 +332,10 @@ status_str(u32 status)
 	return buf;
 }
 
-static irqreturn_t
-axxia_i2c_isr(int irq, void *_dev)
+static void
+axxia_i2c_service_irq(struct axxia_i2c_dev *idev)
 {
-	struct axxia_i2c_dev *idev = _dev;
 	u32 status = readl(&idev->regs->mst_int_status);
-
-	if ((readl(&idev->regs->interrupt_status) & 0x1) == 0)
-		return IRQ_NONE;
-
-	if (!idev->msg)
-		return IRQ_NONE;
-
-	/* Clear interrupt */
-	writel(0x01, &idev->regs->interrupt_status);
 
 	/* RX FIFO needs service? */
 	if (i2c_m_rd(idev->msg) && (status & MST_STATUS_RFL))
@@ -381,6 +371,23 @@ axxia_i2c_isr(int irq, void *_dev)
 			readl(&idev->regs->mst_tx_xfer));
 		complete(&idev->msg_complete);
 	}
+}
+
+static irqreturn_t
+axxia_i2c_isr(int irq, void *_dev)
+{
+	struct axxia_i2c_dev *idev = _dev;
+
+	if ((readl(&idev->regs->interrupt_status) & 0x1) == 0)
+		return IRQ_NONE;
+
+	if (!idev->msg)
+		return IRQ_NONE;
+
+	axxia_i2c_service_irq(idev);
+
+	/* Clear interrupt */
+	writel(0x01, &idev->regs->interrupt_status);
 
 	return IRQ_HANDLED;
 }
@@ -447,14 +454,21 @@ axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 	/* Start manual mode */
 	writel(0x8, &idev->regs->mst_command);
 
-	i2c_int_enable(idev, int_mask);
+	if (idev->irq > 0) {
+		i2c_int_enable(idev, int_mask);
+		ret = wait_for_completion_timeout(&idev->msg_complete,
+						  I2C_XFER_TIMEOUT);
+		i2c_int_disable(idev, int_mask);
+		WARN_ON(readl(&idev->regs->mst_command) & 0x8);
+	} else {
+		unsigned long tmo = jiffies + I2C_XFER_TIMEOUT;
 
-	ret = wait_for_completion_timeout(&idev->msg_complete,
-					  I2C_XFER_TIMEOUT);
-
-	i2c_int_disable(idev, int_mask);
-
-	WARN_ON(readl(&idev->regs->mst_command) & 0x8);
+		do {
+			/* Poll interrupt status */
+			axxia_i2c_service_irq(idev);
+			ret = try_wait_for_completion(&idev->msg_complete);
+		} while (!ret && time_before(jiffies, tmo));
+	}
 
 	if (ret == 0) {
 		dev_warn(idev->dev, "xfer timeout (%#x)\n", msg->addr);
@@ -546,11 +560,8 @@ axxia_i2c_probe(struct platform_device *pdev)
 	}
 
 	irq = irq_of_parse_and_map(np, 0);
-	if (irq == 0) {
-		dev_err(&pdev->dev, "no irq property\n");
-		ret = -EINVAL;
-		goto err_cleanup;
-	}
+	if (irq == 0)
+		dev_info(&pdev->dev, "No IRQ specified, using polling mode\n");
 
 	i2c_clk = clk_get(&pdev->dev, "i2c");
 	if (IS_ERR(i2c_clk)) {
@@ -589,12 +600,14 @@ axxia_i2c_probe(struct platform_device *pdev)
 		goto err_cleanup;
 	}
 
-	ret = request_irq(irq, axxia_i2c_isr, 0, pdev->name, idev);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to request irq %i\n", idev->irq);
-		goto err_cleanup;
+	if (irq) {
+		ret = request_irq(irq, axxia_i2c_isr, 0, pdev->name, idev);
+		if (ret) {
+			dev_err(&pdev->dev, "Failed to request irq %i\n", irq);
+			goto err_cleanup;
+		}
+		idev->irq = irq;
 	}
-	idev->irq = irq;
 
 	clk_enable(idev->i2c_clk);
 
