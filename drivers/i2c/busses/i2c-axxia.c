@@ -271,15 +271,18 @@ axxia_i2c_empty_rx_fifo(struct axxia_i2c_dev *idev)
 	while (0 < bytes_to_transfer--) {
 		int c = readl(&idev->regs->mst_data);
 		if (idev->msg_xfrd == 0 && i2c_m_recv_len(msg)) {
-			if (c == 0 || c > I2C_SMBUS_BLOCK_MAX) {
+			/*
+			 * Check length byte for SMBus block read
+			 */
+			if (c <= 0) {
 				idev->msg_err = -EPROTO;
 				i2c_int_disable(idev, ~0);
-				dev_err(idev->dev,
-					"invalid SMBus block size (%d)\n", c);
 				complete(&idev->msg_complete);
 				break;
+			} else if (c > I2C_SMBUS_BLOCK_MAX) {
+				c = I2C_SMBUS_BLOCK_MAX;
 			}
-			msg->len += c;
+			msg->len = 1 + c;
 			writel(msg->len, &idev->regs->mst_rx_xfer);
 		}
 		msg->buf[idev->msg_xfrd++] = c;
@@ -402,7 +405,10 @@ axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 		/* TX 0 bytes */
 		writel(0, &idev->regs->mst_tx_xfer);
 		/* RX # bytes */
-		writel(msg->len, &idev->regs->mst_rx_xfer);
+		if (i2c_m_recv_len(msg))
+			writel(I2C_SMBUS_BLOCK_MAX, &idev->regs->mst_rx_xfer);
+		else
+			writel(msg->len, &idev->regs->mst_rx_xfer);
 	} else {
 		/* TX # bytes */
 		writel(msg->len, &idev->regs->mst_tx_xfer);
