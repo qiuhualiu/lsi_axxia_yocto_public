@@ -390,7 +390,7 @@ static const struct dev_pm_ops pl061_dev_pm_ops = {
 #endif
 
 #ifdef CONFIG_ARM_AMBA
-static int __init pl061_amba_probe(struct amba_device *dev, struct amba_id *id)
+static int pl061_amba_probe(struct amba_device *dev, const struct amba_id *id)
 {
 	return pl061_probe(&dev->dev, &dev->res, dev->irq[0], NULL);
 }
