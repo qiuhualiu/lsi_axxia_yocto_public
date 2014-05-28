@@ -576,7 +576,7 @@ pcie_msi_irq_handler(unsigned int irq, struct irq_desc *desc)
 
 
 /* PCIe setup function */
-static int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
+static __devinit int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 {
 	struct axxia_pciex_port *port = &axxia_pciex_ports[sys->domain];
 	u32 pci_config, pci_status, link_state;
@@ -757,7 +757,7 @@ pcie_alloc_msi_table(struct pci_dev *pdev, struct axxia_pciex_port *port)
 /*
  * Scan PCIe bus
  */
-static struct pci_bus __init *
+static __devinit struct pci_bus *
 axxia_pcie_scan_bus(int nr, struct pci_sys_data *sys)
 {
 	if (WARN_ON(nr >= PCIE_MAX_PORTS))
@@ -769,7 +769,7 @@ axxia_pcie_scan_bus(int nr, struct pci_sys_data *sys)
 
 
 
-static int __init
+static __devinit int
 axxia_pcie_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 {
 	struct pci_sys_data *sys = dev->sysdata;
@@ -788,7 +788,7 @@ static struct irq_chip axxia_msi_chip = {
 
 
 /* Port definition struct */
-static struct hw_pci axxia_pcie_hw[] = {
+static struct hw_pci axxia_pcie_hw[] __initdata = {
 	[0] = {
 		.nr_controllers = 1,
 		.domain = 0,
