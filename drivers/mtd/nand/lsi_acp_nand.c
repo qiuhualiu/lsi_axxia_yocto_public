@@ -342,16 +342,11 @@ _WRITEL(const char *file, int line, unsigned long value, unsigned long address)
 */
 
 static void *gpreg_base;
-
-#define LSI_NAND_PECC_BUSY_REGISTER (gpreg_base + 0x00c)
-
-#ifdef CONFIG_ACP_X1V1
-#define LSI_NAND_PECC_BUSY_MASK	    (1 << 25)
-#else
-#define LSI_NAND_PECC_BUSY_MASK	    (1 << 28)
-#endif
+static void *pecc_busy_register;
+static unsigned long pecc_busy_mask;
 
 #define MAX_READ_BUF	16
+
 /*
   ----------------------------------------------------------------------
   MTD structures
@@ -706,8 +701,8 @@ lsi_nand_command(struct mtd_info *mtd, unsigned int command,
 			       NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
 		do {
 			udelay(chip->chip_delay);
-			status = READL((void *)LSI_NAND_PECC_BUSY_REGISTER);
-		} while (0 != (status & LSI_NAND_PECC_BUSY_MASK));
+			status = READL(pecc_busy_register);
+		} while (0 != (status & pecc_busy_mask));
 
 		/* wait until CHIP_BUSY goes low */
 		do {
@@ -835,9 +830,9 @@ static int lsi_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 #ifdef NOT_USED
 	if (FL_READING == chip->state || FL_WRITING == chip->state) {
 		for (;;) {
-			status = READL((void *)LSI_NAND_PECC_BUSY_REGISTER);
+			status = READL((void *)pecc_busy_register);
 
-			if (0 == (status & LSI_NAND_PECC_BUSY_MASK))
+			if (0 == (status & pecc_busy_mask))
 				break;
 
 			udelay(chip->chip_delay);
@@ -845,9 +840,9 @@ static int lsi_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 	}
 #else
 	for (;;) {
-		status = READL((void *)LSI_NAND_PECC_BUSY_REGISTER);
+		status = READL((void *)pecc_busy_register);
 
-		if (0 == (status & LSI_NAND_PECC_BUSY_MASK))
+		if (0 == (status & pecc_busy_mask))
 			break;
 
 		udelay(chip->chip_delay);
@@ -3468,15 +3463,17 @@ lsi_nand_init(void)
 	void *nand_base;
 	struct device_node *np = NULL;
 	struct mtd_part_parser_data ppdata;
-	static const char *part_probe_types[]
-	= { "cmdlinepart", "ofpart", NULL };
-
-	np = of_find_compatible_node(NULL, NULL, "lsi,acp3500");
-
-	if (NULL != np) {
-		printk(KERN_ERR "NAND Support is Not Yet Available on 3500\n");
-		return -1;
-	}
+	static const char *part_probe_types[] =
+		{ "cmdlinepart", "ofpart", NULL };
+	const u32 *reg;
+	int reglen;
+	u64 nand_address;
+	unsigned long nand_length;
+	u64 gpreg_address;
+	unsigned long gpreg_length;
+	const u32 *enabled;
+	unsigned long cr;
+	unsigned long cr_save;
 
 	memset(&ppdata, 0, sizeof(ppdata));
 
@@ -3485,74 +3482,92 @@ lsi_nand_init(void)
 	while (np && !of_device_is_compatible(np, "acp-nand"))
 		np = of_find_node_by_type(np, "nand");
 
-	if (np) {
-		const u32 *reg;
-		int reglen;
-		u64 nand_address;
-		unsigned long nand_length;
-		u64 gpreg_address;
-		unsigned long gpreg_length;
-		const u32 *enabled;
+	if (NULL == np) {
+		printk(KERN_ERR "No NAND Nodes in Device Tree\n");
 
-		enabled = of_get_property(np, "enabled", NULL);
+		return -1;
+	}
 
-		if (!enabled || (enabled && (0 == *enabled))) {
-			printk(KERN_INFO "ACP NAND Controller Isn't Enabled.\n");
-			return -ENODEV;
-		}
+	enabled = of_get_property(np, "enabled", NULL);
 
-		reg = of_get_property(np, "reg", &reglen);
+	if (!enabled || (enabled && (0 == *enabled))) {
+		printk(KERN_INFO "ACP NAND Controller Isn't Enabled.\n");
+		return -ENODEV;
+	}
 
-		if (reg && (16 == reglen)) {
-			nand_address = of_translate_address(np, reg);
-			nand_length = reg[1];
-			reg += 2;
-			gpreg_address = of_translate_address(np, reg);
-			gpreg_length = reg[1];
-			printk(KERN_INFO "nand_address=0x%08llx nand_length=0x%lx\n"
-			       "gpreg_address=0x%08llx gpreg_length=0x%lx\n",
-			       nand_address, nand_length,
-			       gpreg_address, gpreg_length);
-			nand_base = ioremap(nand_address, nand_length);
-			gpreg_base = ioremap(gpreg_address, gpreg_length);
-		} else {
-			return -1;
-		}
+	reg = of_get_property(np, "reg", &reglen);
 
-		ppdata.of_node = np;
+	if (reg && (16 == reglen)) {
+		nand_address = of_translate_address(np, reg);
+		nand_length = reg[1];
+		reg += 2;
+		gpreg_address = of_translate_address(np, reg);
+		gpreg_length = reg[1];
+		printk(KERN_INFO "nand_address=0x%08llx nand_length=0x%lx\n"
+		       "gpreg_address=0x%08llx gpreg_length=0x%lx\n",
+		       nand_address, nand_length,
+		       gpreg_address, gpreg_length);
+		nand_base = ioremap(nand_address, nand_length);
+		gpreg_base = ioremap(gpreg_address, gpreg_length);
 	} else {
-		printk(KERN_INFO "ACP NAND: Using Static Addresses.\n");
-		nand_base = ioremap(0x002000440000ULL, 0x20000);
-		gpreg_base = ioremap(0x00200040c000ULL, 0x1000);
+		return -1;
+	}
+
+	ppdata.of_node = np;
+
+	/*
+	  Determine the Axxia system type.
+
+	  The ECC status register and mask are different on 344x, 342x, 35xx...
+	*/
+
+	np = of_find_compatible_node(NULL, NULL, "lsi,acp3500");
+
+	if (NULL != np) {
+		pecc_busy_register = (gpreg_base + 0x8c);
+		pecc_busy_mask = (1 << 20);
+	} else {
+		np = of_find_compatible_node(NULL, NULL, "lsi,acp3420");
+
+		if (NULL != np) {
+			pecc_busy_register = (gpreg_base + 0xc);
+			pecc_busy_mask = (1 << 28);
+		} else {
+			np = of_find_compatible_node(NULL, NULL, "lsi,acp3440");
+
+			if (NULL != np) {
+				pecc_busy_register = (gpreg_base + 0xc);
+				pecc_busy_mask = (1 << 25);
+			} else {
+				printk(KERN_ERR "Unsupported NAND Target\n");
+
+				return -1;
+			}
+		}
 	}
 
 	/*
 	  Determine the version of the controller.
 
-	  As there is not version register, see if bits 5:3 of the
-	  configuration register are writable.  There are in the EP501
+	  As there is no version register, see if bits 5:3 of the
+	  configuration register are writable.  They are in the EP501
 	  case and aren't in the EP501G1 case.
 	*/
 
-	{
-		unsigned long cr;
-		unsigned long cr_save;
+	cr = cr_save = READL((void *)(nand_base + NAND_CONFIG_REG));
+	cr = 0x2038;
+	WRITEL(cr, (void *)(nand_base + EP501_NAND_CONFIG_REG));
+	cr = READL((void *)nand_base + EP501_NAND_CONFIG_REG);
+	WRITEL(cr_save, (void *)(nand_base + EP501_NAND_CONFIG_REG));
 
-		cr = cr_save = READL((void *)(nand_base + NAND_CONFIG_REG));
-		cr = 0x2038;
-		WRITEL(cr, (void *)(nand_base + EP501_NAND_CONFIG_REG));
-		cr = READL((void *)nand_base + EP501_NAND_CONFIG_REG);
-		WRITEL(cr_save, (void *)(nand_base + EP501_NAND_CONFIG_REG));
-
-		if (0 == (cr & 0x2038))
-			lsi_nand_type = LSI_NAND_EP501G1;
-		else if (0x38 == (cr & 0x2038))
-			lsi_nand_type = LSI_NAND_EP501;
-		else if (0x2000 == (cr & 0x2038))
-			lsi_nand_type = LSI_NAND_EP501G3;
-		else
-			lsi_nand_type = LSI_NAND_NONE;
-	}
+	if (0 == (cr & 0x2038))
+		lsi_nand_type = LSI_NAND_EP501G1;
+	else if (0x38 == (cr & 0x2038))
+		lsi_nand_type = LSI_NAND_EP501;
+	else if (0x2000 == (cr & 0x2038))
+		lsi_nand_type = LSI_NAND_EP501G3;
+	else
+		lsi_nand_type = LSI_NAND_NONE;
 
 	switch (lsi_nand_type) {
 	case LSI_NAND_EP501:
