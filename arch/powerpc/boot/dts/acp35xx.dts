@@ -20,7 +20,7 @@
 	#address-cells = <2>;
 	#size-cells = <1>;
 	model = "ibm,acpx1-4xx";
-	compatible = "lsi,acp3500", "lsi,axxia35xx", "lsi,acp", "ibm,acpx1-4xx";
+	compatible = "lsi,acp3500","lsi,acp","ibm,acpx1-4xx";
 	dcr-parent = <&{/cpus/cpu@0}>;
 
 	aliases {
