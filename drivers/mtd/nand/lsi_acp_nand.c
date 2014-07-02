@@ -3521,23 +3521,17 @@ lsi_nand_init(void)
 	  The ECC status register and mask are different on 344x, 342x, 35xx...
 	*/
 
-	np = of_find_compatible_node(NULL, NULL, "lsi,acp3500");
-
-	if (NULL != np) {
+	if (of_machine_is_compatible("lsi,acp3500")) {
 		pecc_busy_register = (gpreg_base + 0x8c);
 		pecc_busy_mask = (1 << 20);
 	} else {
-		np = of_find_compatible_node(NULL, NULL, "lsi,acp3420");
-
-		if (NULL != np) {
+		if (of_machine_is_compatible("lsi,acp3420")) {
 			pecc_busy_register = (gpreg_base + 0xc);
 			pecc_busy_mask = (1 << 28);
 		} else {
-			np = of_find_compatible_node(NULL, NULL, "lsi,acp3440");
-
-			if (NULL != np) {
+			if (of_machine_is_compatible("lsi,acp3440")) {
 				pecc_busy_register = (gpreg_base + 0xc);
-				pecc_busy_mask = (1 << 25);
+				pecc_busy_mask = (1 << 28);
 			} else {
 				printk(KERN_ERR "Unsupported NAND Target\n");
 
