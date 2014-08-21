@@ -21,7 +21,7 @@
         #size-cells = <1>;
 
         model = "ibm,acpx1-4xx";
-        compatible = "lsi,acp3440","lsi,acp","ibm,acpx1-4xx";
+        compatible = "lsi,axxia34xx", "lsi,acp", "ibm,acpx1-4xx";
         dcr-parent = <&{/cpus/cpu@0}>;
 
         aliases {
@@ -108,12 +108,12 @@
 
         memory@0 {
                 device_type = "memory";
-                reg = <0 0 0>; // filled in by U-Boot
+                reg = <0x00000000 0x00000000 0x00000000>; // filled in by U-Boot
         };
 
         memory@80000000 {
                 device_type = "memory";
-                reg = <0 0 0>; // filled in by U-Boot
+                reg = <0x00000000 0x00000000 0x00000000>; // filled in by U-Boot
         };
 
         MPIC: interrupt-controller {
@@ -184,7 +184,8 @@
                         I2C: i2c0 {
                                 compatible = "acp-i2c";
                                 enabled = <0>;
-                                reg = <0x00403000 0x00001000>;
+                                reg = <0x00403000 0x00001000
+                                	0x00408000 0x00001000>;
                                 interrupt-parent = <&MPIC>;
                                 interrupts = <21>;
                         };
